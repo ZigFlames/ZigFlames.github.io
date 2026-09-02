@@ -223,14 +223,14 @@ a:hover {
   background: #08080a;
   display: flex;
   justify-content: flex-end;
-  align-items: center;
+  align-items: flex-end;
 }
 
 .hero-bg img {
   width: auto;
-  height: 108%;
+  height: 122%;
   object-fit: contain;
-  object-position: 50% 42%;
+  object-position: 50% 100%;
   max-width: none;
 }
 
@@ -799,9 +799,9 @@ a:hover {
 
   .hero-bg img {
     width: 100%;
-    height: 100%;
+    height: 118%;
     object-fit: contain;
-    object-position: center 28%;
+    object-position: center bottom;
   }
 }
 
