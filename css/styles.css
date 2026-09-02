@@ -761,7 +761,8 @@ a:hover {
   .release,
   .release.compact,
   .about-grid,
-  .work-grid {
+  .work-grid,
+  .shop-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1119,3 +1120,65 @@ body.lightbox-open { overflow: hidden; }
 @media (min-width: 720px) {
   .rusty-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* Shop / Collect */
+.shop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.75rem;
+}
+.shop-card {
+  display: grid;
+  gap: 1.2rem;
+  align-content: start;
+  padding: 1.35rem;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+}
+.shop-card .cover {
+  max-width: 22rem;
+}
+.shop-copy .badge {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line-strong);
+  color: var(--gold);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.shop-copy h3 {
+  margin: 0 0 0.6rem;
+  font-family: var(--serif);
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.shop-copy p {
+  margin: 0 0 1.1rem;
+  color: var(--ink-soft);
+}
+.shop-copy .btn {
+  margin-bottom: 0.35rem;
+}
+.shop-pending {
+  font-style: italic;
+}
+.perception-frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  max-width: 22rem;
+  background: #0a0a0c;
+  border: 1px solid var(--line);
+}
+.perception-mark {
+  font-family: var(--display);
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  letter-spacing: 0.28em;
+  color: var(--gold);
+}
+
