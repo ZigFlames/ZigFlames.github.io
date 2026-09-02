@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>No Guardrails — A Zig Flame Perceptual Art Exhibition</title>
+  <meta name="description" content="No Guardrails: a Zig Flame perceptual art exhibition. Shift focus. Discover the hidden forms.">
+  <meta name="author" content="ZigFlames">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#08080a">
+  <link rel="canonical" href="https://zigflames.com/art.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="exhibit-page">
+  <a class="skip-link" href="#exhibit">Skip to exhibit</a>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="index.html">
+        <img class="header-logo" src="assets/brand/zig-flame-logo.jpg" width="800" height="360" alt="Zig Flame Studio">
+      </a>
+      <button class="nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="site-nav" id="site-nav" aria-label="Primary">
+        <ul>
+          <li><a href="index.html#music">Music</a></li>
+          <li><a href="art.html" aria-current="page">Art</a></li>
+          <li><a href="index.html#about">About</a></li>
+          <li><a href="index.html#work">Work</a></li>
+          <li><a href="index.html#contact">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="exhibit-hero" aria-labelledby="ng-title">
+      <p class="eyebrow">Art</p>
+      <h1 id="ng-title" class="exhibit-title">No Guardrails</h1>
+      <p class="exhibit-sub">A Zig Flame Perceptual Art Exhibition</p>
+      <a class="btn btn-primary" href="#exhibit">Enter the exhibit</a>
+    </section>
+
+    <section class="exhibit" id="exhibit">
+      <p class="exhibit-hint">Click any piece. Shift your focus.</p>
+      <div class="exhibit-grid">
+        <figure class="piece piece-center" data-full="assets/brand/zig-flame-studio.jpg">
+          <button type="button" class="piece-open" aria-label="Open Zig Flame, full screen">
+            <img src="assets/brand/zig-flame-studio.jpg" width="900" height="1341" alt="">
+          </button>
+          <figcaption>Zig Flame</figcaption>
+        </figure>
+        <figure class="piece piece-center" data-full="assets/exhibit/ii.jpg">
+          <button type="button" class="piece-open" aria-label="Open II, full screen">
+            <img src="assets/exhibit/ii.jpg" width="1800" height="1013" alt="">
+          </button>
+          <figcaption>II</figcaption>
+        </figure>
+        <figure class="piece" data-full="assets/exhibit/i.jpg">
+          <button type="button" class="piece-open" aria-label="Open I, full screen">
+            <img src="assets/exhibit/i.jpg" width="1800" height="830" alt="">
+          </button>
+          <figcaption>I</figcaption>
+        </figure>
+        <figure class="piece" data-full="assets/exhibit/iii.jpg">
+          <button type="button" class="piece-open" aria-label="Open III, full screen">
+            <img src="assets/exhibit/iii.jpg" width="1800" height="1013" alt="">
+          </button>
+          <figcaption>III</figcaption>
+        </figure>
+        <figure class="piece" data-full="assets/exhibit/iv.jpg">
+          <button type="button" class="piece-open" aria-label="Open IV, full screen">
+            <img src="assets/exhibit/iv.jpg" width="1800" height="1013" alt="">
+          </button>
+          <figcaption>IV</figcaption>
+        </figure>
+        <figure class="piece" data-full="assets/portraits/flames-city.jpg">
+          <button type="button" class="piece-open" aria-label="Open V, full screen">
+            <img src="assets/portraits/flames-city.jpg" width="2400" height="1004" alt="">
+          </button>
+          <figcaption>V</figcaption>
+        </figure>
+      </div>
+
+      <div class="exhibit-series" id="a-little-rusty">
+        <p class="section-kicker">The Edge</p>
+        <h2 class="series-title">A Little Rusty</h2>
+        <div class="exhibit-grid rusty-grid">
+          <figure class="piece" data-full="assets/exhibit/levitation.jpg">
+            <button type="button" class="piece-open" aria-label="Open 002 Levitation, full screen">
+              <img src="assets/exhibit/levitation.jpg" width="1400" height="1750" alt="">
+            </button>
+            <figcaption>002 Levitation</figcaption>
+          </figure>
+          <figure class="piece" data-full="assets/exhibit/the-cliff.jpg">
+            <button type="button" class="piece-open" aria-label="Open The Cliff, full screen">
+              <img src="assets/exhibit/the-cliff.jpg" width="1400" height="1665" alt="">
+            </button>
+            <figcaption>The Cliff</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="lightbox" hidden>
+    <button type="button" class="lightbox-close" aria-label="Close">Close</button>
+    <button type="button" class="lightbox-prev" aria-label="Previous">Prev</button>
+    <figure class="lightbox-frame">
+      <img alt="">
+      <figcaption></figcaption>
+    </figure>
+    <button type="button" class="lightbox-next" aria-label="Next">Next</button>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>No Guardrails · Zig Flame Studio</p>
+      <p><a href="index.html">Back to ZigFlames</a> · <a href="mailto:artist@zigflames.com">artist@zigflames.com</a></p>
+    </div>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>
