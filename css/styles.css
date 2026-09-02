@@ -221,9 +221,6 @@ a:hover {
   position: absolute;
   inset: 0;
   background: #08080a;
-  display: flex;
-  justify-content: flex-end;
-  align-items: flex-end;
 }
 
 .hero-bg picture {
@@ -231,11 +228,10 @@ a:hover {
 }
 
 .hero-bg img {
-  width: auto;
-  height: 122%;
-  object-fit: contain;
-  object-position: 50% 100%;
-  max-width: none;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 16%;
 }
 
 .hero-bg::before,
@@ -247,8 +243,8 @@ a:hover {
 
 .hero-bg::before {
   background:
-    linear-gradient(90deg, rgba(8, 8, 10, 0.88) 0%, rgba(8, 8, 10, 0.48) 22%, rgba(8, 8, 10, 0.12) 48%, rgba(8, 8, 10, 0.04) 72%, transparent 100%),
-    linear-gradient(180deg, rgba(8, 8, 10, 0.28) 0%, transparent 24%, transparent 58%, rgba(8, 8, 10, 0.42) 78%, rgba(8, 8, 10, 0.88) 100%);
+    linear-gradient(90deg, rgba(8, 8, 10, 0.78) 0%, rgba(8, 8, 10, 0.42) 18%, rgba(8, 8, 10, 0.12) 42%, rgba(8, 8, 10, 0.18) 100%),
+    linear-gradient(180deg, rgba(8, 8, 10, 0.48) 0%, rgba(8, 8, 10, 0.12) 22%, transparent 42%, rgba(8, 8, 10, 0.48) 72%, rgba(8, 8, 10, 0.92) 100%);
 }
 
 .hero-bg::after {
@@ -800,13 +796,6 @@ a:hover {
     flex-direction: column;
     gap: 0.9rem;
   }
-
-  .hero-bg img {
-    width: 100%;
-    height: 118%;
-    object-fit: contain;
-    object-position: center bottom;
-  }
 }
 
 @media (max-width: 520px) {
@@ -1133,6 +1122,11 @@ body.lightbox-open { overflow: hidden; }
 }
 @media (min-width: 720px) {
   .rusty-grid { grid-template-columns: 1fr 1fr; }
+}
+.this-will-do-grid .piece-open img {
+  object-fit: contain;
+  object-position: center;
+  background: #cfc3ad;
 }
 
 /* Shop / Collect */
