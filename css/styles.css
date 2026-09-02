@@ -1167,18 +1167,83 @@ body.lightbox-open { overflow: hidden; }
 .shop-pending {
   font-style: italic;
 }
-.perception-frame {
+.pending-tag {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid var(--line-strong);
+  color: var(--gold);
+  font-size: 0.58rem;
+  font-style: normal;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.btn.is-pending,
+.btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+}
+.perception {
+  display: grid;
+  gap: 1.75rem;
+  padding: 1.5rem;
+  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(180deg, rgba(201, 168, 76, 0.06), transparent 42%),
+    var(--bg-card);
+  box-shadow: var(--shadow);
+}
+.perception-stage {
+  margin: 0;
+  padding: 1.25rem;
+  background: #050506;
+  border: 1px solid var(--line);
+}
+.perception-stage img {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+.perception-placeholder {
+  min-height: min(62vh, 28rem);
   display: grid;
   place-items: center;
-  aspect-ratio: 1;
-  max-width: 22rem;
-  background: #0a0a0c;
-  border: 1px solid var(--line);
+  align-content: center;
+  gap: 0.85rem;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at center, rgba(201, 168, 76, 0.08), transparent 62%),
+    repeating-linear-gradient(
+      -12deg,
+      transparent 0 13px,
+      rgba(237, 232, 220, 0.02) 13px 14px
+    );
+}
+.perception-kicker {
+  color: var(--gold);
+  font-size: 0.68rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
 }
 .perception-mark {
   font-family: var(--display);
-  font-size: clamp(2.4rem, 6vw, 3.6rem);
-  letter-spacing: 0.28em;
-  color: var(--gold);
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+.perception-wait {
+  color: var(--ink-dim);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.05rem;
+}
+.perception-copy .listen-row {
+  margin-bottom: 0.6rem;
 }
 

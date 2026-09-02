@@ -234,12 +234,12 @@
 
     <section class="section shop" id="shop" aria-labelledby="shop-title">
       <div class="section-inner">
-        <p class="section-kicker reveal-on-scroll">Shop / Collect</p>
-        <h2 id="shop-title" class="reveal-on-scroll">Collect</h2>
+        <p class="section-kicker reveal-on-scroll">Shop</p>
+        <h2 id="shop-title" class="reveal-on-scroll">First Crush</h2>
         <hr class="rule" aria-hidden="true">
-        <p class="lede reveal-on-scroll">Direct from Zig Flame Studio. Albums, perceptual prints, and original work.</p>
+        <p class="lede reveal-on-scroll">Direct from Zig Flame Studio. Album download, cover artwork, and credits after checkout.</p>
 
-        <div class="shop-grid">
+        <div class="shop-grid shop-grid-album">
           <article class="shop-card reveal-on-scroll" id="buy-first-crush">
             <div class="cover">
               <img src="assets/covers/first-crush.jpg" width="1400" height="1400" alt="First Crush album cover">
@@ -247,9 +247,9 @@
             <div class="shop-copy">
               <span class="badge">Digital album</span>
               <h3>Buy First Crush Direct — $9.99</h3>
-              <p>Album download, cover artwork, and credits — sent automatically after checkout.</p>
-              <a class="btn btn-primary" href="#shopify-first-crush-pending">Buy First Crush Direct — $9.99</a>
-              <p class="note shop-pending">Shopify product URL pending.</p>
+              <p>The customer receives the album download, cover artwork, and credits automatically after purchase.</p>
+              <button type="button" class="btn btn-primary is-pending" disabled>Buy First Crush Direct — $9.99</button>
+              <p class="note shop-pending"><span class="pending-tag">Pending</span> Shopify checkout — not live yet.</p>
             </div>
           </article>
 
@@ -257,35 +257,41 @@
             <div class="shop-copy">
               <span class="badge">Also on</span>
               <h3>Buy on iTunes</h3>
-              <p>Secondary purchase. Opens the First Crush iTunes Store page.</p>
-              <a class="btn btn-ghost" href="#itunes-first-crush-pending">Buy on iTunes</a>
-              <p class="note shop-pending">iTunes Store URL pending.</p>
-            </div>
-          </article>
-
-          <article class="shop-card reveal-on-scroll" id="perception-00">
-            <div class="cover perception-frame" aria-hidden="true">
-              <span class="perception-mark">00</span>
-            </div>
-            <div class="shop-copy">
-              <span class="badge">Print</span>
-              <h3>Collect Perception 00</h3>
-              <p>Direct purchase of Perception 00 from Zig Flame Studio.</p>
-              <a class="btn btn-primary" href="#shopify-perception-00-pending">Collect Perception 00</a>
-              <p class="note shop-pending">Shopify product URL pending. Perception 00 artwork pending — send the file and it hangs here.</p>
-            </div>
-          </article>
-
-          <article class="shop-card shop-card-plain reveal-on-scroll" id="custom-art">
-            <div class="shop-copy">
-              <span class="badge">Commission</span>
-              <h3>Request Custom Art</h3>
-              <p>Original Zig Flame artwork and custom commissions are available. Request a piece created around your vision.</p>
-              <p class="note">After the details and price are confirmed, you’ll receive a secure Shopify invoice.</p>
-              <a class="btn btn-ghost" href="mailto:zigflames.artist@gmail.com?subject=Custom%20Zig%20Flame%20Art%20Request">Request custom art</a>
+              <p>Secondary purchase. Direct to the First Crush iTunes Store page.</p>
+              <button type="button" class="btn btn-ghost is-pending" disabled>Buy on iTunes</button>
+              <p class="note shop-pending"><span class="pending-tag">Pending</span> iTunes Store link — not live yet.</p>
             </div>
           </article>
         </div>
+      </div>
+    </section>
+
+    <section class="section collect" id="collect" aria-labelledby="collect-title">
+      <div class="section-inner">
+        <p class="section-kicker reveal-on-scroll">Collect</p>
+        <h2 id="collect-title" class="reveal-on-scroll">Collect Zig Flame Art</h2>
+        <hr class="rule" aria-hidden="true">
+        <p class="lede reveal-on-scroll">Original Zig Flame artwork and custom commissions are available. Collect an existing work or request a piece created around your vision.</p>
+
+        <article class="perception reveal-on-scroll" id="perception-00">
+          <figure class="perception-stage">
+            <div class="perception-placeholder">
+              <span class="perception-kicker">Zig Flame</span>
+              <span class="perception-mark">Perception 00</span>
+              <span class="perception-wait">Artwork forthcoming</span>
+            </div>
+          </figure>
+          <div class="shop-copy perception-copy">
+            <span class="badge">Edition</span>
+            <h3>Perception 00</h3>
+            <p>Original Zig Flame artwork and custom commissions are available. Collect an existing work or request a piece created around your vision.</p>
+            <div class="listen-row">
+              <button type="button" class="btn btn-primary is-pending" disabled>Collect Perception 00</button>
+              <a class="btn btn-ghost" href="mailto:zigflames.artist@gmail.com?subject=Custom%20Zig%20Flame%20Art%20Request">Request Custom Art</a>
+            </div>
+            <p class="note shop-pending"><span class="pending-tag">Pending</span> Shopify for Perception 00. Custom requests go to email; a secure invoice follows once the piece and price are set.</p>
+          </div>
+        </article>
       </div>
     </section>
 
