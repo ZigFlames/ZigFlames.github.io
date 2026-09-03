@@ -1290,3 +1290,21 @@ body.lightbox-open { overflow: hidden; }
   margin-bottom: 0.6rem;
 }
 
+
+.art-number-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0.8rem;
+  align-items: center;
+}
+.art-number-form input {
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  padding: 0.7rem 0.9rem;
+  min-width: 10rem;
+}

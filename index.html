@@ -317,12 +317,18 @@
           <div class="shop-copy perception-copy">
             <span class="badge">Edition</span>
             <h3>Perception 00</h3>
-            <p>Original Zig Flame artwork and custom commissions are available. Collect an existing work or request a piece created around your vision.</p>
+            <p>Every numbered piece is the same price. Open Art, pick any number, type it below.</p>
+            <form class="art-number-form" action="mailto:zigflames.artist@gmail.com" method="get">
+              <input type="hidden" name="subject" value="Zig Flame Art — collect by number">
+              <label class="visually-hidden" for="art-no">Piece number</label>
+              <input id="art-no" name="body" type="text" inputmode="numeric" placeholder="Type No. 01–13" required>
+              <button type="submit" class="btn btn-primary">Collect this number</button>
+            </form>
             <div class="listen-row">
-              <button type="button" class="btn btn-primary is-pending" disabled>Collect Perception 00</button>
+              <a class="btn btn-ghost" href="art.html">See the numbered exhibits</a>
               <a class="btn btn-ghost" href="mailto:zigflames.artist@gmail.com?subject=Custom%20Zig%20Flame%20Art%20Request">Request Custom Art</a>
             </div>
-            <p class="note shop-pending"><span class="pending-tag">Pending</span> Shopify for Perception 00. Custom requests go to email; a secure invoice follows once the piece and price are set.</p>
+            <p class="note">One price for every number. Invoice after you send it.</p>
           </div>
         </article>
       </div>
