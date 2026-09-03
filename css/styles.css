@@ -922,6 +922,9 @@ body::before {
   margin: 1.25rem 0 0;
 }
 .inline-portrait img {
+  image-rendering: -webkit-optimize-contrast;
+  filter: contrast(1.12) saturate(1.06) brightness(1.02);
+
   width: min(100%, 22rem);
   height: auto;
   max-height: 28rem;
