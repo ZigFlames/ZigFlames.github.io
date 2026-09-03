@@ -236,7 +236,7 @@ a:hover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 16%;
+  object-position: 52% 22%;
 }
 
 .hero-bg::before,
@@ -291,17 +291,60 @@ a:hover {
 }
 
 .hero h1 {
+  position: relative;
   margin: 0;
   font-family: var(--display);
   font-weight: 400;
-  font-size: clamp(3.1rem, 12vw, 8.4rem);
-  line-height: 0.88;
-  letter-spacing: 0.06em;
+  font-size: clamp(3.25rem, 13vw, 9rem);
+  line-height: 0.86;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, var(--flame-top) 8%, var(--flame-mid) 55%, var(--flame-bot) 100%);
+  /* metal flame fill: hot highlight → amber → deep ember */
+  background-image:
+    linear-gradient(
+      115deg,
+      transparent 38%,
+      rgba(255, 255, 255, 0.55) 48%,
+      rgba(255, 240, 180, 0.25) 52%,
+      transparent 62%
+    ),
+    linear-gradient(
+      180deg,
+      #fff8d6 0%,
+      #ffe566 14%,
+      #ffc94a 32%,
+      #ff9a1f 55%,
+      #ff5a00 78%,
+      #b82e00 100%
+    );
+  background-size: 180% 100%, 100% 100%;
+  background-position: 30% 0, 0 0;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* depth: emboss + ember glow (works with clipped text) */
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 230, 140, 0.55))
+    drop-shadow(0 3px 0 rgba(140, 40, 0, 0.75))
+    drop-shadow(0 10px 28px rgba(255, 90, 0, 0.45))
+    drop-shadow(0 0 48px rgba(255, 140, 30, 0.35));
+}
+
+.hero h1::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  width: 100%;
+  color: transparent;
+  -webkit-text-stroke: 0.045em rgba(90, 22, 0, 0.92);
+  text-shadow:
+    0 0 18px rgba(255, 120, 0, 0.55),
+    0 0 40px rgba(255, 80, 0, 0.28);
+  pointer-events: none;
+  user-select: none;
 }
 
 .credit {
