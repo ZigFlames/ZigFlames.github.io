@@ -961,7 +961,7 @@ body::before {
   height: auto;
   max-height: 28rem;
   object-fit: cover;
-  object-position: center 12%;
+  object-position: center 20%;
   border: 1px solid var(--line);
 }
 .wordmark img,
