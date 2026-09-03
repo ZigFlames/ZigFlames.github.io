@@ -299,23 +299,22 @@ a:hover {
   line-height: 0.86;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  /* metal flame fill: hot highlight → amber → deep ember */
+  /* muted brass — color sucked down, still metal */
   background-image:
     linear-gradient(
       115deg,
-      transparent 38%,
-      rgba(255, 255, 255, 0.55) 48%,
-      rgba(255, 240, 180, 0.25) 52%,
+      transparent 40%,
+      rgba(255, 255, 255, 0.28) 49%,
+      rgba(230, 220, 190, 0.12) 52%,
       transparent 62%
     ),
     linear-gradient(
       180deg,
-      #fff8d6 0%,
-      #ffe566 14%,
-      #ffc94a 32%,
-      #ff9a1f 55%,
-      #ff5a00 78%,
-      #b82e00 100%
+      #e6dcc0 0%,
+      #c9b888 18%,
+      #a89058 42%,
+      #8a6e3a 68%,
+      #5c4524 100%
     );
   background-size: 180% 100%, 100% 100%;
   background-position: 30% 0, 0 0;
@@ -323,12 +322,11 @@ a:hover {
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  /* depth: emboss + ember glow (works with clipped text) */
   filter:
-    drop-shadow(0 1px 0 rgba(255, 230, 140, 0.55))
-    drop-shadow(0 3px 0 rgba(140, 40, 0, 0.75))
-    drop-shadow(0 10px 28px rgba(255, 90, 0, 0.45))
-    drop-shadow(0 0 48px rgba(255, 140, 30, 0.35));
+    drop-shadow(0 1px 0 rgba(220, 210, 180, 0.35))
+    drop-shadow(0 3px 0 rgba(40, 28, 12, 0.7))
+    drop-shadow(0 8px 22px rgba(0, 0, 0, 0.45))
+    drop-shadow(0 0 28px rgba(160, 120, 60, 0.18));
 }
 
 .hero h1::after {
@@ -339,10 +337,10 @@ a:hover {
   z-index: -1;
   width: 100%;
   color: transparent;
-  -webkit-text-stroke: 0.045em rgba(90, 22, 0, 0.92);
+  -webkit-text-stroke: 0.045em rgba(28, 18, 8, 0.88);
   text-shadow:
-    0 0 18px rgba(255, 120, 0, 0.55),
-    0 0 40px rgba(255, 80, 0, 0.28);
+    0 0 14px rgba(120, 90, 40, 0.22),
+    0 0 28px rgba(0, 0, 0, 0.35);
   pointer-events: none;
   user-select: none;
 }
@@ -976,7 +974,7 @@ body::before {
   height: auto;
   max-height: 28rem;
   object-fit: cover;
-  object-position: center 18%;
+  object-position: center 12%;
   border: 1px solid var(--line);
 }
 .wordmark img,
