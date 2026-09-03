@@ -299,48 +299,35 @@ a:hover {
   line-height: 0.86;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  /* muted brass — color sucked down, still metal */
-  background-image:
-    linear-gradient(
-      115deg,
-      transparent 40%,
-      rgba(255, 255, 255, 0.28) 49%,
-      rgba(230, 220, 190, 0.12) 52%,
-      transparent 62%
-    ),
-    linear-gradient(
-      180deg,
-      #e6dcc0 0%,
-      #c9b888 18%,
-      #a89058 42%,
-      #8a6e3a 68%,
-      #5c4524 100%
-    );
-  background-size: 180% 100%, 100% 100%;
-  background-position: 30% 0, 0 0;
+  /* ghost metal — soft, see-through, not loud */
+  background-image: linear-gradient(
+    180deg,
+    rgba(236, 228, 210, 0.72) 0%,
+    rgba(200, 180, 140, 0.42) 45%,
+    rgba(120, 100, 70, 0.28) 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
+  opacity: 0.55;
   filter:
-    drop-shadow(0 1px 0 rgba(220, 210, 180, 0.35))
-    drop-shadow(0 3px 0 rgba(40, 28, 12, 0.7))
-    drop-shadow(0 8px 22px rgba(0, 0, 0, 0.45))
-    drop-shadow(0 0 28px rgba(160, 120, 60, 0.18));
+    drop-shadow(0 0 18px rgba(255, 240, 210, 0.12))
+    drop-shadow(0 6px 20px rgba(0, 0, 0, 0.25));
 }
 
 .hero h1::after {
   content: attr(data-text);
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 0.04em;
+  top: 0.06em;
   z-index: -1;
   width: 100%;
   color: transparent;
-  -webkit-text-stroke: 0.045em rgba(28, 18, 8, 0.88);
-  text-shadow:
-    0 0 14px rgba(120, 90, 40, 0.22),
-    0 0 28px rgba(0, 0, 0, 0.35);
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.02em rgba(255, 245, 220, 0.18);
+  opacity: 0.45;
+  filter: blur(0.5px);
   pointer-events: none;
   user-select: none;
 }
