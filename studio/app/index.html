@@ -14,25 +14,41 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@600&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
-    <script src="./assets/access-gate.js?v=20260904b"></script>
-    <script>
-      (async function () {
-        var ok = await window.__pmGate.ensureAccess();
-        if (!ok) return;
-        var s = document.createElement('script');
-        s.type = 'module';
-        s.crossOrigin = '';
-        s.src = './assets/prompt-machine-v4.js?v=20260904b';
-        document.head.appendChild(s);
-        var l = document.createElement('link');
-        l.rel = 'stylesheet';
-        l.crossOrigin = '';
-        l.href = './assets/prompt-machine-v4.css?v=20260904b';
-        document.head.appendChild(l);
-      })();
-    </script>
+    <script src="./assets/access-gate.js?v=20260905a"></script>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (async function () {
+        function ready() {
+          return new Promise(function (resolve) {
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', resolve, { once: true });
+            } else {
+              resolve();
+            }
+          });
+        }
+        await ready();
+        var ok = await window.__pmGate.ensureAccess();
+        if (!ok) return;
+        if (!document.getElementById('root')) {
+          var root = document.createElement('div');
+          root.id = 'root';
+          document.body.appendChild(root);
+        }
+        var s = document.createElement('script');
+        s.type = 'module';
+        s.src = './assets/prompt-machine-v4.js?v=20260905a';
+        s.onerror = function () {
+          document.body.innerHTML = '<p style="color:#fff;font-family:sans-serif;padding:2rem;">Prompt Machine failed to load. Hard-refresh or open your Owner door again.</p>';
+        };
+        document.head.appendChild(s);
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = './assets/prompt-machine-v4.css?v=20260905a';
+        document.head.appendChild(l);
+      })();
+    </script>
   </body>
 </html>
