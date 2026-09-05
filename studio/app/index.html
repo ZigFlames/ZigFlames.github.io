@@ -11,8 +11,26 @@
     <meta property="og:description" content="Zig Flames Prompt Machine — build cinematic prompts on ZigFlames.com." />
     <meta property="og:type" content="website" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <script type="module" crossorigin src="./assets/prompt-machine-v4.js?v=20260903b"></script>
-    <link rel="stylesheet" crossorigin href="./assets/prompt-machine-v4.css?v=20260903b">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@600&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+    <script src="./assets/access-gate.js?v=20260904b"></script>
+    <script>
+      (async function () {
+        var ok = await window.__pmGate.ensureAccess();
+        if (!ok) return;
+        var s = document.createElement('script');
+        s.type = 'module';
+        s.crossOrigin = '';
+        s.src = './assets/prompt-machine-v4.js?v=20260904b';
+        document.head.appendChild(s);
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.crossOrigin = '';
+        l.href = './assets/prompt-machine-v4.css?v=20260904b';
+        document.head.appendChild(l);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
