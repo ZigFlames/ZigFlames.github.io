@@ -87,9 +87,11 @@ window.__pmGate = (function () {
 
     var input = document.getElementById('pm-key');
     var err = document.getElementById('pm-err');
-    document.getElementById('pm-unlock').addEventListener('click', attempt);
+    var btn = document.getElementById('pm-unlock');
+    if (!input || !err || !btn) return;
+    btn.addEventListener('click', attempt);
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') attempt(); });
-    input.focus();
+    try { input.focus(); } catch (e) {}
 
     async function attempt() {
       err.textContent = '';
@@ -104,23 +106,32 @@ window.__pmGate = (function () {
 
   async function ensureAccess() {
     window.__pmClearAccess = clearSession;
-    var params = new URLSearchParams(location.search);
-    var qKey = params.get('key');
-    if (qKey) {
-      var role = await unlockWithKey(qKey);
-      if (role) {
-        params.delete('key');
-        var clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
-        history.replaceState({}, '', clean);
-        return true;
+    try {
+      if (!document.body) {
+        await new Promise(function (r) { document.addEventListener('DOMContentLoaded', r, { once: true }); });
       }
-      paintGate('Checkout key invalid. Use Try for 99¢ or enter a valid key.');
+      var params = new URLSearchParams(location.search);
+      var qKey = params.get('key');
+      if (qKey) {
+        var role = await unlockWithKey(qKey);
+        if (role) {
+          params.delete('key');
+          var clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+          history.replaceState({}, '', clean);
+          return true;
+        }
+        paintGate('Checkout key invalid. Use Try for 99¢ or enter a valid key.');
+        return false;
+      }
+      var session = readSession();
+      if (session && session.h && VALID[session.h]) return true;
+      paintGate('');
+      return false;
+    } catch (e) {
+      console.error(e);
+      paintGate('Unlock failed. Refresh, or use Owner door / Try for 99¢.');
       return false;
     }
-    var session = readSession();
-    if (session && session.h && VALID[session.h]) return true;
-    paintGate('');
-    return false;
   }
 
   return { ensureAccess: ensureAccess, clearSession: clearSession };
