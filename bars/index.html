@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zig Bars Player — hear the pocket</title>
+  <meta name="description" content="Paste your rap bars, play from the top, catch the pocket by ear before you rewrite rhymes.">
+  <meta name="theme-color" content="#08080a">
+  <link rel="canonical" href="https://zigflames.com/bars/">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#08080a; --card:#121016; --line:#3a2a18; --text:#f5f0e8; --muted:#9a9084; --gold:#ff9a1f; --gold2:#ffe566; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"IBM Plex Sans",system-ui,sans-serif; }
+    .wrap { max-width:42rem; margin:0 auto; padding:1.25rem 1.1rem 3rem; }
+    .kicker { letter-spacing:.14em; text-transform:uppercase; font-size:.72rem; color:var(--gold); margin:0 0 .4rem; }
+    h1 { font-family:"Bebas Neue",Oswald,sans-serif; letter-spacing:.06em; font-size:2.4rem; margin:0 0 .5rem;
+      background:linear-gradient(180deg,var(--gold2),var(--gold),#e24a00); -webkit-background-clip:text; color:transparent; }
+    .tip { color:var(--muted); line-height:1.45; font-size:.95rem; margin:0 0 1.1rem; }
+    .card { border:1px solid var(--line); border-radius:12px; background:linear-gradient(180deg,#16141c,var(--card)); padding:1rem; }
+    label { display:block; font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 .4rem; }
+    textarea { width:100%; min-height:14rem; resize:vertical; background:#0c0b10; border:1px solid #4a3a28; color:var(--text);
+      border-radius:8px; padding:.85rem; font-size:1.05rem; line-height:1.55; font-family:inherit; }
+    textarea:focus { outline:1px solid var(--gold); }
+    .row { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:.85rem; }
+    button { appearance:none; border:0; border-radius:8px; padding:.8rem 1rem; font-weight:700; cursor:pointer; font-size:.92rem; }
+    .primary { background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#1a1000; flex:1 1 8rem; }
+    .ghost { background:transparent; border:1px solid #4a3a28; color:var(--text); }
+    .ghost:hover { border-color:var(--gold); }
+    .controls { margin-top:1rem; display:grid; gap:.85rem; }
+    .ctrl { display:grid; gap:.35rem; }
+    input[type=range] { width:100%; }
+    select { width:100%; background:#0c0b10; border:1px solid #4a3a28; color:var(--text); border-radius:8px; padding:.65rem .75rem; }
+    .status { margin-top:.75rem; font-size:.85rem; color:var(--muted); min-height:1.2rem; }
+    .status.on { color:#7dd3fc; }
+    .linebox { margin-top:.85rem; max-height:10rem; overflow:auto; border:1px solid #2a2430; border-radius:8px; padding:.5rem; background:#0a090e; }
+    .line { padding:.35rem .5rem; border-radius:6px; color:var(--muted); white-space:pre-wrap; }
+    .line.active { background:rgba(255,154,31,.18); color:var(--text); }
+    .nav { margin-top:1.25rem; font-size:.9rem; }
+    .nav a { color:var(--gold); }
+    .meta { font-size:.8rem; color:#6a6258; margin-top:.35rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="kicker">Zig Flames · Workflow</p>
+    <h1>Bars Player</h1>
+    <p class="tip">Paste from ChatGPT → <strong>Play from top</strong> → ears catch the pocket → only then change rhymes. Don’t trust the page-read after 10–12 bars.</p>
+
+    <div class="card">
+      <label for="bars">Your bars</label>
+      <textarea id="bars" spellcheck="false" placeholder="Paste your bars here…&#10;&#10;One line per bar works best."></textarea>
+      <p class="meta" id="count">0 lines</p>
+
+      <div class="row">
+        <button type="button" class="primary" id="play">Play from top</button>
+        <button type="button" class="ghost" id="pause">Pause</button>
+        <button type="button" class="ghost" id="resume">Resume</button>
+        <button type="button" class="ghost" id="stop">Stop</button>
+        <button type="button" class="ghost" id="clear">Clear</button>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl">
+          <label for="rate">Pocket speed <span id="rateVal">0.95</span></label>
+          <input id="rate" type="range" min="0.70" max="1.40" step="0.01" value="0.95">
+        </div>
+        <div class="ctrl">
+          <label for="pitch">Pitch <span id="pitchVal">0.90</span></label>
+          <input id="pitch" type="range" min="0.70" max="1.20" step="0.01" value="0.90">
+        </div>
+        <div class="ctrl">
+          <label for="voice">Voice</label>
+          <select id="voice"></select>
+        </div>
+      </div>
+
+      <p class="status" id="status">Ready. Uses your browser voice — no upload, no key.</p>
+      <div class="linebox" id="linebox" hidden></div>
+    </div>
+
+    <p class="nav">
+      <a href="/studio.html">Studio</a> ·
+      <a href="/studio/app/?v=20260909a">Prompt Machine</a> ·
+      <a href="/">Home</a>
+    </p>
+  </div>
+
+  <script>
+(function () {
+  var KEY = 'zig.bars.v1';
+  var bars = document.getElementById('bars');
+  var playBtn = document.getElementById('play');
+  var pauseBtn = document.getElementById('pause');
+  var resumeBtn = document.getElementById('resume');
+  var stopBtn = document.getElementById('stop');
+  var clearBtn = document.getElementById('clear');
+  var rate = document.getElementById('rate');
+  var pitch = document.getElementById('pitch');
+  var rateVal = document.getElementById('rateVal');
+  var pitchVal = document.getElementById('pitchVal');
+  var voiceSel = document.getElementById('voice');
+  var status = document.getElementById('status');
+  var count = document.getElementById('count');
+  var linebox = document.getElementById('linebox');
+  var lines = [];
+  var idx = 0;
+  var speaking = false;
+
+  if (!window.speechSynthesis) {
+    status.textContent = 'This browser has no speech engine. Try Chrome or Safari.';
+    playBtn.disabled = true;
+    return;
+  }
+
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (saved.text) bars.value = saved.text;
+    if (saved.rate) rate.value = saved.rate;
+    if (saved.pitch) pitch.value = saved.pitch;
+  } catch (e) {}
+
+  function persist() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        text: bars.value,
+        rate: rate.value,
+        pitch: pitch.value,
+        voice: voiceSel.value
+      }));
+    } catch (e) {}
+  }
+
+  function updateCount() {
+    var n = bars.value.split(/\n/).filter(function (l) { return l.trim(); }).length;
+    count.textContent = n + (n === 1 ? ' line' : ' lines');
+  }
+
+  function setStatus(msg, on) {
+    status.textContent = msg;
+    status.className = 'status' + (on ? ' on' : '');
+  }
+
+  function loadVoices() {
+    var list = speechSynthesis.getVoices().filter(function (v) {
+      return /^en(-|_)/i.test(v.lang) || /english/i.test(v.name);
+    });
+    if (!list.length) list = speechSynthesis.getVoices();
+    voiceSel.innerHTML = '';
+    list.forEach(function (v, i) {
+      var opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = v.name + ' (' + v.lang + ')';
+      voiceSel.appendChild(opt);
+      opt._voice = v;
+    });
+    // Prefer US male-ish if present
+    for (var i = 0; i < voiceSel.options.length; i++) {
+      var t = voiceSel.options[i].textContent.toLowerCase();
+      if (t.indexOf('en-us') >= 0 || t.indexOf('english (united states)') >= 0) {
+        voiceSel.selectedIndex = i;
+        if (/male|daniel|fred|alex|samantha/.test(t) === false && /female|samantha|karen|moira/.test(t)) continue;
+        break;
+      }
+    }
+    try {
+      var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+      if (saved.voice != null && voiceSel.options[saved.voice]) voiceSel.value = saved.voice;
+    } catch (e) {}
+  }
+
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+  rateVal.textContent = rate.value;
+  pitchVal.textContent = pitch.value;
+  updateCount();
+
+  function getVoice() {
+    var opt = voiceSel.options[voiceSel.selectedIndex];
+    return opt && opt._voice ? opt._voice : null;
+  }
+
+  function renderLines(active) {
+    linebox.hidden = !lines.length;
+    linebox.innerHTML = '';
+    lines.forEach(function (text, i) {
+      var d = document.createElement('div');
+      d.className = 'line' + (i === active ? ' active' : '');
+      d.textContent = text;
+      linebox.appendChild(d);
+    });
+    var activeEl = linebox.querySelector('.active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function speakFrom(start) {
+    speechSynthesis.cancel();
+    lines = bars.value.split(/\n/).map(function (l) { return l.trimEnd(); }).filter(function (l) { return l.trim(); });
+    if (!lines.length) {
+      setStatus('Paste some bars first.');
+      return;
+    }
+    idx = Math.max(0, start | 0);
+    speaking = true;
+    renderLines(idx);
+    setStatus('Playing from top… catch the pocket.', true);
+    speakNext();
+  }
+
+  function speakNext() {
+    if (!speaking || idx >= lines.length) {
+      speaking = false;
+      setStatus(idx >= lines.length ? 'Done. Pocket check complete.' : 'Stopped.');
+      renderLines(-1);
+      return;
+    }
+    renderLines(idx);
+    var u = new SpeechSynthesisUtterance(lines[idx]);
+    u.rate = parseFloat(rate.value) || 0.95;
+    u.pitch = parseFloat(pitch.value) || 0.9;
+    var v = getVoice();
+    if (v) u.voice = v;
+    u.onend = function () {
+      idx += 1;
+      speakNext();
+    };
+    u.onerror = function () {
+      speaking = false;
+      setStatus('Playback error — try another voice.');
+    };
+    speechSynthesis.speak(u);
+  }
+
+  playBtn.onclick = function () { persist(); speakFrom(0); };
+  pauseBtn.onclick = function () {
+    speechSynthesis.pause();
+    setStatus('Paused.', true);
+  };
+  resumeBtn.onclick = function () {
+    speechSynthesis.resume();
+    setStatus('Resumed…', true);
+  };
+  stopBtn.onclick = function () {
+    speaking = false;
+    speechSynthesis.cancel();
+    setStatus('Stopped.');
+    renderLines(-1);
+  };
+  clearBtn.onclick = function () {
+    speaking = false;
+    speechSynthesis.cancel();
+    bars.value = '';
+    persist();
+    updateCount();
+    linebox.hidden = true;
+    setStatus('Cleared.');
+  };
+
+  bars.addEventListener('input', function () { updateCount(); persist(); });
+  rate.addEventListener('input', function () { rateVal.textContent = rate.value; persist(); });
+  pitch.addEventListener('input', function () { pitchVal.textContent = pitch.value; persist(); });
+  voiceSel.addEventListener('change', persist);
+})();
+  </script>
+</body>
+</html>
