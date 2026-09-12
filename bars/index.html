@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zig Bars Player — hear the pocket</title>
-  <meta name="description" content="Paste your rap bars, play from the top, catch the pocket by ear before you rewrite rhymes.">
+  <meta name="description" content="Paste or mic-record your rap bars, play from the top, catch the pocket by ear before you rewrite rhymes.">
   <meta name="theme-color" content="#08080a">
   <link rel="canonical" href="https://zigflames.com/bars/">
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    :root { --bg:#08080a; --card:#121016; --line:#3a2a18; --text:#f5f0e8; --muted:#9a9084; --gold:#ff9a1f; --gold2:#ffe566; }
+    :root { --bg:#08080a; --card:#121016; --line:#3a2a18; --text:#f5f0e8; --muted:#9a9084; --gold:#ff9a1f; --gold2:#ffe566; --hot:#e24a00; }
     * { box-sizing: border-box; }
     body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"IBM Plex Sans",system-ui,sans-serif; }
     .wrap { max-width:42rem; margin:0 auto; padding:1.25rem 1.1rem 3rem; }
@@ -21,10 +21,28 @@
       background:linear-gradient(180deg,var(--gold2),var(--gold),#e24a00); -webkit-background-clip:text; color:transparent; }
     .tip { color:var(--muted); line-height:1.45; font-size:.95rem; margin:0 0 1.1rem; }
     .card { border:1px solid var(--line); border-radius:12px; background:linear-gradient(180deg,#16141c,var(--card)); padding:1rem; }
-    label { display:block; font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 .4rem; }
+    .labrow { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin:0 0 .4rem; }
+    label { display:block; font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0; }
+    .mic {
+      appearance:none; border:1px solid #4a3a28; background:#0c0b10; color:var(--text);
+      border-radius:999px; padding:.45rem .85rem; font-weight:700; cursor:pointer; font-size:.82rem;
+      display:inline-flex; align-items:center; gap:.4rem; flex-shrink:0;
+    }
+    .mic:hover { border-color:var(--gold); }
+    .mic.live { border-color:var(--hot); color:#fff; background:rgba(226,74,0,.25); box-shadow:0 0 0 2px rgba(226,74,0,.35); }
+    .mic .dot { width:.55rem; height:.55rem; border-radius:50%; background:var(--muted); }
+    .mic.live .dot { background:var(--hot); animation:pulse 1s infinite; }
+    .labrow .actions { display:flex; gap:.4rem; align-items:center; }
+    .cal { appearance:none; border:1px solid #4a3a28; background:#0c0b10; color:var(--text);
+      border-radius:999px; padding:.45rem .85rem; font-weight:700; cursor:pointer; font-size:.82rem; }
+    .cal:hover { border-color:var(--gold); }
+    .cal.live { border-color:#7dd3fc; color:#7dd3fc; background:rgba(125,211,252,.12); }
+    @keyframes pulse { 50% { opacity:.35; } }
+    .ta-wrap { position:relative; }
     textarea { width:100%; min-height:14rem; resize:vertical; background:#0c0b10; border:1px solid #4a3a28; color:var(--text);
       border-radius:8px; padding:.85rem; font-size:1.05rem; line-height:1.55; font-family:inherit; }
     textarea:focus { outline:1px solid var(--gold); }
+    textarea.listening { border-color:var(--hot); outline:1px solid var(--hot); }
     .row { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:.85rem; }
     button { appearance:none; border:0; border-radius:8px; padding:.8rem 1rem; font-weight:700; cursor:pointer; font-size:.92rem; }
     .primary { background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#1a1000; flex:1 1 8rem; }
@@ -36,6 +54,7 @@
     select { width:100%; background:#0c0b10; border:1px solid #4a3a28; color:var(--text); border-radius:8px; padding:.65rem .75rem; }
     .status { margin-top:.75rem; font-size:.85rem; color:var(--muted); min-height:1.2rem; }
     .status.on { color:#7dd3fc; }
+    .status.rec { color:#ff8a5c; }
     .linebox { margin-top:.85rem; max-height:10rem; overflow:auto; border:1px solid #2a2430; border-radius:8px; padding:.5rem; background:#0a090e; }
     .line { padding:.35rem .5rem; border-radius:6px; color:var(--muted); white-space:pre-wrap; }
     .line.active { background:rgba(255,154,31,.18); color:var(--text); }
@@ -48,11 +67,22 @@
   <div class="wrap">
     <p class="kicker">Zig Flames · Workflow</p>
     <h1>Bars Player</h1>
-    <p class="tip">Paste from ChatGPT → <strong>Play from top</strong> → ears catch the pocket → only then change rhymes. Don’t trust the page-read after 10–12 bars.</p>
+    <p class="tip">Paste, <strong>Mic</strong>, or <strong>Calibrate</strong> (punch in → spit → punch out locks pocket + pitch) → <strong>Play from top</strong> → ears catch the pocket → only then change rhymes.</p>
 
     <div class="card">
-      <label for="bars">Your bars</label>
-      <textarea id="bars" spellcheck="false" placeholder="Paste your bars here…&#10;&#10;One line per bar works best."></textarea>
+      <div class="labrow">
+        <label for="bars">Your bars</label>
+        <div class="actions">
+          <button type="button" class="cal" id="calibrate" title="Punch in, spit, punch out — auto pocket + pitch">Calibrate</button>
+          <button type="button" class="mic" id="mic" title="Speak bars into the box">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="micLabel">Mic</span>
+          </button>
+        </div>
+      </div>
+      <div class="ta-wrap">
+        <textarea id="bars" spellcheck="false" placeholder="Paste your bars here…&#10;&#10;Or tap Mic and speak — one line per bar works best."></textarea>
+      </div>
       <p class="meta" id="count">0 lines</p>
 
       <div class="row">
@@ -78,7 +108,7 @@
         </div>
       </div>
 
-      <p class="status" id="status">Ready. Uses your browser voice — no upload, no key.</p>
+      <p class="status" id="status">Ready. Mic + playback stay in your browser — no upload, no key.</p>
       <div class="linebox" id="linebox" hidden></div>
     </div>
 
@@ -98,6 +128,8 @@
   var resumeBtn = document.getElementById('resume');
   var stopBtn = document.getElementById('stop');
   var clearBtn = document.getElementById('clear');
+  var micBtn = document.getElementById('mic');
+  var micLabel = document.getElementById('micLabel');
   var rate = document.getElementById('rate');
   var pitch = document.getElementById('pitch');
   var rateVal = document.getElementById('rateVal');
@@ -109,11 +141,15 @@
   var lines = [];
   var idx = 0;
   var speaking = false;
+  var listening = false;
+  var recog = null;
 
-  if (!window.speechSynthesis) {
-    status.textContent = 'This browser has no speech engine. Try Chrome or Safari.';
+  var hasSynth = !!window.speechSynthesis;
+  var Recog = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!hasSynth) {
+    setStatus('No playback engine — try Chrome or Safari for Play.');
     playBtn.disabled = true;
-    return;
   }
 
   try {
@@ -139,12 +175,13 @@
     count.textContent = n + (n === 1 ? ' line' : ' lines');
   }
 
-  function setStatus(msg, on) {
+  function setStatus(msg, mode) {
     status.textContent = msg;
-    status.className = 'status' + (on ? ' on' : '');
+    status.className = 'status' + (mode === 'on' ? ' on' : mode === 'rec' ? ' rec' : '');
   }
 
   function loadVoices() {
+    if (!hasSynth) return;
     var list = speechSynthesis.getVoices().filter(function (v) {
       return /^en(-|_)/i.test(v.lang) || /english/i.test(v.name);
     });
@@ -157,7 +194,6 @@
       voiceSel.appendChild(opt);
       opt._voice = v;
     });
-    // Prefer US male-ish if present
     for (var i = 0; i < voiceSel.options.length; i++) {
       var t = voiceSel.options[i].textContent.toLowerCase();
       if (t.indexOf('en-us') >= 0 || t.indexOf('english (united states)') >= 0) {
@@ -167,13 +203,15 @@
       }
     }
     try {
-      var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
-      if (saved.voice != null && voiceSel.options[saved.voice]) voiceSel.value = saved.voice;
+      var saved2 = JSON.parse(localStorage.getItem(KEY) || '{}');
+      if (saved2.voice != null && voiceSel.options[saved2.voice]) voiceSel.value = saved2.voice;
     } catch (e) {}
   }
 
-  loadVoices();
-  speechSynthesis.onvoiceschanged = loadVoices;
+  if (hasSynth) {
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
   rateVal.textContent = rate.value;
   pitchVal.textContent = pitch.value;
   updateCount();
@@ -197,16 +235,18 @@
   }
 
   function speakFrom(start) {
+    if (!hasSynth) return;
+    stopMic(true);
     speechSynthesis.cancel();
     lines = bars.value.split(/\n/).map(function (l) { return l.trimEnd(); }).filter(function (l) { return l.trim(); });
     if (!lines.length) {
-      setStatus('Paste some bars first.');
+      setStatus('Paste or mic some bars first.');
       return;
     }
     idx = Math.max(0, start | 0);
     speaking = true;
     renderLines(idx);
-    setStatus('Playing from top… catch the pocket.', true);
+    setStatus('Playing from top… catch the pocket.', 'on');
     speakNext();
   }
 
@@ -234,24 +274,284 @@
     speechSynthesis.speak(u);
   }
 
+  function appendSpoken(text) {
+    text = (text || '').trim();
+    if (!text) return;
+    if (calMode) {
+      calWords += text.split(/\s+/).filter(Boolean).length;
+    }
+    var cur = bars.value;
+    if (cur && !/\n\s*$/.test(cur)) cur += '\n';
+    bars.value = cur + text + '\n';
+    updateCount();
+    persist();
+    bars.scrollTop = bars.scrollHeight;
+  }
+
+  function setMicUi(on) {
+    listening = on;
+    micBtn.classList.toggle('live', on);
+    bars.classList.toggle('listening', on);
+    micLabel.textContent = on ? 'Listening…' : 'Mic';
+    micBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
+  function stopMic(silent) {
+    if (recog && listening) {
+      try { recog.stop(); } catch (e) {}
+    }
+    setMicUi(false);
+    if (!silent) setStatus('Mic stopped. Hit Play from top when ready.');
+  }
+
+  function startMic() {
+    if (!Recog) {
+      setStatus('Mic dictation needs Chrome (or Edge). Safari is limited.');
+      return;
+    }
+    if (hasSynth) {
+      speaking = false;
+      speechSynthesis.cancel();
+    }
+    if (!recog) {
+      recog = new Recog();
+      recog.lang = 'en-US';
+      recog.continuous = true;
+      recog.interimResults = false;
+      recog.maxAlternatives = 1;
+      recog.onresult = function (ev) {
+        for (var i = ev.resultIndex; i < ev.results.length; i++) {
+          if (ev.results[i].isFinal) appendSpoken(ev.results[i][0].transcript);
+        }
+      };
+      recog.onerror = function (ev) {
+        var err = (ev && ev.error) || '';
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
+          setStatus('Mic blocked — allow microphone for zigflames.com.');
+        } else if (err === 'no-speech') {
+          setStatus('No speech heard — tap Mic and try again.', 'rec');
+        } else if (err !== 'aborted') {
+          setStatus('Mic error: ' + err);
+        }
+        setMicUi(false);
+      };
+      recog.onend = function () {
+        if (listening) {
+          // Chrome stops after pauses — keep going while user wants mic on
+          try { recog.start(); } catch (e) { setMicUi(false); }
+        }
+      };
+    }
+    try {
+      recog.start();
+      setMicUi(true);
+      setStatus('Mic live — spit your bars. Tap Mic again to stop.', 'rec');
+    } catch (e) {
+      setStatus('Could not start mic — refresh and allow microphone.');
+      setMicUi(false);
+    }
+  }
+
+
+  var calBtn = document.getElementById('calibrate');
+  var calMode = false;
+  var calStart = 0;
+  var calWords = 0;
+  var pitchSamples = [];
+  var audioCtx = null;
+  var analyser = null;
+  var micStream = null;
+  var pitchTimer = null;
+
+  function median(arr) {
+    if (!arr.length) return 0;
+    var a = arr.slice().sort(function (x, y) { return x - y; });
+    var m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+  }
+
+  function detectPitchHz(buf, sampleRate) {
+    // Autocorrelation pitch estimate (voiced speech)
+    var SIZE = buf.length;
+    var rms = 0;
+    for (var i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / SIZE);
+    if (rms < 0.01) return 0;
+    var r1 = Math.floor(sampleRate / 300);
+    var r2 = Math.floor(sampleRate / 70);
+    var best = -1, bestCorr = 0;
+    for (var off = r1; off <= r2; off++) {
+      var corr = 0;
+      for (var j = 0; j < SIZE - off; j++) corr += buf[j] * buf[j + off];
+      if (corr > bestCorr) { bestCorr = corr; best = off; }
+    }
+    if (best < 1) return 0;
+    return sampleRate / best;
+  }
+
+  function samplePitch() {
+    if (!analyser || !audioCtx) return;
+    var buf = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(buf);
+    var hz = detectPitchHz(buf, audioCtx.sampleRate);
+    if (hz >= 75 && hz <= 300) pitchSamples.push(hz);
+  }
+
+  async function startAudioAnalyse() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var src = audioCtx.createMediaStreamSource(micStream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      src.connect(analyser);
+      pitchSamples = [];
+      pitchTimer = setInterval(samplePitch, 80);
+      return true;
+    } catch (e) {
+      setStatus('Allow microphone to calibrate pocket + pitch.');
+      return false;
+    }
+  }
+
+  function stopAudioAnalyse() {
+    if (pitchTimer) { clearInterval(pitchTimer); pitchTimer = null; }
+    if (micStream) {
+      micStream.getTracks().forEach(function (tr) { tr.stop(); });
+      micStream = null;
+    }
+    if (audioCtx) {
+      try { audioCtx.close(); } catch (e) {}
+      audioCtx = null;
+    }
+    analyser = null;
+  }
+
+  function wpmToRate(wpm) {
+    // Map spoken pace onto synthesis rate (~0.75–1.35)
+    if (wpm < 80) return 0.78;
+    if (wpm < 110) return 0.88;
+    if (wpm < 140) return 0.95;
+    if (wpm < 170) return 1.02;
+    if (wpm < 200) return 1.12;
+    if (wpm < 240) return 1.22;
+    return 1.32;
+  }
+
+  function hzToPitch(hz) {
+    // Relative to ~120 Hz as "1.0" for synth
+    if (!hz) return 0.9;
+    var p = hz / 120;
+    if (p < 0.7) p = 0.7;
+    if (p > 1.2) p = 1.2;
+    return Math.round(p * 100) / 100;
+  }
+
+  function pickVoiceForHz(hz) {
+    if (!voiceSel.options.length || !hz) return;
+    var wantLow = hz < 165;
+    for (var i = 0; i < voiceSel.options.length; i++) {
+      var name = voiceSel.options[i].textContent.toLowerCase();
+      if (wantLow && /male|daniel|fred|david|alex|google us english male|microsoft david|microsoft mark/.test(name)) {
+        voiceSel.selectedIndex = i;
+        return;
+      }
+      if (!wantLow && /female|samantha|karen|moira|zira|google us english female|microsoft zira/.test(name)) {
+        voiceSel.selectedIndex = i;
+        return;
+      }
+    }
+  }
+
+  function applyCalibration() {
+    var sec = Math.max(0.5, (Date.now() - calStart) / 1000);
+    var wpm = (calWords / sec) * 60;
+    var medHz = median(pitchSamples);
+    var newRate = wpmToRate(wpm);
+    var newPitch = hzToPitch(medHz);
+    rate.value = String(newRate);
+    pitch.value = String(newPitch);
+    rateVal.textContent = rate.value;
+    pitchVal.textContent = pitch.value;
+    pickVoiceForHz(medHz);
+    persist();
+    var hzTxt = medHz ? (Math.round(medHz) + ' Hz') : 'n/a';
+    setStatus(
+      'Calibrated ≈ ' + Math.round(wpm) + ' wpm → rate ' + newRate +
+      ', pitch ' + newPitch + ' (' + hzTxt + '). Timbre stays browser — cadence matched. Play from top.',
+      'on'
+    );
+  }
+
+  // wrap appendSpoken to count words in cal mode — patch by replacing function later if needed
+  var _appendSpoken = null;
+
+  calBtn.onclick = async function () {
+    if (calMode) {
+      // punch out
+      calMode = false;
+      calBtn.classList.remove('live');
+      calBtn.textContent = 'Calibrate';
+      stopMic(true);
+      stopAudioAnalyse();
+      applyCalibration();
+      return;
+    }
+    // punch in
+    if (!Recog) {
+      setStatus('Calibrate needs Chrome/Edge mic dictation.');
+      return;
+    }
+    var ok = await startAudioAnalyse();
+    if (!ok) return;
+    calMode = true;
+    calStart = Date.now();
+    calWords = 0;
+    pitchSamples = [];
+    calBtn.classList.add('live');
+    calBtn.textContent = 'Punch out';
+    startMic();
+    setStatus('Punch in — spit 4–8 bars in your pocket, then Punch out.', 'rec');
+  };
+
+
+  micBtn.onclick = function () {
+    if (listening) stopMic();
+    else startMic();
+  };
+
+  if (!Recog) {
+    micBtn.disabled = true;
+    micBtn.title = 'Dictation needs Chrome or Edge';
+  }
+
   playBtn.onclick = function () { persist(); speakFrom(0); };
   pauseBtn.onclick = function () {
+    if (!hasSynth) return;
     speechSynthesis.pause();
-    setStatus('Paused.', true);
+    setStatus('Paused.', 'on');
   };
   resumeBtn.onclick = function () {
+    if (!hasSynth) return;
     speechSynthesis.resume();
-    setStatus('Resumed…', true);
+    setStatus('Resumed…', 'on');
   };
   stopBtn.onclick = function () {
     speaking = false;
-    speechSynthesis.cancel();
+    if (hasSynth) speechSynthesis.cancel();
     setStatus('Stopped.');
     renderLines(-1);
   };
   clearBtn.onclick = function () {
     speaking = false;
-    speechSynthesis.cancel();
+    if (calMode) {
+      calMode = false;
+      calBtn.classList.remove('live');
+      calBtn.textContent = 'Calibrate';
+      stopAudioAnalyse();
+    }
+    stopMic(true);
+    if (hasSynth) speechSynthesis.cancel();
     bars.value = '';
     persist();
     updateCount();
