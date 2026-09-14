@@ -714,6 +714,25 @@ a:hover {
   border-top: 1px solid var(--line);
 }
 
+.phone-link {
+  display: block;
+  margin-top: 0.55rem;
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 4.5vw, 2.7rem);
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.06em;
+}
+.phone-link:hover {
+  color: var(--gold-bright);
+}
+.contact-digits {
+  margin: 0.2rem 0 0.85rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
+}
+
 .email-link {
   display: inline-block;
   margin-top: 0.4rem;
