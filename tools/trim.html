@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cut Front & Back — ZigFlames</title>
+  <style>
+    :root {
+      --bg: #0b0b0c; --panel: #161618; --text: #f2f2f2; --muted: #8a8a93;
+      --accent: #ff5a1f; --accent2: #ffcc33; --border: #2a2a30; --ok: #3dd68c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      padding: 1.25rem; max-width: 640px; margin-inline: auto;
+    }
+    h1 { font-size: 1.1rem; margin: 0 0 0.35rem; letter-spacing: 0.03em; text-transform: uppercase; }
+    h1 span { color: var(--accent); }
+    p { color: var(--muted); font-size: 0.9rem; line-height: 1.45; margin: 0 0 1.25rem; }
+    .drop {
+      border: 1.5px dashed var(--border); border-radius: 16px; padding: 2rem 1rem;
+      text-align: center; color: var(--muted); margin-bottom: 1rem; cursor: pointer;
+      background: var(--panel);
+    }
+    .drop.over { border-color: var(--accent); color: var(--accent2); }
+    .wave-wrap {
+      position: relative; height: 96px; background: #0f0f12; border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; margin-bottom: 0.75rem;
+    }
+    canvas { width: 100%; height: 100%; display: block; }
+    .shade-l, .shade-r {
+      position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,0.55);
+      pointer-events: none;
+    }
+    .shade-l { left: 0; }
+    .shade-r { right: 0; }
+    .line-l, .line-r {
+      position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2);
+      pointer-events: none;
+    }
+    label.row {
+      display: grid; grid-template-columns: 5.5rem 1fr 4.2rem;
+      gap: 0.6rem; align-items: center; margin: 0.65rem 0; font-size: 0.85rem; color: var(--muted);
+    }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .val { text-align: right; color: var(--accent2); font-variant-numeric: tabular-nums; font-weight: 700; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    button {
+      appearance: none; border: 1px solid var(--border); background: var(--panel);
+      color: var(--text); border-radius: 10px; padding: 0.65rem 1rem;
+      font-weight: 700; cursor: pointer; font-size: 0.9rem;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #111; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .meta { font-size: 0.8rem; color: var(--ok); min-height: 1.2em; margin-top: 0.75rem; }
+    input[type="file"] { display: none; }
+  
+    .zf-tools-bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;padding:.65rem .85rem;margin:0 0 1rem;background:rgba(11,11,12,.92);border:1px solid #2a2a30;border-radius:12px;backdrop-filter:blur(8px);font-size:.8rem}
+    .zf-tools-bar a{color:#ffcc33;text-decoration:none;font-weight:700}
+    .zf-tools-bar a:hover{color:#ff5a1f}
+    .zf-tools-bar nav{display:flex;flex-wrap:wrap;gap:.65rem}
+    .zf-tools-bar .muted{color:#8a8a93;font-weight:600}
+
+  </style>
+</head>
+<body>
+
+  <div class="zf-tools-bar">
+    <a href="/tools/">← Studio Tools</a>
+    <nav aria-label="Studio tools">
+      <a href="/tools/adlib.html">Ad-Lib</a>
+      <a href="/tools/trim.html">Trim</a>
+      <a href="/tools/echo.html">Echo</a>
+      <a href="/tools/pitch.html">Pitch</a>
+      <a class="muted" href="/studio.html">Studio</a>
+    </nav>
+  </div>
+
+  <h1>Cut <span>Front & Back</span></h1>
+  <p>Drop your ad-lib. Slide to chop dead air off the start and end. Preview, then download the tight WAV.</p>
+
+  <div class="drop" id="drop">Drop audio here — or tap to choose</div>
+  <input type="file" id="file" accept="audio/*" />
+
+  <div class="wave-wrap" id="waveWrap" hidden>
+    <canvas id="wave"></canvas>
+    <div class="shade-l" id="shadeL"></div>
+    <div class="shade-r" id="shadeR"></div>
+    <div class="line-l" id="lineL"></div>
+    <div class="line-r" id="lineR"></div>
+  </div>
+
+  <label class="row">Front
+    <input type="range" id="front" min="0" max="0" step="1" value="0" disabled />
+    <span class="val" id="frontVal">0 ms</span>
+  </label>
+  <label class="row">Back
+    <input type="range" id="back" min="0" max="0" step="1" value="0" disabled />
+    <span class="val" id="backVal">0 ms</span>
+  </label>
+
+  <div class="actions">
+    <button type="button" id="play" class="primary" disabled>Preview</button>
+    <button type="button" id="dl" disabled>Download WAV</button>
+    <button type="button" id="reset" disabled>Reset cuts</button>
+  </div>
+  <div class="meta" id="meta"></div>
+
+  <script>
+    let ctx, buffer, source;
+    const $drop = document.getElementById('drop');
+    const $file = document.getElementById('file');
+    const $front = document.getElementById('front');
+    const $back = document.getElementById('back');
+    const $frontVal = document.getElementById('frontVal');
+    const $backVal = document.getElementById('backVal');
+    const $play = document.getElementById('play');
+    const $dl = document.getElementById('dl');
+    const $reset = document.getElementById('reset');
+    const $meta = document.getElementById('meta');
+    const $waveWrap = document.getElementById('waveWrap');
+    const $wave = document.getElementById('wave');
+    const $shadeL = document.getElementById('shadeL');
+    const $shadeR = document.getElementById('shadeR');
+    const $lineL = document.getElementById('lineL');
+    const $lineR = document.getElementById('lineR');
+
+    function ensure() {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    }
+
+    function ms(n) { return Math.round(n) + ' ms'; }
+
+    function durationMs() {
+      return buffer ? (buffer.length / buffer.sampleRate) * 1000 : 0;
+    }
+
+    function selection() {
+      const total = durationMs();
+      let front = Number($front.value);
+      let back = Number($back.value);
+      if (front + back >= total - 5) {
+        // keep at least ~5ms
+        back = Math.max(0, total - front - 5);
+        $back.value = Math.floor(back);
+      }
+      const start = front / 1000;
+      const end = (total - back) / 1000;
+      return { start, end, front, back, total };
+    }
+
+    function updateUI() {
+      if (!buffer) return;
+      const { front, back, total, start, end } = selection();
+      $frontVal.textContent = ms(front);
+      $backVal.textContent = ms(back);
+      const leftPct = (front / total) * 100;
+      const rightPct = (back / total) * 100;
+      $shadeL.style.width = leftPct + '%';
+      $shadeR.style.width = rightPct + '%';
+      $lineL.style.left = leftPct + '%';
+      $lineR.style.right = rightPct + '%';
+      const keep = Math.max(0, (end - start) * 1000);
+      $meta.textContent = `Keeping ${Math.round(keep)} ms  ·  cut ${Math.round(front)} ms front, ${Math.round(back)} ms back`;
+    }
+
+    function drawWave() {
+      const canvas = $wave;
+      const c = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+      c.fillStyle = '#0f0f12';
+      c.fillRect(0, 0, w, h);
+      if (!buffer) return;
+      const data = buffer.getChannelData(0);
+      const step = Math.max(1, Math.floor(data.length / w));
+      c.strokeStyle = '#ff5a1f';
+      c.lineWidth = 2;
+      c.beginPath();
+      const mid = h / 2;
+      for (let x = 0; x < w; x++) {
+        let min = 1, max = -1;
+        const i0 = x * step;
+        for (let i = 0; i < step && i0 + i < data.length; i++) {
+          const v = data[i0 + i];
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+        c.moveTo(x, mid + min * mid * 0.92);
+        c.lineTo(x, mid + max * mid * 0.92);
+      }
+      c.stroke();
+    }
+
+    function slicedBuffer() {
+      const { start, end } = selection();
+      const sr = buffer.sampleRate;
+      const ch = buffer.numberOfChannels;
+      let i0 = Math.floor(start * sr);
+      let i1 = Math.floor(end * sr);
+      i0 = Math.max(0, Math.min(i0, buffer.length - 1));
+      i1 = Math.max(i0 + 1, Math.min(i1, buffer.length));
+      const out = ensure().createBuffer(ch, i1 - i0, sr);
+      for (let c = 0; c < ch; c++) {
+        out.getChannelData(c).set(buffer.getChannelData(c).subarray(i0, i1));
+      }
+      return out;
+    }
+
+    function toWav(buf) {
+      const numChan = buf.numberOfChannels;
+      const sampleRate = buf.sampleRate;
+      const samples = buf.length;
+      const blockAlign = numChan * 2;
+      const dataSize = samples * blockAlign;
+      const ab = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(ab);
+      const str = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+      str(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); str(8, 'WAVE'); str(12, 'fmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, numChan, true);
+      view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true); view.setUint16(34, 16, true); str(36, 'data');
+      view.setUint32(40, dataSize, true);
+      let off = 44;
+      const chans = Array.from({ length: numChan }, (_, c) => buf.getChannelData(c));
+      for (let i = 0; i < samples; i++) {
+        for (let c = 0; c < numChan; c++) {
+          let s = Math.max(-1, Math.min(1, chans[c][i]));
+          view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+          off += 2;
+        }
+      }
+      return new Blob([ab], { type: 'audio/wav' });
+    }
+
+    async function loadFile(file) {
+      ensure();
+      $meta.textContent = 'Loading…';
+      const ab = await file.arrayBuffer();
+      buffer = await ctx.decodeAudioData(ab.slice(0));
+      const total = Math.floor(durationMs());
+      $front.max = Math.max(0, total - 5);
+      $back.max = Math.max(0, total - 5);
+      $front.value = 0;
+      $back.value = 0;
+      $front.disabled = $back.disabled = false;
+      $play.disabled = $dl.disabled = $reset.disabled = false;
+      $waveWrap.hidden = false;
+      drawWave();
+      updateUI();
+      $drop.textContent = file.name;
+    }
+
+    $drop.addEventListener('click', () => $file.click());
+    $file.addEventListener('change', () => { if ($file.files[0]) loadFile($file.files[0]); });
+    ;['dragenter', 'dragover'].forEach((e) => $drop.addEventListener(e, (ev) => {
+      ev.preventDefault(); $drop.classList.add('over');
+    }));
+    ;['dragleave', 'drop'].forEach((e) => $drop.addEventListener(e, (ev) => {
+      ev.preventDefault(); $drop.classList.remove('over');
+      if (e === 'drop' && ev.dataTransfer.files[0]) loadFile(ev.dataTransfer.files[0]);
+    }));
+
+    $front.addEventListener('input', updateUI);
+    $back.addEventListener('input', updateUI);
+
+    $play.addEventListener('click', () => {
+      ensure();
+      if (source) { try { source.stop(); } catch (_) {} }
+      const buf = slicedBuffer();
+      source = ctx.createBufferSource();
+      source.buffer = buf;
+      source.connect(ctx.destination);
+      source.start(0);
+    });
+
+    $dl.addEventListener('click', () => {
+      const blob = toWav(slicedBuffer());
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'adlib-trimmed.wav';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    $reset.addEventListener('click', () => {
+      $front.value = 0; $back.value = 0; updateUI();
+    });
+
+    window.addEventListener('resize', () => { if (buffer) drawWave(); });
+  </script>
+</body>
+</html>

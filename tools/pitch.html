@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pitch Machine — ZigFlames</title>
+  <style>
+    :root {
+      --bg: #0b0b0c; --panel: #161618; --text: #f2f2f2; --muted: #8a8a93;
+      --accent: #ff5a1f; --accent2: #ffcc33; --border: #2a2a30; --ok: #3dd68c; --pitch: #c084fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; background:
+        radial-gradient(900px 500px at 20% -10%, #2a1040 0%, transparent 50%),
+        radial-gradient(700px 400px at 90% 0%, #1a1008 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      padding: 1.25rem; max-width: 640px; margin-inline: auto;
+    }
+    h1 { font-size: 1.1rem; margin: 0 0 0.35rem; letter-spacing: 0.03em; text-transform: uppercase; }
+    h1 span { color: var(--pitch); }
+    p { color: var(--muted); font-size: 0.9rem; line-height: 1.45; margin: 0 0 1.25rem; }
+    .drop {
+      border: 1.5px dashed var(--border); border-radius: 16px; padding: 2rem 1rem;
+      text-align: center; color: var(--muted); margin-bottom: 1rem; cursor: pointer;
+      background: var(--panel);
+    }
+    .drop.over { border-color: var(--pitch); color: var(--accent2); }
+    .panel {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+      padding: 1rem; margin-bottom: 1rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.75rem; font-size: 0.75rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); font-weight: 700;
+    }
+    .big {
+      font-size: 2.4rem; font-weight: 800; text-align: center; color: var(--accent2);
+      font-variant-numeric: tabular-nums; letter-spacing: 0.02em; margin: 0.25rem 0 0.75rem;
+    }
+    .big small { display: block; font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-top: 0.25rem; }
+    label.row {
+      display: grid; grid-template-columns: 6.5rem 1fr 3.8rem;
+      gap: 0.55rem; align-items: center; margin: 0.55rem 0; font-size: 0.85rem; color: var(--muted);
+    }
+    input[type="range"] { width: 100%; accent-color: var(--pitch); }
+    .val { text-align: right; color: var(--pitch); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.8rem; }
+    .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .presets button {
+      font-size: 0.75rem; padding: 0.4rem 0.7rem; border-radius: 999px;
+    }
+    .presets button.on { border-color: var(--pitch); color: var(--pitch); }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    button {
+      appearance: none; border: 1px solid var(--border); background: #111114;
+      color: var(--text); border-radius: 10px; padding: 0.65rem 1rem;
+      font-weight: 700; cursor: pointer; font-size: 0.9rem;
+    }
+    button.primary { background: var(--pitch); border-color: var(--pitch); color: #0b0b0c; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .meta { font-size: 0.8rem; color: var(--ok); min-height: 1.2em; margin-top: 0.85rem; }
+    input[type="file"] { display: none; }
+    .note { font-size: 0.78rem; color: var(--muted); margin: 0.5rem 0 0; line-height: 1.4; }
+  
+    .zf-tools-bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;padding:.65rem .85rem;margin:0 0 1rem;background:rgba(11,11,12,.92);border:1px solid #2a2a30;border-radius:12px;backdrop-filter:blur(8px);font-size:.8rem}
+    .zf-tools-bar a{color:#ffcc33;text-decoration:none;font-weight:700}
+    .zf-tools-bar a:hover{color:#ff5a1f}
+    .zf-tools-bar nav{display:flex;flex-wrap:wrap;gap:.65rem}
+    .zf-tools-bar .muted{color:#8a8a93;font-weight:600}
+
+  </style>
+</head>
+<body>
+
+  <div class="zf-tools-bar">
+    <a href="/tools/">← Studio Tools</a>
+    <nav aria-label="Studio tools">
+      <a href="/tools/adlib.html">Ad-Lib</a>
+      <a href="/tools/trim.html">Trim</a>
+      <a href="/tools/echo.html">Echo</a>
+      <a href="/tools/pitch.html">Pitch</a>
+      <a class="muted" href="/studio.html">Studio</a>
+    </nav>
+  </div>
+
+  <h1>Pitch <span>Machine</span></h1>
+  <p>Drop a sample. Move semitones (and fine cents). Classic sampler pitch — higher = shorter, lower = longer. Test, then download.</p>
+
+  <div class="drop" id="drop">Drop audio here — or tap to choose</div>
+  <input type="file" id="file" accept="audio/*" />
+
+  <div class="panel">
+    <div class="big" id="readout">0 st<small>1.000× rate</small></div>
+    <label class="row">Semitones
+      <input type="range" id="semi" min="-12" max="12" step="1" value="0" disabled />
+      <span class="val" id="semiVal">0</span>
+    </label>
+    <label class="row">Cents
+      <input type="range" id="cents" min="-50" max="50" step="1" value="0" disabled />
+      <span class="val" id="centsVal">0</span>
+    </label>
+    <p class="note">Sampler-style: pitch and speed stay locked (like a pad or SP). Good for ad-libs.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Quick jumps</h2>
+    <div class="presets" id="presets">
+      <button type="button" data-s="-12">−12</button>
+      <button type="button" data-s="-5">−5</button>
+      <button type="button" data-s="-2">−2</button>
+      <button type="button" data-s="0" class="on">0</button>
+      <button type="button" data-s="2">+2</button>
+      <button type="button" data-s="5">+5</button>
+      <button type="button" data-s="12">+12</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="play" class="primary" disabled>Test pitch</button>
+    <button type="button" id="stop" disabled>Stop</button>
+    <button type="button" id="dl" disabled>Download WAV</button>
+    <button type="button" id="reset" disabled>Reset</button>
+  </div>
+  <div class="meta" id="meta"></div>
+
+  <script>
+    let audioCtx, buffer, playingSource, offlineBusy = false;
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      drop: $('drop'), file: $('file'), semi: $('semi'), cents: $('cents'),
+      semiVal: $('semiVal'), centsVal: $('centsVal'), readout: $('readout'),
+      play: $('play'), stop: $('stop'), dl: $('dl'), reset: $('reset'),
+      meta: $('meta'), presets: $('presets'),
+    };
+
+    function ensure() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function totalSemitones() {
+      return Number(els.semi.value) + Number(els.cents.value) / 100;
+    }
+
+    function rateFromPitch() {
+      return Math.pow(2, totalSemitones() / 12);
+    }
+
+    function formatReadout() {
+      const s = Number(els.semi.value);
+      const c = Number(els.cents.value);
+      const rate = rateFromPitch();
+      const sign = s > 0 ? '+' : '';
+      const cSign = c > 0 ? '+' : '';
+      const cPart = c !== 0 ? ` ${cSign}${c}¢` : '';
+      els.semiVal.textContent = (s > 0 ? '+' : '') + s;
+      els.centsVal.textContent = (c > 0 ? '+' : '') + c;
+      els.readout.innerHTML = `${sign}${s} st${cPart}<small>${rate.toFixed(3)}× rate</small>`;
+      els.presets.querySelectorAll('button').forEach((b) => {
+        b.classList.toggle('on', Number(b.dataset.s) === s && c === 0);
+      });
+    }
+
+    function stopPlay() {
+      if (playingSource) {
+        try { playingSource.stop(); } catch (_) {}
+        playingSource = null;
+      }
+    }
+
+    function play() {
+      if (!buffer) return;
+      ensure();
+      stopPlay();
+      const rate = rateFromPitch();
+      const src = audioCtx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = rate;
+      src.connect(audioCtx.destination);
+      playingSource = src;
+      src.onended = () => { if (playingSource === src) playingSource = null; };
+      src.start(0);
+      els.meta.textContent = `Playing at ${rate.toFixed(3)}×`;
+    }
+
+    // Resample into a new buffer at 1.0 playback (baked pitch)
+    function pitchedBuffer(ctx, srcBuffer, rate) {
+      const ch = srcBuffer.numberOfChannels;
+      const outLen = Math.max(1, Math.floor(srcBuffer.length / rate));
+      const out = ctx.createBuffer(ch, outLen, srcBuffer.sampleRate);
+      for (let c = 0; c < ch; c++) {
+        const input = srcBuffer.getChannelData(c);
+        const output = out.getChannelData(c);
+        for (let i = 0; i < outLen; i++) {
+          const srcPos = i * rate;
+          const i0 = Math.floor(srcPos);
+          const i1 = Math.min(i0 + 1, input.length - 1);
+          const frac = srcPos - i0;
+          output[i] = input[i0] * (1 - frac) + input[i1] * frac;
+        }
+      }
+      return out;
+    }
+
+    function bufferToWav(buf) {
+      const numChan = buf.numberOfChannels;
+      const sampleRate = buf.sampleRate;
+      const samples = buf.length;
+      const blockAlign = numChan * 2;
+      const dataSize = samples * blockAlign;
+      const ab = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(ab);
+      const str = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+      str(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); str(8, 'WAVE'); str(12, 'fmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, numChan, true);
+      view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true); view.setUint16(34, 16, true); str(36, 'data');
+      view.setUint32(40, dataSize, true);
+      let off = 44;
+      const chans = Array.from({ length: numChan }, (_, c) => buf.getChannelData(c));
+      for (let i = 0; i < samples; i++) {
+        for (let c = 0; c < numChan; c++) {
+          let s = Math.max(-1, Math.min(1, chans[c][i]));
+          view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+          off += 2;
+        }
+      }
+      return new Blob([ab], { type: 'audio/wav' });
+    }
+
+    async function download() {
+      if (!buffer || offlineBusy) return;
+      offlineBusy = true;
+      els.meta.textContent = 'Rendering pitch…';
+      ensure();
+      try {
+        const rate = rateFromPitch();
+        const out = pitchedBuffer(audioCtx, buffer, rate);
+        const blob = bufferToWav(out);
+        const a = document.createElement('a');
+        const st = totalSemitones();
+        const tag = (st >= 0 ? 'p' : 'm') + Math.abs(st).toFixed(2).replace('.', '_');
+        a.href = URL.createObjectURL(blob);
+        a.download = `adlib-pitch-${tag}.wav`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        els.meta.textContent = 'Downloaded pitched WAV';
+      } catch (err) {
+        console.error(err);
+        els.meta.textContent = 'Render failed';
+      }
+      offlineBusy = false;
+    }
+
+    function enableUi(on) {
+      [els.semi, els.cents, els.play, els.stop, els.dl, els.reset].forEach((el) => {
+        el.disabled = !on;
+      });
+    }
+
+    async function loadFile(file) {
+      ensure();
+      els.meta.textContent = 'Loading…';
+      const ab = await file.arrayBuffer();
+      buffer = await audioCtx.decodeAudioData(ab.slice(0));
+      enableUi(true);
+      els.drop.textContent = file.name;
+      const ms = Math.round((buffer.length / buffer.sampleRate) * 1000);
+      els.meta.textContent = `Loaded · ${ms} ms — set pitch and test`;
+      formatReadout();
+    }
+
+    els.drop.addEventListener('click', () => els.file.click());
+    els.file.addEventListener('change', () => { if (els.file.files[0]) loadFile(els.file.files[0]); });
+    ;['dragenter', 'dragover'].forEach((e) => els.drop.addEventListener(e, (ev) => {
+      ev.preventDefault(); els.drop.classList.add('over');
+    }));
+    ;['dragleave', 'drop'].forEach((e) => els.drop.addEventListener(e, (ev) => {
+      ev.preventDefault(); els.drop.classList.remove('over');
+      if (e === 'drop' && ev.dataTransfer.files[0]) loadFile(ev.dataTransfer.files[0]);
+    }));
+
+    els.semi.addEventListener('input', formatReadout);
+    els.cents.addEventListener('input', formatReadout);
+
+    els.presets.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-s]');
+      if (!btn) return;
+      els.semi.value = btn.dataset.s;
+      els.cents.value = 0;
+      formatReadout();
+    });
+
+    els.play.addEventListener('click', play);
+    els.stop.addEventListener('click', () => { stopPlay(); els.meta.textContent = 'Stopped'; });
+    els.dl.addEventListener('click', () => download());
+    els.reset.addEventListener('click', () => {
+      els.semi.value = 0; els.cents.value = 0; formatReadout();
+    });
+
+    formatReadout();
+  </script>
+</body>
+</html>
