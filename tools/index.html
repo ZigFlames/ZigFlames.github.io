@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Studio Tools — ZigFlames</title>
+  <meta name="description" content="ZigFlames studio tools: Ad-Lib Pad, Trim, Hall Echo, and Pitch machines for sample work.">
+  <meta name="theme-color" content="#08080a">
+  <link rel="canonical" href="https://zigflames.com/tools/">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin:1.5rem 0 2rem}
+    .tool-card{display:block;padding:1.25rem;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.03);text-decoration:none;color:inherit;transition:border-color .15s, transform .15s}
+    .tool-card:hover{border-color:#ff5a1f;transform:translateY(-2px)}
+    .tool-card h2{margin:0 0 .35rem;font-family:Oswald,sans-serif;font-size:1.15rem;letter-spacing:.04em;text-transform:uppercase}
+    .tool-card p{margin:0;color:#8a8a93;font-size:.9rem;line-height:1.4}
+    .tool-kicker{color:#ffcc33;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin:0 0 .5rem}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="/">ZigFlames</a>
+      <nav class="site-nav" aria-label="Primary">
+        <ul>
+          <li><a href="/#music">Music</a></li>
+          <li><a href="/art.html">Art</a></li>
+          <li><a href="/studio.html">Studio</a></li>
+          <li><a href="/tools/" aria-current="page">Tools</a></li>
+          <li><a href="/#about">About</a></li>
+          <li><a href="/#contact">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="pm-page">
+    <div class="pm-inner">
+      <p class="section-kicker">Studio</p>
+      <h1 class="pm-title">Studio Tools</h1>
+      <p class="pm-tagline">Trim. Pitch. Echo. Trigger. No Suno — just your samples.</p>
+      <p class="pm-lead">Browser machines for ZigFlames ad-libs and one-shots. Drop a clip, shape it, download, then fire it from the pad over whatever beat is playing.</p>
+
+      <div class="tools-grid">
+        <a class="tool-card" href="/tools/adlib.html">
+          <p class="tool-kicker">Pad</p>
+          <h2>Ad-Lib Pad</h2>
+          <p>Load or record pads. Trigger with keys while the beat runs.</p>
+        </a>
+        <a class="tool-card" href="/tools/trim.html">
+          <p class="tool-kicker">Cut</p>
+          <h2>Trim</h2>
+          <p>Chop dead air off the front and back. Preview, download WAV.</p>
+        </a>
+        <a class="tool-card" href="/tools/echo.html">
+          <p class="tool-kicker">Space</p>
+          <h2>Hall Echo</h2>
+          <p>Test hall + slap echo. Dial the mix, export wet.</p>
+        </a>
+        <a class="tool-card" href="/tools/pitch.html">
+          <p class="tool-kicker">Tune</p>
+          <h2>Pitch</h2>
+          <p>Sampler-style semitones &amp; cents. Test, then download pitched WAV.</p>
+        </a>
+      </div>
+
+      <p class="pm-actions">
+        <a class="btn btn-ghost" href="/studio.html">Back to Studio</a>
+        <a class="btn btn-ghost" href="/">Home</a>
+      </p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>© 2026 ZigFlames · Studio Tools · Money Moves Llc</p>
+    </div>
+  </footer>
+</body>
+</html>
