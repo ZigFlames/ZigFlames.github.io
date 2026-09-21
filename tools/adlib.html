@@ -101,6 +101,16 @@
       max-width: 52rem;
     }
     .status { color: var(--ok); }
+    .pad.stacked { border-color: #6ea8fe; box-shadow: 0 0 0 1px rgba(110,168,254,0.35); }
+    .pad.stacked .keybind { position: relative; }
+    .stack-badge {
+      display: none; position: absolute; top: -0.35rem; right: -0.35rem;
+      min-width: 1.1rem; height: 1.1rem; padding: 0 0.25rem;
+      border-radius: 999px; background: #6ea8fe; color: #0b0b0c;
+      font-size: 0.65rem; font-weight: 800; line-height: 1.1rem; text-align: center;
+    }
+    .pad.stacked .stack-badge { display: inline-block; }
+    .file-btn.stack-btn { border-color: #6ea8fe; color: #cfe0ff; }
     input[type="file"] { display: none; }
   
     .zf-tools-bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;padding:.65rem .85rem;margin:0 0 1rem;background:rgba(11,11,12,.92);border:1px solid #2a2a30;border-radius:12px;backdrop-filter:blur(8px);font-size:.8rem}
@@ -134,7 +144,7 @@
     </div>
   </header>
   <p class="hint">
-    Drop or record short ad-libs. We trim silence and normalize. Hit the key (or tap the pad) to fire over whatever beat is playing elsewhere — Grok, a DAW, another tab. No Suno. Samples stay in this browser until you clear them.
+    Drop or record short ad-libs. We trim silence and normalize. Stack a second sample on a pad — both fire together. Hit the key (or tap the pad) to fire over whatever beat is playing elsewhere — Grok, a DAW, another tab. No Suno. Samples stay in this browser until you clear them.
   </p>
   <main id="pads"></main>
 
@@ -150,7 +160,7 @@
     let masterGain = null;
     let muted = false;
     const pads = new Map(); // id -> state
-    const activeSources = new Map(); // id -> AudioBufferSourceNode
+    const activeSources = new Map(); // id -> AudioBufferSourceNode[]
 
     const $pads = document.getElementById('pads');
     const $master = document.getElementById('master');
@@ -171,24 +181,42 @@
 
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, 1);
+        const req = indexedDB.open(DB_NAME, 2);
         req.onupgradeneeded = () => {
           const db = req.result;
           if (!db.objectStoreNames.contains(DB_STORE)) {
             db.createObjectStore(DB_STORE, { keyPath: 'id' });
           }
+          // v1→v2: old single-pcm rows migrate on read in boot()
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
     }
 
+    function syncBufferAlias(pad) {
+      pad.buffer = pad.buffers[0] || null;
+    }
+
+    function layerRecord(buf) {
+      return {
+        sampleRate: buf.sampleRate,
+        channels: buf.numberOfChannels,
+        length: buf.length,
+        pcm: bufferToPcm(buf),
+      };
+    }
+
     async function savePadMeta(pad) {
       const db = await openDb();
+      syncBufferAlias(pad);
+      const layers = (pad.buffers || []).slice(0, 2).map(layerRecord);
       const record = {
         id: pad.id,
         name: pad.name,
         key: pad.key,
+        layers,
+        // legacy single-layer fields for older readers
         sampleRate: pad.buffer ? pad.buffer.sampleRate : null,
         channels: pad.buffer ? pad.buffer.numberOfChannels : null,
         length: pad.buffer ? pad.buffer.length : null,
@@ -282,17 +310,11 @@
       return out;
     }
 
-    function drawWave(canvas, buffer) {
-      const ctx = canvas.getContext('2d');
-      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
-      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#0f0f12';
-      ctx.fillRect(0, 0, w, h);
-      if (!buffer) return;
+    function strokeWave(ctx, buffer, color, w, h, alpha) {
       const data = buffer.getChannelData(0);
       const step = Math.max(1, Math.floor(data.length / w));
-      ctx.strokeStyle = '#ff5a1f';
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = alpha == null ? 1 : alpha;
       ctx.lineWidth = 2;
       ctx.beginPath();
       const mid = h / 2;
@@ -308,6 +330,52 @@
         ctx.lineTo(x, mid + max * mid * 0.9);
       }
       ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawWave(canvas, bufferOrBuffers) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#0f0f12';
+      ctx.fillRect(0, 0, w, h);
+      const layers = Array.isArray(bufferOrBuffers)
+        ? bufferOrBuffers.filter(Boolean)
+        : (bufferOrBuffers ? [bufferOrBuffers] : []);
+      if (!layers.length) return;
+      strokeWave(ctx, layers[0], '#ff5a1f', w, h, 1);
+      if (layers[1]) strokeWave(ctx, layers[1], '#6ea8fe', w, h, 0.55);
+    }
+
+    function mixBuffers(buffers) {
+      const list = (buffers || []).filter(Boolean);
+      if (!list.length) return null;
+      if (list.length === 1) return list[0];
+      const sr = list[0].sampleRate;
+      const ch = Math.max(...list.map((b) => b.numberOfChannels));
+      const len = Math.max(...list.map((b) => b.length));
+      const out = ensureAudio().createBuffer(ch, len, sr);
+      for (const buf of list) {
+        for (let c = 0; c < ch; c++) {
+          const src = buf.getChannelData(Math.min(c, buf.numberOfChannels - 1));
+          const dst = out.getChannelData(c);
+          for (let i = 0; i < buf.length; i++) dst[i] += src[i];
+        }
+      }
+      let peak = 0;
+      for (let c = 0; c < ch; c++) {
+        const d = out.getChannelData(c);
+        for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(d[i]));
+      }
+      if (peak > 1) {
+        const g = 0.95 / peak;
+        for (let c = 0; c < ch; c++) {
+          const d = out.getChannelData(c);
+          for (let i = 0; i < len; i++) d[i] *= g;
+        }
+      }
+      return out;
     }
 
     function bufferToWavBlob(buffer) {
@@ -352,38 +420,77 @@
 
     function playPad(id) {
       const pad = pads.get(id);
-      if (!pad || !pad.buffer) return;
+      const layers = (pad && pad.buffers) ? pad.buffers.filter(Boolean) : [];
+      if (!pad || !layers.length) return;
       ensureAudio();
       const prev = activeSources.get(id);
       if (prev) {
-        try { prev.stop(); } catch (_) {}
+        for (const s of prev) { try { s.stop(); } catch (_) {} }
       }
-      const src = audioCtx.createBufferSource();
-      src.buffer = pad.buffer;
-      src.connect(masterGain);
-      src.onended = () => {
-        if (activeSources.get(id) === src) {
-          activeSources.delete(id);
-          pad.el.classList.remove('playing');
-        }
-      };
-      activeSources.set(id, src);
+      const sources = [];
+      let remaining = 0;
+      for (const buf of layers) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(masterGain);
+        remaining++;
+        src.onended = () => {
+          remaining--;
+          if (remaining <= 0 && activeSources.get(id) === sources) {
+            activeSources.delete(id);
+            pad.el.classList.remove('playing');
+          }
+        };
+        sources.push(src);
+      }
+      activeSources.set(id, sources);
       pad.el.classList.add('playing');
-      src.start(0);
+      for (const src of sources) src.start(0);
     }
 
     function setMeta(pad, text) {
       pad.metaEl.textContent = text || '';
     }
 
-    async function assignBuffer(pad, rawBuffer, label) {
+    function refreshPadVisual(pad, label) {
+      syncBufferAlias(pad);
+      drawWave(pad.canvas, pad.buffers);
+      const n = pad.buffers.length;
+      pad.el.classList.toggle('armed', n > 0);
+      pad.el.classList.toggle('stacked', n > 1);
+      if (pad.badgeEl) pad.badgeEl.textContent = n > 1 ? '2' : '';
+      if (!n) {
+        setMeta(pad, '');
+        return;
+      }
+      const msParts = pad.buffers.map((b) => Math.round((b.length / b.sampleRate) * 1000) + ' ms');
+      if (n > 1) {
+        setMeta(pad, `${label || 'Stacked'} · ×2 stacked · ${msParts.join(' + ')} · trimmed + normalized`);
+      } else {
+        setMeta(pad, `${label || 'Ready'} · ${msParts[0]} · trimmed + normalized`);
+      }
+    }
+
+    async function assignBuffer(pad, rawBuffer, label, mode) {
+      // mode: 'replace' (default) | 'stack'
       ensureAudio();
       const processed = trimAndNormalize(rawBuffer);
-      pad.buffer = processed;
-      drawWave(pad.canvas, processed);
-      const ms = Math.round((processed.length / processed.sampleRate) * 1000);
-      setMeta(pad, `${label || 'Ready'} · ${ms} ms · trimmed + normalized`);
-      pad.el.classList.add('armed');
+      if (!pad.buffers) pad.buffers = [];
+      if (mode === 'stack') {
+        if (!pad.buffers.length) {
+          setMeta(pad, 'Load first');
+          return;
+        }
+        if (pad.buffers.length >= 2) {
+          pad.buffers[1] = processed;
+        } else {
+          pad.buffers.push(processed);
+        }
+        refreshPadVisual(pad, label || 'Layer 2');
+      } else {
+        pad.buffers = [processed];
+        refreshPadVisual(pad, label);
+      }
       await savePadMeta(pad);
     }
 
@@ -398,6 +505,7 @@
         id: config.id,
         name: config.name,
         key: config.key,
+        buffers: [],
         buffer: null,
         recorder: null,
         chunks: [],
@@ -410,13 +518,14 @@
       el.innerHTML = `
         <div class="pad-top">
           <input class="pad-name" value="${escapeAttr(pad.name)}" aria-label="Pad name" />
-          <button type="button" class="keybind" title="Click then press a key to rebind">${escapeHtml(pad.key)}</button>
+          <button type="button" class="keybind" title="Click then press a key to rebind">${escapeHtml(pad.key)}<span class="stack-badge" aria-hidden="true"></span></button>
         </div>
         <div class="wave"><canvas></canvas></div>
         <div class="meta"></div>
-        <div class="drop">Drop audio here (wav / mp3 / m4a)</div>
+        <div class="drop">Drop audio here (wav / mp3 / m4a) — Load replaces; use Stack for layer 2</div>
         <div class="row">
-          <label class="file-btn">Load<input type="file" accept="audio/*" /></label>
+          <label class="file-btn">Load<input type="file" accept="audio/*" class="file-load" /></label>
+          <label class="file-btn stack-btn">Stack<input type="file" accept="audio/*" class="file-stack" /></label>
           <button type="button" class="rec">Record</button>
           <button type="button" class="play primary">Play</button>
         </div>
@@ -432,8 +541,10 @@
       pad.metaEl = el.querySelector('.meta');
       pad.nameInput = el.querySelector('.pad-name');
       pad.keyBtn = el.querySelector('.keybind');
+      pad.badgeEl = el.querySelector('.stack-badge');
       pad.drop = el.querySelector('.drop');
-      pad.fileInput = el.querySelector('input[type=file]');
+      pad.fileInput = el.querySelector('.file-load');
+      pad.stackInput = el.querySelector('.file-stack');
       pad.recBtn = el.querySelector('.rec');
       pad.playBtn = el.querySelector('.play');
       pad.exportBtn = el.querySelector('.export');
@@ -444,34 +555,55 @@
         await savePadMeta(pad);
       });
 
+      function setKeyLabel(label) {
+        // Keep stack badge node intact
+        const badge = pad.badgeEl;
+        pad.keyBtn.textContent = label;
+        if (badge) {
+          pad.keyBtn.appendChild(badge);
+          pad.badgeEl = badge;
+        }
+      }
+
       pad.keyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        pad.keyBtn.textContent = '…';
+        setKeyLabel('…');
         const onKey = (ev) => {
           ev.preventDefault();
           const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
           pad.key = k;
-          pad.keyBtn.textContent = k;
+          setKeyLabel(k);
           savePadMeta(pad);
           window.removeEventListener('keydown', onKey, true);
         };
         window.addEventListener('keydown', onKey, true);
       });
 
-      const onFiles = async (files) => {
+      const onFiles = async (files, mode) => {
         const file = files && files[0];
         if (!file) return;
         try {
+          if (mode === 'stack' && !(pad.buffers && pad.buffers.length)) {
+            setMeta(pad, 'Load first');
+            return;
+          }
           setMeta(pad, 'Processing…');
           const buf = await decodeFile(file);
-          await assignBuffer(pad, buf, file.name);
+          await assignBuffer(pad, buf, file.name, mode);
         } catch (err) {
           setMeta(pad, 'Could not read that file');
           console.error(err);
         }
       };
 
-      pad.fileInput.addEventListener('change', () => onFiles(pad.fileInput.files));
+      pad.fileInput.addEventListener('change', () => {
+        onFiles(pad.fileInput.files, 'replace');
+        pad.fileInput.value = '';
+      });
+      pad.stackInput.addEventListener('change', () => {
+        onFiles(pad.stackInput.files, 'stack');
+        pad.stackInput.value = '';
+      });
       ;['dragenter', 'dragover'].forEach((evt) => {
         pad.drop.addEventListener(evt, (e) => {
           e.preventDefault();
@@ -482,7 +614,7 @@
         pad.drop.addEventListener(evt, (e) => {
           e.preventDefault();
           pad.drop.classList.remove('over');
-          if (evt === 'drop') onFiles(e.dataTransfer.files);
+          if (evt === 'drop') onFiles(e.dataTransfer.files, 'replace');
         });
       });
 
@@ -536,20 +668,32 @@
 
       pad.exportBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (!pad.buffer) return;
-        const blob = bufferToWavBlob(pad.buffer);
+        if (!pad.buffers || !pad.buffers.length) return;
+        const mixed = mixBuffers(pad.buffers);
+        const blob = bufferToWavBlob(mixed);
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `${slug(pad.name) || pad.id}.wav`;
+        const stacked = pad.buffers.length > 1;
+        a.download = stacked
+          ? `${slug(pad.name) || pad.id}-stacked.wav`
+          : `${slug(pad.name) || pad.id}.wav`;
         a.click();
         URL.revokeObjectURL(a.href);
+        if (stacked) setMeta(pad, 'Exported mixed stack WAV · ×2 stacked');
       });
 
       pad.clearBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
+        const prev = activeSources.get(pad.id);
+        if (prev) {
+          for (const s of prev) { try { s.stop(); } catch (_) {} }
+          activeSources.delete(pad.id);
+        }
+        pad.buffers = [];
         pad.buffer = null;
         drawWave(pad.canvas, null);
-        pad.el.classList.remove('armed', 'playing');
+        pad.el.classList.remove('armed', 'playing', 'stacked');
+        if (pad.badgeEl) pad.badgeEl.textContent = '';
         setMeta(pad, '');
         await savePadMeta(pad);
       });
@@ -601,20 +745,35 @@
       await savePadMeta(pad);
     });
 
+    function revivePcm(pcm) {
+      if (pcm instanceof Float32Array) return pcm;
+      if (ArrayBuffer.isView(pcm)) return new Float32Array(pcm.buffer, pcm.byteOffset, pcm.byteLength / 4);
+      return Float32Array.from(Object.values(pcm));
+    }
+
+    function layersFromRow(row) {
+      if (Array.isArray(row.layers) && row.layers.length) {
+        return row.layers.slice(0, 2).filter((L) => L && L.pcm && L.sampleRate && L.channels && L.length);
+      }
+      if (row.pcm && row.sampleRate && row.channels && row.length) {
+        return [{ sampleRate: row.sampleRate, channels: row.channels, length: row.length, pcm: row.pcm }];
+      }
+      return [];
+    }
+
     async function boot() {
       const saved = await loadAllPads();
       if (saved.length) {
         for (const row of saved) {
           const pad = makePad({ id: row.id, name: row.name, key: row.key });
-          if (row.pcm && row.sampleRate && row.channels && row.length) {
+          const layerRows = layersFromRow(row);
+          if (layerRows.length) {
             ensureAudio();
-            // pcm may come back as plain object — rebuild Float32Array
-            const pcm = row.pcm instanceof Float32Array ? row.pcm : Float32Array.from(Object.values(row.pcm));
-            pad.buffer = pcmToBuffer(pcm, row.sampleRate, row.channels);
-            drawWave(pad.canvas, pad.buffer);
-            const ms = Math.round((pad.buffer.length / pad.buffer.sampleRate) * 1000);
-            setMeta(pad, `Loaded · ${ms} ms`);
-            pad.el.classList.add('armed');
+            pad.buffers = layerRows.map((L) => {
+              const pcm = revivePcm(L.pcm);
+              return pcmToBuffer(pcm, L.sampleRate, L.channels);
+            });
+            refreshPadVisual(pad, 'Loaded');
           }
         }
       } else {
