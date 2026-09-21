@@ -29,16 +29,19 @@
       border-radius: 12px; overflow: hidden; margin-bottom: 0.75rem;
     }
     canvas { width: 100%; height: 100%; display: block; }
-    .shade-l, .shade-r {
-      position: absolute; top: 0; bottom: 0; background: rgba(0,0,0,0.55);
-      pointer-events: none;
-    }
-    .shade-l { left: 0; }
-    .shade-r { right: 0; }
-    .line-l, .line-r {
+    /* Soft edge ticks only — kept audio fills the canvas (no dark void overlays) */
+    .edge-l, .edge-r {
       position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent2);
-      pointer-events: none;
+      pointer-events: none; opacity: 0.85;
     }
+    .edge-l { left: 0; }
+    .edge-r { right: 0; }
+    .cut-badge {
+      position: absolute; top: 4px; font-size: 0.65rem; font-weight: 700;
+      color: var(--accent2); opacity: 0.9; pointer-events: none; letter-spacing: 0.02em;
+    }
+    .cut-badge.l { left: 6px; }
+    .cut-badge.r { right: 6px; }
     label.row {
       display: grid; grid-template-columns: 5.5rem 1fr 4.2rem;
       gap: 0.6rem; align-items: center; margin: 0.65rem 0; font-size: 0.85rem; color: var(--muted);
@@ -85,10 +88,10 @@
 
   <div class="wave-wrap" id="waveWrap" hidden>
     <canvas id="wave"></canvas>
-    <div class="shade-l" id="shadeL"></div>
-    <div class="shade-r" id="shadeR"></div>
-    <div class="line-l" id="lineL"></div>
-    <div class="line-r" id="lineR"></div>
+    <div class="edge-l" id="edgeL"></div>
+    <div class="edge-r" id="edgeR"></div>
+    <div class="cut-badge l" id="cutBadgeL" hidden></div>
+    <div class="cut-badge r" id="cutBadgeR" hidden></div>
   </div>
 
   <label class="row">Front
@@ -117,6 +120,8 @@
 
   <script>
     let ctx, buffer, source;
+    /** Which cut slider the user last moved — used to resolve front+back overflow without fighting. */
+    let preferCut = 'back';
     const $drop = document.getElementById('drop');
     const $file = document.getElementById('file');
     const $front = document.getElementById('front');
@@ -133,10 +138,8 @@
     const $meta = document.getElementById('meta');
     const $waveWrap = document.getElementById('waveWrap');
     const $wave = document.getElementById('wave');
-    const $shadeL = document.getElementById('shadeL');
-    const $shadeR = document.getElementById('shadeR');
-    const $lineL = document.getElementById('lineL');
-    const $lineR = document.getElementById('lineR');
+    const $cutBadgeL = document.getElementById('cutBadgeL');
+    const $cutBadgeR = document.getElementById('cutBadgeR');
 
     function ensure() {
       if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -150,15 +153,30 @@
       return buffer ? (buffer.length / buffer.sampleRate) * 1000 : 0;
     }
 
+    /** Read Front/Back without mutating the source AudioBuffer. Clamp so ≥5ms stays kept. */
     function selection() {
       const total = durationMs();
+      if (!buffer || total <= 0) {
+        return { start: 0, end: 0, front: 0, back: 0, total: 0 };
+      }
       let front = Number($front.value);
       let back = Number($back.value);
-      if (front + back >= total - 5) {
-        // keep at least ~5ms
-        back = Math.max(0, total - front - 5);
-        $back.value = Math.floor(back);
+      const minKeep = 5;
+      const maxCut = Math.max(0, total - minKeep);
+      front = Math.max(0, Math.min(front, maxCut));
+      back = Math.max(0, Math.min(back, maxCut));
+      if (front + back >= total - minKeep) {
+        if (preferCut === 'front') {
+          back = Math.max(0, total - front - minKeep);
+        } else {
+          front = Math.max(0, total - back - minKeep);
+        }
       }
+      // Sync clamped values into range inputs (avoids controlled-input jump to max)
+      const frontInt = Math.floor(front);
+      const backInt = Math.floor(back);
+      if (Number($front.value) !== frontInt) $front.value = frontInt;
+      if (Number($back.value) !== backInt) $back.value = backInt;
       const start = front / 1000;
       const end = (total - back) / 1000;
       return { start, end, front, back, total };
@@ -173,39 +191,64 @@
       $backVal.textContent = ms(back);
       $fadeInVal.textContent = ms(fadeIn);
       $fadeOutVal.textContent = ms(fadeOut);
-      const leftPct = (front / total) * 100;
-      const rightPct = (back / total) * 100;
-      $shadeL.style.width = leftPct + '%';
-      $shadeR.style.width = rightPct + '%';
-      $lineL.style.left = leftPct + '%';
-      $lineR.style.right = rightPct + '%';
+      if (front > 0) {
+        $cutBadgeL.hidden = false;
+        $cutBadgeL.textContent = '−' + Math.round(front) + 'ms';
+      } else {
+        $cutBadgeL.hidden = true;
+      }
+      if (back > 0) {
+        $cutBadgeR.hidden = false;
+        $cutBadgeR.textContent = '−' + Math.round(back) + 'ms';
+      } else {
+        $cutBadgeR.hidden = true;
+      }
       const keep = Math.max(0, (end - start) * 1000);
       let msg = `Keeping ${Math.round(keep)} ms  ·  cut ${Math.round(front)} ms front, ${Math.round(back)} ms back`;
       if (fadeIn || fadeOut) {
         msg += `  ·  fade in ${Math.round(fadeIn)} ms, fade out ${Math.round(fadeOut)} ms`;
       }
       $meta.textContent = msg;
+      // Redraw kept region full-width so Back/Front never shrink the wave into a dark void
+      drawWave();
     }
 
+    /**
+     * Draw ONLY the kept selection stretched to full canvas width.
+     * Source buffer is never mutated — we only read a slice for display.
+     */
     function drawWave() {
       const canvas = $wave;
       const c = canvas.getContext('2d');
-      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
-      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+      const w = canvas.width = Math.max(1, Math.floor(canvas.clientWidth * devicePixelRatio));
+      const h = canvas.height = Math.max(1, Math.floor(canvas.clientHeight * devicePixelRatio));
       c.fillStyle = '#0f0f12';
       c.fillRect(0, 0, w, h);
       if (!buffer) return;
+
+      const { start, end } = selection();
+      const sr = buffer.sampleRate;
+      let i0 = Math.floor(start * sr);
+      let i1 = Math.floor(end * sr);
+      i0 = Math.max(0, Math.min(i0, buffer.length - 1));
+      i1 = Math.max(i0 + 1, Math.min(i1, buffer.length));
       const data = buffer.getChannelData(0);
-      const step = Math.max(1, Math.floor(data.length / w));
+      const keepLen = i1 - i0;
+      const step = Math.max(1, Math.floor(keepLen / w));
+
+      // Soft keep tint
+      c.fillStyle = 'rgba(255, 90, 31, 0.06)';
+      c.fillRect(0, 0, w, h);
+
       c.strokeStyle = '#ff5a1f';
-      c.lineWidth = 2;
+      c.lineWidth = Math.max(1, devicePixelRatio);
       c.beginPath();
       const mid = h / 2;
       for (let x = 0; x < w; x++) {
         let min = 1, max = -1;
-        const i0 = x * step;
-        for (let i = 0; i < step && i0 + i < data.length; i++) {
-          const v = data[i0 + i];
+        const base = i0 + x * step;
+        for (let i = 0; i < step && base + i < i1; i++) {
+          const v = data[base + i];
           if (v < min) min = v;
           if (v > max) max = v;
         }
@@ -213,8 +256,26 @@
         c.lineTo(x, mid + max * mid * 0.92);
       }
       c.stroke();
+
+      // Fade guides within kept view (visual only)
+      const keepMs = (keepLen / sr) * 1000;
+      const fadeIn = Number($fadeIn.value);
+      const fadeOut = Number($fadeOut.value);
+      if (keepMs > 0 && (fadeIn > 0 || fadeOut > 0)) {
+        c.strokeStyle = 'rgba(255, 204, 51, 0.55)';
+        c.lineWidth = Math.max(1, devicePixelRatio);
+        if (fadeIn > 0) {
+          const x = Math.floor((Math.min(fadeIn, keepMs) / keepMs) * w) + 0.5;
+          c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
+        }
+        if (fadeOut > 0) {
+          const x = Math.floor((1 - Math.min(fadeOut, keepMs) / keepMs) * w) + 0.5;
+          c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
+        }
+      }
     }
 
+    /** Build a NEW buffer for preview/download — never mutates `buffer`. */
     function slicedBuffer() {
       const { start, end } = selection();
       const sr = buffer.sampleRate;
@@ -228,7 +289,7 @@
       for (let c = 0; c < ch; c++) {
         out.getChannelData(c).set(buffer.getChannelData(c).subarray(i0, i1));
       }
-      // Cap fades so fade-in + fade-out ≤ keep length
+      // Cap fades so fade-in + fade-out ≤ keep length (apply only to copy)
       let fi = Math.floor((Number($fadeIn.value) / 1000) * sr);
       let fo = Math.floor((Number($fadeOut.value) / 1000) * sr);
       fi = Math.max(0, Math.min(fi, keepLen));
@@ -242,12 +303,12 @@
         for (let c = 0; c < ch; c++) {
           const data = out.getChannelData(c);
           for (let i = 0; i < fi; i++) {
-            const g = fi === 1 ? 1 : (i / (fi - 1));                     // 0 → 1
+            const g = fi === 1 ? 1 : (i / (fi - 1));
             data[i] *= g;
           }
           for (let i = 0; i < fo; i++) {
             const idx = keepLen - fo + i;
-            const g = fo === 1 ? 0 : 1 - (i / (fo - 1));              // 1 → 0
+            const g = fo === 1 ? 0 : 1 - (i / (fo - 1));
             data[idx] *= g;
           }
         }
@@ -285,6 +346,7 @@
       ensure();
       $meta.textContent = 'Loading…';
       const ab = await file.arrayBuffer();
+      // decode into fresh buffer — keep as immutable source until Download
       buffer = await ctx.decodeAudioData(ab.slice(0));
       const total = Math.floor(durationMs());
       $front.max = Math.max(0, total - 5);
@@ -293,11 +355,12 @@
       $back.value = 0;
       $fadeIn.value = 0;
       $fadeOut.value = 0;
+      preferCut = 'back';
       $front.disabled = $back.disabled = $fadeIn.disabled = $fadeOut.disabled = false;
       $play.disabled = $dl.disabled = $reset.disabled = false;
       $waveWrap.hidden = false;
-      drawWave();
-      updateUI();
+      // layout after unhide so clientWidth is non-zero
+      requestAnimationFrame(() => updateUI());
       $drop.textContent = file.name;
     }
 
@@ -311,8 +374,8 @@
       if (e === 'drop' && ev.dataTransfer.files[0]) loadFile(ev.dataTransfer.files[0]);
     }));
 
-    $front.addEventListener('input', updateUI);
-    $back.addEventListener('input', updateUI);
+    $front.addEventListener('input', () => { preferCut = 'front'; updateUI(); });
+    $back.addEventListener('input', () => { preferCut = 'back'; updateUI(); });
     $fadeIn.addEventListener('input', updateUI);
     $fadeOut.addEventListener('input', updateUI);
 
