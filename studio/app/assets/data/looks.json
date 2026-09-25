@@ -92,7 +92,8 @@
         "slight handheld shake",
         "cozy bedroom bokeh"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "tidy bedroom corner with fairy lights",
@@ -132,7 +133,14 @@
       "https://ofm-tools.com/best-ring-light-for-onlyfans/",
       "https://www.phoenix-creators.com/onlyfans-blog/onlyfans-lighting-setup"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_ring",
+      "line": "shot on {iphone} on a tripod, main camera 24mm, 1x, ISO 250, 1/60s, ring light plus warm bedside lamp",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "manyvids-studio",
@@ -228,7 +236,8 @@
         "slight digital noise",
         "clean autofocus"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 70
     },
     "venues": [
       "spare-room studio with LED wall",
@@ -267,7 +276,14 @@
       "https://en.wikipedia.org/wiki/ManyVids",
       "https://spicyhub.io/reviews/manyvids/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_tripod",
+      "line": "shot on {iphone} on a tripod at seated eye level, main camera 24mm, ISO 320, one LED panel",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "fansly-premium",
@@ -362,7 +378,8 @@
         "plush textures",
         "vertical feed framing"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 70 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 70 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 70
     },
     "venues": [
       "apartment with pink neon sign",
@@ -401,7 +418,14 @@
       "https://creatorhub.fansly.com/the-for-you-page/",
       "https://help.fansly.com/en/articles/12315500-profile-discoverability-features"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_gimbal",
+      "line": "shot on {iphone} on a gimbal, main camera 24mm and 2x 48mm, ISO 200, daylight",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "pornhub-thumbnail",
@@ -496,7 +520,8 @@
         "clean composition",
         "high contrast"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 80
     },
     "venues": [
       "bright bedroom with white sheets",
@@ -534,7 +559,14 @@
       "https://www.pornhub.com/blog/tip-5-of-10-engaging-video-thumbnails",
       "https://www.pornhub.blog/blog/top-10-tips-to-be-successful-in-the-model-program"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_hand",
+      "line": "shot on {iphone}, main camera 24mm, handheld, ISO 640, 1/60s, available light",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "xvideos-amateur",
@@ -629,7 +661,8 @@
         "TV glow",
         "imperfect focus"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 35 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 35 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 35
     },
     "venues": [
       "cluttered one-bedroom apartment",
@@ -668,7 +701,14 @@
       "https://www.xvideos.com/c/Real_Amateur-17",
       "https://adultwebmaster.blog/xvideos-vs-pornhub/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_hand",
+      "line": "shot on {iphone}, main camera 24mm, handheld, ISO 640, 1/60s, available light",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "brazzers-polished",
@@ -747,10 +787,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "high",
       "mjKeywords": [
@@ -763,7 +803,8 @@
         "studio multi-cam coverage",
         "sharp focus"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "marble luxury kitchen",
@@ -800,7 +841,14 @@
       "https://en.wikipedia.org/wiki/Brazzers",
       "https://www.businessinsider.com/game-of-thrones-porn-parody-2016-6"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "bangbros-gonzo",
@@ -896,7 +944,8 @@
         "deep focus",
         "slight motion blur"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "Miami van interior",
@@ -935,7 +984,14 @@
       "https://en.wikipedia.org/wiki/Bang_Bros",
       "https://www.miaminewtimes.com/news/the-ride-to-perdition-6367591/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_sun",
+      "line": "handheld Sony FX3, Sony FE 16-35mm f/2.8 GM II at 24mm, f/5.6, 1/100s, ISO 400, hard daylight plus on-camera LED",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "naughty-america-glamcore",
@@ -1013,10 +1069,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 280,
+      "stylize": 116,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -1029,7 +1085,8 @@
         "direct eye contact",
         "deep focus"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 280 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 116 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 280
     },
     "venues": [
       "upscale suburban living room",
@@ -1066,7 +1123,14 @@
       "https://en.wikipedia.org/wiki/Naughty_America",
       "https://www.pcworld.com/article/419036/naughty-americas-virtual-reality-videos-made-me-feel-like-a-real-life-porn-star.html"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "vr_r5c",
+      "line": "shot on Canon EOS R5 C, RF 15-35mm f/2.8L at 24mm, locked-off POV at eye level, f/4, 1/50s, ISO 800, even LED light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "mile-high-cinematic",
@@ -1144,10 +1208,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 350,
+      "stylize": 130,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -1160,7 +1224,8 @@
         "35mm film grain light",
         "romantic drama still"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 350 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 130 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 350
     },
     "venues": [
       "candlelit dining room",
@@ -1197,7 +1262,14 @@
       "https://nsfwranker.com/review/sweet-sinner",
       "https://aan.xxx/the-friday-5-star-feature-the-obsession-sweet-sinner-films-2/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "fx6_prime",
+      "line": "shot on Sony FX6, Sony FE 50mm f/1.2 GM, f/2, 1/50s, ISO 800, motivated tungsten practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "spice-tv-softcore",
@@ -1276,10 +1348,10 @@
     "mj": {
       "ar": "4:3",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -1292,7 +1364,8 @@
         "soft focus bloom",
         "35mm film to tape"
       ],
-      "suffix": "--ar 4:3 --v 6.1 --stylize 400 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 4:3 --v 6.1 --style raw --stylize 140 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "mansion bedroom with satin sheets",
@@ -1329,7 +1402,14 @@
       "https://variety.com/1997/tv/news/spice-turns-up-porn-heat-with-hot-outlet-1116676834/",
       "https://www.latimes.com/archives/la-xpm-1994-07-07-me-12815-story.html"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "c300_diff",
+      "line": "shot on Canon EOS C300 Mark III, Canon CN-E 50mm prime with 1/4 Pro-Mist diffusion, T2, ISO 800, soft tungsten",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "playboy-pinup",
@@ -1408,10 +1488,10 @@
     "mj": {
       "ar": "4:5",
       "model": "--v 6.1",
-      "stylize": 450,
+      "stylize": 150,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -1424,7 +1504,8 @@
         "creamy skin tones",
         "fireplace glow"
       ],
-      "suffix": "--ar 4:5 --v 6.1 --stylize 450 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 4:5 --v 6.1 --style raw --stylize 150 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 450
     },
     "venues": [
       "mansion lounge with fireplace",
@@ -1461,7 +1542,14 @@
       "https://nsfwranker.com/review/playboy-plus",
       "https://vanityfair.azurewebsites.net/article/2005/2/the-x-rated-emperor"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "stills",
+      "template": "mf_90",
+      "line": "shot on Hasselblad X2D 100C, XCD 90mm f/2.5 at f/4, 1/125s, ISO 100, strobe and silk scrim",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "penthouse-pet",
@@ -1541,10 +1629,10 @@
     "mj": {
       "ar": "4:5",
       "model": "--v 6.1",
-      "stylize": 550,
+      "stylize": 170,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -1557,7 +1645,8 @@
         "35mm film grain",
         "lace curtain shadows"
       ],
-      "suffix": "--ar 4:5 --v 6.1 --stylize 550 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 4:5 --v 6.1 --style raw --stylize 170 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 550
     },
     "venues": [
       "country manor window seat",
@@ -1594,7 +1683,14 @@
       "https://vanityfair.azurewebsites.net/article/2005/2/the-x-rated-emperor",
       "https://en.wikipedia.org/wiki/Ken_Marcus_(photographer)"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "stills",
+      "template": "mf_90",
+      "line": "shot on Hasselblad X2D 100C, XCD 90mm f/2.5 at f/4, 1/125s, ISO 100, strobe and silk scrim",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "hustler-magazine",
@@ -1673,7 +1769,7 @@
     "mj": {
       "ar": "4:5",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 15,
       "weird": 0,
       "styleRaw": true,
@@ -1689,7 +1785,8 @@
         "flat frontal framing",
         "halftone print feel"
       ],
-      "suffix": "--ar 4:5 --v 6.1 --style raw --stylize 200 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 4:5 --v 6.1 --style raw --stylize 100 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "wood-paneled motel room",
@@ -1726,7 +1823,14 @@
       "https://www.encyclopedia.com/social-sciences-and-law/political-science-and-government/military-affairs-nonnaval/hustler",
       "http://grytusmudus.blogspot.com/2010/03/venus-revealed-pubic-wars-6-1974-part-2.html"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "stills",
+      "template": "flash_35",
+      "line": "shot on Nikon Z6 III, 35mm f/1.8 at f/5.6, 1/200s, ISO 400, direct on-camera flash",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "vivid-glamour",
@@ -1805,10 +1909,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -1821,7 +1925,8 @@
         "box cover composition",
         "early HD video look"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "Hollywood Hills infinity pool",
@@ -1858,7 +1963,14 @@
       "https://en.wikipedia.org/wiki/Vivid_Entertainment",
       "https://www.latimes.com/archives/la-xpm-2002-jan-06-tm-20634-story.html"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "c300_diff",
+      "line": "shot on Canon EOS C300 Mark III, Canon CN-E 50mm prime with 1/4 Pro-Mist diffusion, T2, ISO 800, soft tungsten",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "wicked-couture",
@@ -1937,10 +2049,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 550,
+      "stylize": 170,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -1953,7 +2065,8 @@
         "golden highlights",
         "fantasy epic still"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 550 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 170 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 550
     },
     "venues": [
       "gothic cathedral hall",
@@ -1990,7 +2103,14 @@
       "https://aan.xxx/brad-armstrong-jessica-drake-in-association-with-wicked-pictures-announce-production-start-on-divine/",
       "https://www.wicked.com/en/movie/Divine/76338"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "fx6_prime",
+      "line": "shot on Sony FX6, Sony FE 50mm f/1.2 GM, f/2, 1/50s, ISO 800, motivated tungsten practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "clips4sale-fetish-reel",
@@ -2083,7 +2203,8 @@
         "clean 1080p digital",
         "direct gaze"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "home office with desk",
@@ -2122,7 +2243,14 @@
       "https://nsfwranker.com/review/clips4sale",
       "https://support.clips4sale.com/en/support/solutions/articles/151000222890-customer-faq-custom-clip-orders-in-chat"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_tripod",
+      "line": "shot on {iphone} on a tripod at seated eye level, main camera 24mm, ISO 320, one LED panel",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "iwantclips-boutique",
@@ -2216,7 +2344,8 @@
         "latex sheen",
         "direct eye contact"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 80
     },
     "venues": [
       "velvet throne-chair boudoir",
@@ -2255,7 +2384,14 @@
       "https://fanschart.com/reviews/iwantclips",
       "https://www.goonfans.com/platforms/iwantclips"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_tripod",
+      "line": "shot on {iphone} on a tripod at seated eye level, main camera 24mm, ISO 320, one LED panel",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "pornhub-premium-4k",
@@ -2334,10 +2470,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 110,
       "chaos": 8,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -2350,7 +2486,8 @@
         "clean composition",
         "no compression"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 250 --chaos 8 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 110 --chaos 8 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "modern loft apartment",
@@ -2387,7 +2524,14 @@
       "https://nsfwranker.com/review/pornhub",
       "https://www.edn.com/pornhub-launches-new-pornhub-premium-as-a-high-definition-on-demand-streaming-service/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "adult-time-series",
@@ -2465,10 +2609,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -2481,7 +2625,8 @@
         "episodic still",
         "naturalistic performance"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "therapist office",
@@ -2519,7 +2664,14 @@
       "https://x3guide.com/reviews/adult-time-originals",
       "https://3hattergrindhouse.com/2019/04/01/aee-2019-bree-mills-part-one/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "fx6_prime",
+      "line": "shot on Sony FX6, Sony FE 50mm f/1.2 GM, f/2, 1/50s, ISO 800, motivated tungsten practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "vixen-glossy",
@@ -2598,10 +2750,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 650,
+      "stylize": 190,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -2614,7 +2766,8 @@
         "perfume commercial aesthetic",
         "shallow depth 50mm"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 650 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 190 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 650
     },
     "venues": [
       "cliffside Mediterranean villa",
@@ -2652,7 +2805,14 @@
       "https://www.menshealth.com/sex-women/a19544943/greg-lansky-porn-director/",
       "https://ainews.xxx/2016/07/29/greg-lansky-announces-vixen-com/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_lf",
+      "line": "shot on ARRI Alexa Mini LF, 47mm prime at T2, 1/48s, 800 ISO, natural light with bounce",
+      "confidence": "likely",
+      "basis": "research data lists Arri Alexa Mini LF for the Vixen house style (not publicly confirmed)"
+    }
   },
   {
     "id": "blacked-editorial",
@@ -2732,10 +2892,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 650,
+      "stylize": 190,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -2748,7 +2908,8 @@
         "cool neutral grade",
         "editorial symmetry"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 650 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 190 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 650
     },
     "venues": [
       "black-marble modern mansion",
@@ -2786,7 +2947,14 @@
       "https://rowmance.net/reviews/blacked-raw",
       "https://nsfwranker.com/review/vixen"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_lf",
+      "line": "shot on ARRI Alexa Mini LF, 47mm prime at T2, 1/48s, 800 ISO, natural light with bounce",
+      "confidence": "likely",
+      "basis": "research data lists Arri Alexa Mini LF for the Vixen house style (not publicly confirmed)"
+    }
   },
   {
     "id": "tushy-art",
@@ -2865,10 +3033,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 600,
+      "stylize": 180,
       "chaos": 8,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -2881,7 +3049,8 @@
         "soft contrast",
         "50mm natural perspective"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 600 --chaos 8 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 180 --chaos 8 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 600
     },
     "venues": [
       "whitewashed Ibiza terrace",
@@ -2918,7 +3087,14 @@
       "https://www.rollingstone.com/culture/culture-features/versace-champagne-and-gold-meet-the-director-turning-porn-into-high-art-629908/",
       "https://en.wikipedia.org/wiki/Vixen_Media_Group"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_lf",
+      "line": "shot on ARRI Alexa Mini LF, 47mm prime at T2, 1/48s, 800 ISO, natural light with bounce",
+      "confidence": "likely",
+      "basis": "research data lists Arri Alexa Mini LF for the Vixen house style (not publicly confirmed)"
+    }
   },
   {
     "id": "deeper-drama",
@@ -2998,10 +3174,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 650,
+      "stylize": 190,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -3014,7 +3190,8 @@
         "high contrast",
         "movie poster composition"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 650 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 190 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 650
     },
     "venues": [
       "midnight glass mansion",
@@ -3052,7 +3229,14 @@
       "https://aan.xxx/review-hobby-deeper-com/",
       "https://aan.xxx/greg-lansky-and-vixen-media-group-to-launch-kayden-krosss-deeper-com/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_lf",
+      "line": "shot on ARRI Alexa Mini LF, 47mm prime at T2, 1/48s, 800 ISO, natural light with bounce",
+      "confidence": "likely",
+      "basis": "research data lists Arri Alexa Mini LF for the Vixen house style (not publicly confirmed)"
+    }
   },
   {
     "id": "slayed-glamour",
@@ -3131,10 +3315,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 600,
+      "stylize": 180,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -3147,7 +3331,8 @@
         "resort pool at dusk",
         "two-shot composition"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 600 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 180 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 600
     },
     "venues": [
       "Hollywood Regency lounge",
@@ -3184,7 +3369,14 @@
       "https://nsfwranker.com/review/slayed",
       "https://www.xbiz.com/news/260859/vixen-media-group-debuts-premium-all-girl-brand-slayed"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_lf",
+      "line": "shot on ARRI Alexa Mini LF, 47mm prime at T2, 1/48s, 800 ISO, natural light with bounce",
+      "confidence": "likely",
+      "basis": "research data lists Arri Alexa Mini LF for the Vixen house style (not publicly confirmed)"
+    }
   },
   {
     "id": "hiphop-music-video",
@@ -3252,10 +3444,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 500,
+      "stylize": 160,
       "chaos": 15,
       "weird": 20,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "high",
       "mjKeywords": [
@@ -3268,7 +3460,8 @@
         "solid color cyclorama",
         "35mm film grain"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 500 --chaos 15 --weird 20 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 160 --chaos 15 --weird 20 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 500
     },
     "venues": [
       "solid-color cyclorama stage",
@@ -3305,7 +3498,14 @@
       "https://en.wikipedia.org/wiki/Hype_Williams",
       "https://www.canvasjournal.ca/read/stronghype-williams-as-cultural-animatorstrongnbspthe-90s-hip-hop-music-video-as-eye-witness-to-conspicuous-consumptionnbspand-new-modalities-of-globalized-tastemaking"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "cinema",
+      "template": "red_wide",
+      "line": "shot on RED V-Raptor, Laowa 12mm ultra-wide at T2.9, 1/48s, ISO 800, colored practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "worldstar-viral",
@@ -3389,7 +3589,8 @@
         "vertical crowd framing",
         "blown out highlights"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 40 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 40 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 40
     },
     "venues": [
       "packed house-party living room",
@@ -3428,7 +3629,14 @@
       "https://quod.lib.umich.edu/f/fc/13761232.0040.205?view=text;rgn=main",
       "https://www.theguardian.com/commentisfree/2012/oct/18/worldstarhiphop-bankable-brand-brutality"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_crowd",
+      "line": "shot on {iphone}, handheld from the crowd, 2x zoom, ISO 2000, mixed club light",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "tiktok-thirst-trap",
@@ -3513,7 +3721,8 @@
         "vertical framing",
         "smooth skin natural"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 50 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 50 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "bedroom mirror",
@@ -3553,7 +3762,14 @@
       "https://www.getaluck.com/how-to-do-the-slow-motion-effect-on-tiktok/",
       "https://clip-forge.io/blog/social-media-video-dimensions-guide-2026"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_front",
+      "line": "shot on {iphone} front camera, arm's-length selfie, auto exposure, ISO 500",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "instagram-reel-polish",
@@ -3620,10 +3836,10 @@
     "mj": {
       "ar": "9:16",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 100,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -3636,7 +3852,8 @@
         "center-square composition",
         "soft window light"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --stylize 250 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 100 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "sunlit café terrace",
@@ -3673,7 +3890,14 @@
       "https://clip-forge.io/blog/social-media-video-dimensions-guide-2026",
       "https://www.sendible.com/insights/social-media-video-specs"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_gimbal",
+      "line": "shot on {iphone} on a gimbal, main camera 24mm and 2x 48mm, ISO 200, daylight",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "bet-uncut-video",
@@ -3751,10 +3975,10 @@
     "mj": {
       "ar": "4:3",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 100,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "high",
       "mjKeywords": [
@@ -3767,7 +3991,8 @@
         "interlaced video texture",
         "pole stage spotlight"
       ],
-      "suffix": "--ar 4:3 --v 6.1 --stylize 300 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 4:3 --v 6.1 --style raw --stylize 100 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "strip-club main stage",
@@ -3804,7 +4029,14 @@
       "https://www.today.com/popculture/racy-late-night-bet-uncut-gets-cut-wbna14028827",
       "https://www.ocweekly.com/five-essential-bet-uncut-clips-6604965/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "camcorder",
+      "template": "dv_sd",
+      "line": "shot on a Panasonic AG-DVX100 camcorder, standard-definition video, 4:3, on-camera light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "vegas-residency-promo",
@@ -3872,10 +4104,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 450,
+      "stylize": 150,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "high",
       "mjKeywords": [
@@ -3888,7 +4120,8 @@
         "lens flare",
         "concert crowd bokeh"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 450 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 150 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 450
     },
     "venues": [
       "colosseum-style theater stage",
@@ -3925,7 +4158,14 @@
       "https://bravewords.com/news/def-leppard-announce-live-at-caesars-palace-the-las-vegas-residency-for-february-2026-video-trailer/",
       "https://en.wikipedia.org/wiki/Concert_residency"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "fx6_tele",
+      "line": "shot on Sony FX6, Sony FE 70-200mm f/2.8 GM II at 135mm, f/2.8, 1/50s, ISO 1600, stage light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "faphouse",
@@ -4020,7 +4260,8 @@
         "slight noise",
         "real couple candid"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "Budapest apartment with tall windows",
@@ -4060,7 +4301,14 @@
       "https://studio.faphouse.com/pages/studio-faq",
       "https://blog.faphouse.com/view-share/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_hand",
+      "line": "shot on {iphone}, main camera 24mm, handheld, ISO 640, 1/60s, available light",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "mr-supremo",
@@ -4155,7 +4403,8 @@
         "behind camera interview",
         "slight motion blur"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "colorful Medellín-style street",
@@ -4194,7 +4443,14 @@
       "https://mrsupremopro.blogspot.com/p/httpwww.html",
       "https://jujo-e.com/mrsupremo"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "porn-mega-load",
@@ -4273,10 +4529,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -4289,7 +4545,8 @@
         "clean fill light",
         "pictorial composition"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "Miami studio bedroom",
@@ -4327,7 +4584,14 @@
       "https://www.adultreviews.com/review/mega-sites/porn-megaload.html",
       "https://www.paysitesreviews.net/teens/porn-mega-load/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "stills",
+      "template": "r5_85",
+      "line": "shot on Canon EOS R5, RF 85mm f/1.2L at f/2.8, 1/160s, ISO 100, strobe with large octabox",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "scoreland-busty-pinup",
@@ -4404,10 +4668,10 @@
     "mj": {
       "ar": "4:5",
       "model": "--v 6.1",
-      "stylize": 350,
+      "stylize": 130,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -4420,7 +4684,8 @@
         "magazine cover composition",
         "soft fill"
       ],
-      "suffix": "--ar 4:5 --v 6.1 --stylize 350 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 4:5 --v 6.1 --style raw --stylize 130 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 350
     },
     "venues": [
       "studio seamless with props",
@@ -4457,7 +4722,14 @@
       "https://en.wikipedia.org/wiki/The_Score_Group",
       "https://x3guide.com/reviews/porn-megaload"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "stills",
+      "template": "r5_85",
+      "line": "shot on Canon EOS R5, RF 85mm f/1.2L at f/2.8, 1/160s, ISO 100, strobe with large octabox",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "penthouse-gold",
@@ -4535,10 +4807,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 450,
+      "stylize": 150,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -4551,7 +4823,8 @@
         "filmic softness",
         "designer lingerie editorial"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 450 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 150 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 450
     },
     "venues": [
       "penthouse window over city",
@@ -4588,7 +4861,14 @@
       "https://x3guide.com/reviews/penthouse-gold",
       "https://en.wikipedia.org/wiki/Penthouse_(magazine)"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "stills",
+      "template": "r5_85",
+      "line": "shot on Canon EOS R5, RF 85mm f/1.2L at f/2.8, 1/160s, ISO 100, strobe with large octabox",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "playboy-tv",
@@ -4667,10 +4947,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -4683,7 +4963,8 @@
         "zoom lens look",
         "lounge set"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "Vegas-style lounge set",
@@ -4719,7 +5000,14 @@
       "https://nsfwranker.com/review/playboy-tv",
       "https://en.wikipedia.org/wiki/Playboy_TV"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "tiktok",
@@ -4803,7 +5091,8 @@
         "bright casual",
         "lo-fi authenticity"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 40
     },
     "venues": [
       "bedroom with LED strip",
@@ -4841,7 +5130,14 @@
       "https://clip-forge.io/blog/social-media-video-dimensions-guide-2026",
       "https://subflow.cc/tools/social-media-video-specs/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_front",
+      "line": "shot on {iphone} front camera, arm's-length selfie, auto exposure, ISO 500",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "instagram-reels",
@@ -4908,10 +5204,10 @@
     "mj": {
       "ar": "9:16",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -4924,7 +5220,8 @@
         "aesthetic b-roll",
         "clean cover frame"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --stylize 200 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 100 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "rooftop terrace",
@@ -4961,7 +5258,14 @@
       "https://www.sendible.com/insights/social-media-video-specs",
       "https://developers.facebook.com/documentation/video-api/guides/reels-publishing"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_gimbal",
+      "line": "shot on {iphone} on a gimbal, main camera 24mm and 2x 48mm, ISO 200, daylight",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "youtube-shorts",
@@ -5029,10 +5333,10 @@
     "mj": {
       "ar": "9:16",
       "model": "--v 6.1",
-      "stylize": 150,
+      "stylize": 90,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "high",
       "mjKeywords": [
@@ -5045,7 +5349,8 @@
         "tripod framing",
         "crisp focus"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --stylize 150 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 90 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 150
     },
     "venues": [
       "creator desk with RGB shelf",
@@ -5081,7 +5386,14 @@
       "https://clip-forge.io/blog/social-media-video-dimensions-guide-2026",
       "https://subflow.cc/tools/social-media-video-specs/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "creator_zv",
+      "line": "shot on Sony ZV-E10 II, Sigma 18-50mm f/2.8 at 24mm, f/2.8, 1/60s, ISO 640, key light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "x-video",
@@ -5165,7 +5477,8 @@
         "burned-in caption space",
         "reaction moment"
       ],
-      "suffix": "--ar 1:1 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 1:1 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "city street event",
@@ -5203,7 +5516,14 @@
       "https://clip-forge.io/blog/social-media-video-dimensions-guide-2026",
       "https://www.sendible.com/insights/social-media-video-specs"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_hand",
+      "line": "shot on {iphone}, main camera 24mm, handheld, ISO 640, 1/60s, available light",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "spicevids",
@@ -5280,10 +5600,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 110,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -5296,7 +5616,8 @@
         "cinematic end card",
         "sharp zoom lens"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 250 --chaos 15 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 110 --chaos 15 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "glass loft",
@@ -5333,7 +5654,14 @@
       "https://nsfw-tools.com/tools/spicevids/",
       "https://en.wikipedia.org/wiki/Aylo"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "i-know-that-girl",
@@ -5431,7 +5759,8 @@
         "motel room",
         "lens flare from window"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 40
     },
     "venues": [
       "apartment bedroom with lamp",
@@ -5470,7 +5799,14 @@
       "http://www.dinoreviews.com/reviews/iknowthatgirl/",
       "https://nsfwranker.com/review/mofos"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "camcorder",
+      "template": "camcorder",
+      "line": "shot on a Sony Handycam consumer camcorder, auto mode, built-in zoom, on-camera light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "letsdoeit",
@@ -5546,10 +5882,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -5562,7 +5898,8 @@
         "realistic framing",
         "terrace view"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "Barcelona flat with balcony",
@@ -5599,7 +5936,14 @@
       "https://nocturnhq.com/platforms/letsdoeit",
       "https://nsfw-tools.com/tools/letsdoeit/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "candy-ai",
@@ -5675,10 +6019,10 @@
     "mj": {
       "ar": "9:16",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 250,
       "chaos": 10,
       "weird": 5,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -5691,7 +6035,8 @@
         "cozy bedroom bokeh",
         "eye contact"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --stylize 400 --chaos 10 --weird 5 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 250 --chaos 10 --weird 5 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "cozy bedroom with fairy lights",
@@ -5724,7 +6069,14 @@
     "sources": [
       "https://nsfwranker.com/review/candy-ai"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "virtual",
+      "template": "virtual",
+      "line": "rendered with a virtual camera",
+      "confidence": "virtual",
+      "basis": "rendered/AI look: no physical camera"
+    }
   },
   {
     "id": "cumzone",
@@ -5801,10 +6153,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 20,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "high",
       "mjKeywords": [
@@ -5817,7 +6169,8 @@
         "hero close-up",
         "freeze frame"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 200 --chaos 20 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 100 --chaos 20 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "studio bedroom",
@@ -5852,7 +6205,14 @@
     "sources": [
       "https://www.ainsfwtools.com/tool/makeherporn-ai/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "makeherporn-ai",
@@ -5929,10 +6289,10 @@
     "mj": {
       "ar": "9:16",
       "model": "--v 6.1",
-      "stylize": 350,
+      "stylize": 250,
       "chaos": 10,
       "weird": 5,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -5945,7 +6305,8 @@
         "template backdrop",
         "dreamy loop"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --stylize 350 --chaos 10 --weird 5 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 250 --chaos 10 --weird 5 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy",
+      "stylizeBefore": 350
     },
     "venues": [
       "template bedroom",
@@ -5980,7 +6341,14 @@
       "https://sweetai.tools/en/ai/makeherporn",
       "https://gridinsoft.com/online-virus-scanner/url/makeherporn-ai"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "virtual",
+      "template": "virtual",
+      "line": "rendered with a virtual camera",
+      "confidence": "virtual",
+      "basis": "rendered/AI look: no physical camera"
+    }
   },
   {
     "id": "teamskeet",
@@ -6076,7 +6444,8 @@
         "natural color",
         "handheld"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 70
     },
     "venues": [
       "shared apartment living room",
@@ -6115,7 +6484,14 @@
       "https://adultsitecompare.com/brand/teamskeet/",
       "https://reviewporn.com/straight/all-access/team-skeet"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "pov_fx3",
+      "line": "handheld POV on Sony FX3, Sony FE 16-35mm f/2.8 GM II at 20mm, f/4, 1/50s, ISO 1250, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "mylf",
@@ -6195,10 +6571,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -6211,7 +6587,8 @@
         "rich warm grade",
         "confident gaze"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "upscale suburban kitchen",
@@ -6248,7 +6625,14 @@
       "https://reviewporn.com/straight/all-access/team-skeet",
       "https://nsfwranker.com/review/xvideos-red"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "pure-taboo",
@@ -6328,10 +6712,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -6344,7 +6728,8 @@
         "indie drama still",
         "room tone mood"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "suburban kitchen at night",
@@ -6381,7 +6766,14 @@
       "https://emmnetwork.com/gamma-films-bree-mills-announce-official-launch-of-new-adult-studio-pure-taboo/",
       "https://3hattergrindhouse.com/2019/04/02/aee-2019-bree-mills-part-two/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "fx6_prime",
+      "line": "shot on Sony FX6, Sony FE 50mm f/1.2 GM, f/2, 1/50s, ISO 800, motivated tungsten practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "xvideos-red",
@@ -6457,10 +6849,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 150,
+      "stylize": 90,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -6473,7 +6865,8 @@
         "4K detail",
         "handheld mix"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 150 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 90 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 150
     },
     "venues": [
       "American apartment",
@@ -6509,7 +6902,14 @@
       "https://nsfwranker.com/review/xvideos-red",
       "https://nsfwranker.com/review/xvideos"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "girlfriendgpt",
@@ -6586,10 +6986,10 @@
     "mj": {
       "ar": "9:16",
       "model": "--v 6.1",
-      "stylize": 350,
+      "stylize": 250,
       "chaos": 20,
       "weird": 10,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -6602,7 +7002,8 @@
         "cinematic depth",
         "glowing rim light"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --stylize 350 --chaos 20 --weird 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 250 --chaos 20 --weird 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy",
+      "stylizeBefore": 350
     },
     "venues": [
       "fantasy tavern",
@@ -6635,7 +7036,14 @@
     "sources": [
       "https://nsfwranker.com/review/girlfriendgpt"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "virtual",
+      "template": "virtual",
+      "line": "rendered with a virtual camera",
+      "confidence": "virtual",
+      "basis": "rendered/AI look: no physical camera"
+    }
   },
   {
     "id": "mofos",
@@ -6725,7 +7133,8 @@
         "slight shake",
         "punchy natural color"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "city apartment",
@@ -6763,7 +7172,14 @@
       "https://nsfwranker.com/review/mofos",
       "https://en.wikipedia.org/wiki/Mofos"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "evil-angel",
@@ -6854,7 +7270,8 @@
         "contrasty natural color",
         "improvised moment"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 70
     },
     "venues": [
       "LA hillside home",
@@ -6894,7 +7311,14 @@
       "https://www.salon.com/1999/11/08/stagliano/",
       "https://www.synergymedia.com.au/evil-angel-video-a-30-year-success-story/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "adultprime",
@@ -6969,10 +7393,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -6985,7 +7409,8 @@
         "straightforward framing",
         "countryside house"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 200 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 100 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "Hungarian apartment",
@@ -7022,7 +7447,14 @@
       "https://adultsitecompare.com/brand/adultprime/",
       "https://www.appadultprime.com/pricing.html"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "pornbox",
@@ -7099,10 +7531,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 150,
+      "stylize": 90,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "high",
       "mjKeywords": [
@@ -7115,7 +7547,8 @@
         "direct gaze",
         "clean backdrop"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 150 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 90 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 150
     },
     "venues": [
       "Budapest studio loft",
@@ -7151,7 +7584,14 @@
       "https://wowkum.com/pornbox-review-premium-content-access/",
       "https://giorgiograndistudios.com/gg/2024/04/14/from-legalporno-to-sheer-the-history-of-all/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "family-strokes",
@@ -7230,10 +7670,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 80,
+      "stylize": 76,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -7246,7 +7686,8 @@
         "doorway reveal",
         "loungewear"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 76 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 80
     },
     "venues": [
       "suburban kitchen",
@@ -7282,7 +7723,14 @@
       "https://fapindex.com/review/family-strokes/",
       "https://reviewporn.com/straight/all-access/team-skeet"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "swappz",
@@ -7362,10 +7810,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 100,
+      "stylize": 80,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -7378,7 +7826,8 @@
         "cross-cut coverage",
         "date-night outfits"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 100 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 100
     },
     "venues": [
       "open-plan suburban living room",
@@ -7414,7 +7863,14 @@
       "https://fapindex.com/review/swappz/",
       "https://reviewporn.com/straight/all-access/team-skeet"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "javhd",
@@ -7493,10 +7949,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 110,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -7509,7 +7965,8 @@
         "slow long take",
         "love hotel neon"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 250 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 110 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "Tokyo apartment",
@@ -7546,7 +8003,14 @@
       "https://fapindex.com/review/japan-hdv/",
       "https://javhdz.today/news/idea-pocket-the-elegant-evolution-of-japanese-av/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "czechav",
@@ -7641,7 +8105,8 @@
         "wide zoom",
         "real street"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "Prague old town street",
@@ -7679,7 +8144,14 @@
       "https://www.czechavcom.com/index.html",
       "https://www.quora.com/Do-Czech-Streets-videos-have-real-pick-ups-from-the-streets-or-are-these-ladies-just-paid-actresses"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "freeuse",
@@ -7758,10 +8230,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 150,
+      "stylize": 90,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -7774,7 +8246,8 @@
         "smiling eye contact",
         "wide-normal lens"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 150 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 90 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 150
     },
     "venues": [
       "bright open-plan office",
@@ -7810,7 +8283,14 @@
       "https://theporndude.com/7446/freeusefantasy",
       "https://reviewporn.com/straight/all-access/team-skeet"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "reality-kings",
@@ -7901,7 +8381,8 @@
         "bikini",
         "beach parking"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "Miami condo pool",
@@ -7939,7 +8420,14 @@
       "https://nsfwranker.com/review/realitykings",
       "https://en.wikipedia.org/wiki/Reality_Kings"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_sun",
+      "line": "handheld Sony FX3, Sony FE 16-35mm f/2.8 GM II at 24mm, f/5.6, 1/100s, ISO 400, hard daylight plus on-camera LED",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "porn-plus",
@@ -8014,10 +8502,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -8030,7 +8518,8 @@
         "medium framing",
         "studio set"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 200 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 100 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "modern apartment",
@@ -8066,7 +8555,14 @@
       "https://whichav.video/zh-hans/sites/5683/pornplus.com",
       "https://gridinsoft.com/online-virus-scanner/url/pornplus-com"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "vixen-plus",
@@ -8142,10 +8638,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 450,
+      "stylize": 150,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -8158,7 +8654,8 @@
         "cinema prime",
         "candid laugh"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 450 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 150 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 450
     },
     "venues": [
       "luxury hotel suite at night",
@@ -8195,7 +8692,14 @@
       "https://nsfwranker.com/review/tushy",
       "https://en.wikipedia.org/wiki/Vixen_Media_Group"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_lf",
+      "line": "shot on ARRI Alexa Mini LF, 47mm prime at T2, 1/48s, 800 ISO, natural light with bounce",
+      "confidence": "likely",
+      "basis": "research data lists Arri Alexa Mini LF for the Vixen house style (not publicly confirmed)"
+    }
   },
   {
     "id": "pervz",
@@ -8278,10 +8782,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 120,
+      "stylize": 84,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -8294,7 +8798,8 @@
         "even light",
         "handheld mix"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 120 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 84 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 120
     },
     "venues": [
       "apartment living room",
@@ -8330,7 +8835,14 @@
       "https://reviewporn.com/straight/all-access/team-skeet",
       "https://fapindex.com/review/family-strokes/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "nubiles-porn",
@@ -8411,10 +8923,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 110,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -8427,7 +8939,8 @@
         "4K clean",
         "gentle framing"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 250 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 110 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "white bedroom",
@@ -8463,7 +8976,14 @@
       "https://www.appadultprime.com/pricing.html",
       "https://nubilefilmsapp.com/aboutus.html"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "digital-playground",
@@ -8540,10 +9060,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 550,
+      "stylize": 170,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "high",
       "mjKeywords": [
@@ -8556,7 +9076,8 @@
         "leather corset costume",
         "epic lens flare"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 550 --chaos 15 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 170 --chaos 15 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 550
     },
     "venues": [
       "pirate galleon deck",
@@ -8593,7 +9114,14 @@
       "https://variety.com/2005/scene/markets-festivals/pirates-pic-unbuckled-1117929120/",
       "https://filmthreat.com/uncategorized/pirates-dvd/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "fx6_prime",
+      "line": "shot on Sony FX6, Sony FE 50mm f/1.2 GM, f/2, 1/50s, ISO 800, motivated tungsten practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "jules-jordan",
@@ -8671,7 +9199,7 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 12,
       "weird": 0,
       "styleRaw": true,
@@ -8687,7 +9215,8 @@
         "fishnet and heels glam",
         "star interview framing"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 200 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 100 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "LA mansion living room",
@@ -8723,7 +9252,14 @@
       "https://en.wikipedia.org/wiki/Evil_Angel_(studio)",
       "https://www.rogreviews.com/16805/interview-john-stagliano-02/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "sislovesme",
@@ -8821,7 +9357,8 @@
         "POV option",
         "hallway doorway"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 70
     },
     "venues": [
       "suburban bedroom",
@@ -8859,7 +9396,14 @@
       "https://reviewporn.com/straight/all-access/team-skeet",
       "https://fapindex.com/review/family-strokes/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "raw-rides",
@@ -8953,7 +9497,8 @@
         "gas station neon",
         "handheld passenger seat"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "car interior on highway",
@@ -8990,7 +9535,14 @@
     "sources": [
       "https://top1m.org/domain/rawrides.tv"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "action",
+      "template": "gopro_dash",
+      "line": "shot on a GoPro HERO13 Black dash-mounted, linear lens, 2.7K, auto exposure",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "hentaied-pro",
@@ -9066,7 +9618,7 @@
     "mj": {
       "ar": "16:9",
       "model": "--niji 6",
-      "stylize": 500,
+      "stylize": 250,
       "chaos": 20,
       "weird": 0,
       "styleRaw": false,
@@ -9082,7 +9634,8 @@
         "dramatic low angle",
         "detailed cel shading"
       ],
-      "suffix": "--ar 16:9 --niji 6 --stylize 500 --chaos 20 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --niji 6 --stylize 250 --chaos 20 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, extra limbs, melted anatomy",
+      "stylizeBefore": 500
     },
     "venues": [
       "gothic fantasy dungeon",
@@ -9117,7 +9670,14 @@
       "https://hentaied.com/category/cosplay",
       "https://erojobs.biz/exploring-the-romero-verse-an-in-depth-look-at-paysite-trinity/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "virtual",
+      "template": "virtual",
+      "line": "rendered with a virtual camera",
+      "confidence": "virtual",
+      "basis": "rendered/AI look: no physical camera"
+    }
   },
   {
     "id": "solotouch-plus",
@@ -9209,7 +9769,8 @@
         "soft focus",
         "robe texture"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 50 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 50 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "cozy bed with pillows",
@@ -9247,7 +9808,14 @@
       "https://www.scam-detector.com/validator/solotouch-plus-review/",
       "https://www.skabash.com/solotouch/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "webcam",
+      "template": "webcam",
+      "line": "shot on a Logitech Brio 4K webcam, 90-degree field of view, auto exposure, desk lamp",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "babes",
@@ -9322,10 +9890,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 450,
+      "stylize": 150,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -9338,7 +9906,8 @@
         "romantic mood",
         "shallow depth"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 450 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 150 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 450
     },
     "venues": [
       "sunlit villa bedroom",
@@ -9374,7 +9943,14 @@
       "https://nsfwranker.com/review/babes-network",
       "https://en.wikipedia.org/wiki/Aylo"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "prime_fx3_50",
+      "line": "shot on Sony FX3, Sony FE 50mm f/1.4 GM, f/2, 1/50s, ISO 640, soft window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "adult-mobile",
@@ -9464,7 +10040,8 @@
         "quick glance",
         "bedroom"
       ],
-      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 9:16 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 40
     },
     "venues": [
       "bathroom mirror",
@@ -9501,7 +10078,14 @@
     "sources": [
       "https://www.scam-detector.com/validator/solotouch-plus-review/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_hand",
+      "line": "shot on {iphone}, main camera 24mm, handheld, ISO 640, 1/60s, available light",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "milfed",
@@ -9576,10 +10160,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 110,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -9592,7 +10176,8 @@
         "medium framing",
         "confident gaze"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 250 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 110 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "suburban kitchen",
@@ -9628,7 +10213,14 @@
       "https://nsfwranker.com/review/milfed",
       "https://nsfwranker.com/review/mile-high-media"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "nubile-films",
@@ -9705,10 +10297,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 450,
+      "stylize": 150,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -9721,7 +10313,8 @@
         "slow dolly",
         "linen textures"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 450 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 150 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 450
     },
     "venues": [
       "lakeside villa",
@@ -9757,7 +10350,14 @@
       "https://nubilefilmsapp.com/aboutus.html",
       "https://www.vice.com/en/article/how-a-fairly-vanilla-sex-scene-became-a-pornhub-sensation/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "prime_fx3_50",
+      "line": "shot on Sony FX3, Sony FE 50mm f/1.4 GM, f/2, 1/50s, ISO 640, soft window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "dogfart",
@@ -9848,7 +10448,8 @@
         "close reaction",
         "raw framing"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "suburban living room",
@@ -9886,7 +10487,14 @@
       "https://fapindex.com/review/dfxtra/",
       "https://adultsitecompare.com/brand/dogfart-network/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "fakehub",
@@ -9979,7 +10587,8 @@
         "flat CCTV look",
         "car interior"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 45 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 45 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 45
     },
     "venues": [
       "London taxi interior",
@@ -10018,7 +10627,14 @@
       "https://lustfind.com/site/fakehub",
       "https://nsfwranker.com/review/realitykings"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "action",
+      "template": "gopro_dash",
+      "line": "shot on a GoPro HERO13 Black dash-mounted, linear lens, 2.7K, auto exposure",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "tiny4k",
@@ -10113,7 +10729,8 @@
         "natural skin",
         "simple setup"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "bright apartment bedroom",
@@ -10151,7 +10768,14 @@
       "https://theporndude.com/top-premium-sites",
       "https://www.rabbitsreviews.com/porn/reviews/vip-4k"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "action",
+      "template": "gopro_chest",
+      "line": "shot on a GoPro HERO13 Black chest mount, POV, linear lens, 4K, window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "passion-hd",
@@ -10225,10 +10849,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 350,
+      "stylize": 130,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -10241,7 +10865,8 @@
         "sensual mood",
         "patio"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 350 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 130 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 350
     },
     "venues": [
       "bright bedroom",
@@ -10277,7 +10902,14 @@
       "https://thespillblog.co.uk/passion-hd-review/",
       "https://www.rabbitsreviews.com/porn/reviews/porn-pros-network"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "prime_fx3_50",
+      "line": "shot on Sony FX3, Sony FE 50mm f/1.4 GM, f/2, 1/50s, ISO 640, soft window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "videobox",
@@ -10352,10 +10984,10 @@
     "mj": {
       "ar": "4:3",
       "model": "--v 6.1",
-      "stylize": 150,
+      "stylize": 100,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -10368,7 +11000,8 @@
         "Y2K fashion",
         "DVD era"
       ],
-      "suffix": "--ar 4:3 --v 6.1 --stylize 150 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 4:3 --v 6.1 --style raw --stylize 100 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 150
     },
     "venues": [
       "San Fernando Valley house",
@@ -10403,7 +11036,14 @@
     "sources": [
       "https://www.amateurdeals.com/coupons/videobox/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "camcorder",
+      "template": "dv_sd",
+      "line": "shot on a Panasonic AG-DVX100 camcorder, standard-definition video, 4:3, on-camera light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "new-sensations",
@@ -10478,10 +11118,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -10494,7 +11134,8 @@
         "morning after sunlight",
         "relatable apartment"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "relatable apartment",
@@ -10530,7 +11171,14 @@
       "https://aan.xxx/review-second-chances-new-sensations-romance/",
       "https://aan.xxx/review-trying-new-things-new-sensations/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "prime_fx3",
+      "line": "shot on Sony FX3, Sony FE 35mm f/1.4 GM, f/1.8, 1/50s, ISO 800, motivated practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "private-com",
@@ -10606,10 +11254,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 500,
+      "stylize": 160,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -10622,7 +11270,8 @@
         "Steadicam",
         "4K"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 500 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 160 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 500
     },
     "venues": [
       "South of France villa",
@@ -10659,7 +11308,14 @@
       "https://ainews.xxx/2002/06/06/prvt-private-premieres-major-production-the-private-gladiator/",
       "https://ainews.xxx/2006/05/18/private-shoots-discovering-priva/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "cinema",
+      "template": "fx6_prime",
+      "line": "shot on Sony FX6, Sony FE 50mm f/1.2 GM, f/2, 1/50s, ISO 800, motivated tungsten practicals",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "cherrypimps",
@@ -10735,10 +11391,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 110,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -10751,7 +11407,8 @@
         "even key",
         "wide-normal"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 250 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 110 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "colorful studio bedroom",
@@ -10786,7 +11443,14 @@
     "sources": [
       "https://adultpickhub.com/reviews/cherrypimps/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "lilhumpers",
@@ -10882,7 +11546,8 @@
         "pool",
         "laughing"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "Miami apartment",
@@ -10919,7 +11584,14 @@
     "sources": [
       "https://nsfwranker.com/review/bangbros"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_sun",
+      "line": "handheld Sony FX3, Sony FE 16-35mm f/2.8 GM II at 24mm, f/5.6, 1/100s, ISO 400, hard daylight plus on-camera LED",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "thundercock",
@@ -10995,10 +11667,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 280,
+      "stylize": 116,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -11011,7 +11683,8 @@
         "studio coverage",
         "confident gaze"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 280 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 116 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 280
     },
     "venues": [
       "upscale living room",
@@ -11048,7 +11721,14 @@
       "https://ainews.xxx/2025/08/08/reagan-foxx-stars-in-her-sixth-thundercock-production-with-naughty-america/",
       "https://www.paidpornguide.com/sites/thundercock/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "tonights-girlfriend",
@@ -11141,7 +11821,8 @@
         "chest rig framing",
         "polished"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 80
     },
     "venues": [
       "upscale hotel room",
@@ -11179,7 +11860,14 @@
       "https://aan.xxx/review-tonights-girlfriend-47-naughty-america/",
       "https://aan.xxx/review-tonights-girlfriend-vol-58-naughty-america/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "action",
+      "template": "gopro_chest",
+      "line": "shot on a GoPro HERO13 Black chest mount, POV, linear lens, 4K, window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "hardx",
@@ -11255,10 +11943,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "high",
       "mjKeywords": [
@@ -11271,7 +11959,8 @@
         "bold glam",
         "hero wide"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "luxury modern home",
@@ -11308,7 +11997,14 @@
       "https://doi.org/10.1080/23268743.2016.1241160",
       "https://aan.xxx/review-stacked-10-hard-x/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "bang-com",
@@ -11383,10 +12079,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -11399,7 +12095,8 @@
         "studio",
         "streaming original"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 200 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 100 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "modern loft",
@@ -11435,7 +12132,14 @@
       "https://adultvisor.com/bang-com-review/",
       "https://lustfind.com/site/bang-premium"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "21naturals",
@@ -11510,10 +12214,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 350,
+      "stylize": 130,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -11526,7 +12230,8 @@
         "lace lingerie",
         "apartment window"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 350 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 130 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 350
     },
     "venues": [
       "European garden",
@@ -11562,7 +12267,14 @@
       "https://fapindex.com/review/21-naturals/",
       "https://www.ynoteurope.com/canadians-gobble-eu-affiliate-network/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "devilsfilm",
@@ -11637,10 +12349,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 250,
+      "stylize": 110,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -11653,7 +12365,8 @@
         "industrial set",
         "dark glam"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 250 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 110 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 250
     },
     "venues": [
       "urban loft",
@@ -11689,7 +12402,14 @@
       "https://fapindex.com/review/21-naturals/",
       "https://nsfwranker.com/review/adulttime"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "club-seventeen",
@@ -11784,7 +12504,8 @@
         "living room",
         "wide lens"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "Amsterdam canal flat",
@@ -11823,7 +12544,14 @@
       "https://es.wikipedia.org/wiki/Club_Seventeen",
       "https://acetylene-eyes.com/2018/09/24/club-seventeen-title-unknown-feat-tamara-f/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "21sextury",
@@ -11898,10 +12626,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -11914,7 +12642,8 @@
         "glam medium",
         "European interior"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "Budapest villa",
@@ -11950,7 +12679,14 @@
       "https://www.ynoteurope.com/canadians-gobble-eu-affiliate-network/",
       "https://thebestfetishsites.com/premium-porn/porndoepremium/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "pornworld",
@@ -12026,10 +12762,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 150,
+      "stylize": 90,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "high",
       "mjKeywords": [
@@ -12042,7 +12778,8 @@
         "handheld",
         "European glam"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 150 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 90 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 150
     },
     "venues": [
       "Budapest studio",
@@ -12078,7 +12815,14 @@
       "https://wowkum.com/pornworld-review-premium-adult-4k-content/",
       "https://wowkum.com/pornbox-review-premium-content-access/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "yourvids",
@@ -12168,7 +12912,8 @@
         "bedroom set",
         "lamp practical"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "creator bedroom",
@@ -12205,7 +12950,14 @@
     "sources": [
       "https://www.creatorsspicytea.co/introduction-to-yourvids/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_tripod",
+      "line": "shot on {iphone} on a tripod at seated eye level, main camera 24mm, ISO 320, one LED panel",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "go-perv",
@@ -12297,7 +13049,8 @@
         "handheld",
         "basement studio"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "European basement studio",
@@ -12335,7 +13088,14 @@
       "https://goperv.com/join/",
       "https://goperv.com/terms/compliance-notice/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "nudz",
@@ -12410,10 +13170,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -12426,7 +13186,8 @@
         "minimal styling",
         "calm pose"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "sunlit loft studio",
@@ -12461,7 +13222,14 @@
     "sources": [
       "https://theporndude.com/top-premium-sites"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "nympho",
@@ -12552,7 +13320,8 @@
         "handheld",
         "pop art"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 70 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 70
     },
     "venues": [
       "pink color-blocked room",
@@ -12589,7 +13358,14 @@
     "sources": [
       "https://theporndude.com/top-premium-sites"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "pov_fx3",
+      "line": "handheld POV on Sony FX3, Sony FE 16-35mm f/2.8 GM II at 20mm, f/4, 1/50s, ISO 1250, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "spizoo",
@@ -12664,10 +13440,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -12680,7 +13456,8 @@
         "clean fill",
         "star close-up"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "LA studio bedroom",
@@ -12715,7 +13492,14 @@
     "sources": [
       "https://wowkum.com/spizoo-review-premium-adult-content/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "erika-lust",
@@ -12791,10 +13575,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 550,
+      "stylize": 170,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -12807,7 +13591,8 @@
         "Barcelona apartment",
         "female gaze"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 550 --chaos 15 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 170 --chaos 15 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 550
     },
     "venues": [
       "Barcelona apartment",
@@ -12843,7 +13628,14 @@
       "https://nsfwranker.com/review/erika-lust",
       "https://en.wikipedia.org/wiki/Erika_Lust"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_mini",
+      "line": "shot on ARRI Alexa Mini, 32mm prime at T2, 1/48s, 800 ISO, soft natural window light",
+      "confidence": "known",
+      "basis": "Erika Lust: 'When shooting I use an ARRI ALEXA Mini' (usesthis.com interview)"
+    }
   },
   {
     "id": "dorcel-club",
@@ -12919,10 +13711,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 600,
+      "stylize": 180,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -12935,7 +13727,8 @@
         "85mm prime",
         "chateau ballroom"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 600 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 180 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 600
     },
     "venues": [
       "Parisian haussmann salon",
@@ -12972,7 +13765,14 @@
       "https://en.wikipedia.org/wiki/Marc_Dorcel",
       "https://aan.xxx/dorcels-luxure-series-spotlights-wives-to-be-initiated/"
     ],
-    "confidence": "high"
+    "confidence": "high",
+    "gear": {
+      "kind": "cinema",
+      "template": "alexa_mini",
+      "line": "shot on ARRI Alexa Mini, 32mm prime at T2, 1/48s, 800 ISO, soft natural window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "fapflare",
@@ -13046,10 +13846,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 300,
+      "stylize": 120,
       "chaos": 20,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "high",
       "mjKeywords": [
@@ -13062,7 +13862,8 @@
         "haze",
         "sparkle"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 300 --chaos 20 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 120 --chaos 20 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 300
     },
     "venues": [
       "mixed studio set",
@@ -13097,7 +13898,14 @@
     "sources": [
       "https://theporndude.com/top-premium-sites"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "xxl-gang",
@@ -13191,7 +13999,8 @@
         "practical light",
         "rowdy energy"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "warehouse set",
@@ -13229,7 +14038,14 @@
       "https://xxlgang.com/join/",
       "https://theporndude.com/top-premium-sites"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "nookies",
@@ -13325,7 +14141,8 @@
         "handheld",
         "spa room"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "bedroom",
@@ -13363,7 +14180,14 @@
       "https://pvmchicago.net/archives/23906",
       "https://www.eroticbeauties.net/blog/nookies-review-pros-and-cons-of-a-unique-porn-site-294193.html"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "pov_fx3",
+      "line": "handheld POV on Sony FX3, Sony FE 16-35mm f/2.8 GM II at 20mm, f/4, 1/50s, ISO 1250, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "hussie-pass",
@@ -13456,7 +14280,8 @@
         "real talk",
         "tripod medium"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "casting couch room",
@@ -13493,7 +14318,14 @@
     "sources": [
       "https://www.honestpornreviews.com/hussiepass/Review.cfm"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "filthflix",
@@ -13566,10 +14398,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 15,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -13582,7 +14414,8 @@
         "contemporary",
         "multi-cam"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 200 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 100 --chaos 15 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "studio bedroom",
@@ -13617,7 +14450,14 @@
     "sources": [
       "https://fullyadult.com/37243/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "property-sex",
@@ -13709,7 +14549,8 @@
         "agent power suit",
         "open house"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 80
     },
     "venues": [
       "staged luxury listing",
@@ -13746,7 +14587,14 @@
     "sources": [
       "https://www.sextoymagazine.com/property-sex-review/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "pov_fx3",
+      "line": "handheld POV on Sony FX3, Sony FE 16-35mm f/2.8 GM II at 20mm, f/4, 1/50s, ISO 1250, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "pornpros",
@@ -13837,7 +14685,8 @@
         "handheld",
         "sunny"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "LA apartment",
@@ -13874,7 +14723,14 @@
     "sources": [
       "https://www.rabbitsreviews.com/porn/reviews/porn-pros-network"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "pov_fx3",
+      "line": "handheld POV on Sony FX3, Sony FE 16-35mm f/2.8 GM II at 20mm, f/4, 1/50s, ISO 1250, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "loveherfilms",
@@ -13949,10 +14805,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -13965,7 +14821,8 @@
         "4K",
         "white bounce"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "white minimalist apartment",
@@ -14000,7 +14857,14 @@
     "sources": [
       "https://fullyadult.com/37231/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "prime_fx3_50",
+      "line": "shot on Sony FX3, Sony FE 50mm f/1.4 GM, f/2, 1/50s, ISO 640, soft window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "porncz",
@@ -14075,10 +14939,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 200,
+      "stylize": 100,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -14091,7 +14955,8 @@
         "HD",
         "countryside"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 200 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 100 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 200
     },
     "venues": [
       "Prague apartment",
@@ -14126,7 +14991,14 @@
     "sources": [
       "https://ndevs.eu/work/porncz/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "jacquie-et-michel",
@@ -14218,7 +15090,8 @@
         "chatty",
         "campervan"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "Provencal country house",
@@ -14255,7 +15128,14 @@
     "sources": [
       "https://en.wikipedia.org/wiki/Jacquie_et_Michel"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "hookup-hotshot",
@@ -14347,7 +15227,8 @@
         "close handheld",
         "real talk"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 45 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 45 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 45
     },
     "venues": [
       "apartment doorway",
@@ -14384,7 +15265,14 @@
     "sources": [
       "https://ainews.xxx/2024/11/01/sage-hunter-makes-her-hookup-hotshot-debut/"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "toby-dick",
@@ -14478,7 +15366,8 @@
         "practical lamp",
         "UK street"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 50 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 50
     },
     "venues": [
       "London flat",
@@ -14516,7 +15405,14 @@
       "https://www.xvideos.com/toby_dick_studios",
       "https://gridinsoft.com/online-virus-scanner/url/tobydick-com"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "teens-love-huge-cocks",
@@ -14611,7 +15507,8 @@
         "reality banter",
         "sunny"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "Miami apartment",
@@ -14648,7 +15545,14 @@
     "sources": [
       "https://theporndude.com/859/teenslovehugecocks"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_sun",
+      "line": "handheld Sony FX3, Sony FE 16-35mm f/2.8 GM II at 24mm, f/5.6, 1/100s, ISO 400, hard daylight plus on-camera LED",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "sensex",
@@ -14735,7 +15639,8 @@
         "casual",
         "lamp"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 40 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 40
     },
     "venues": [
       "apartment",
@@ -14772,7 +15677,14 @@
     "sources": [
       "https://www.thegoondude.com/site/sensex-review"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_hand",
+      "line": "shot on {iphone}, main camera 24mm, handheld, ISO 640, 1/60s, available light",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "little-caprice-dreams",
@@ -14849,10 +15761,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 400,
+      "stylize": 140,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -14865,7 +15777,8 @@
         "natural chic",
         "sunset terrace"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 400 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 140 --chaos 12 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 400
     },
     "venues": [
       "Vienna apartment",
@@ -14902,7 +15815,14 @@
       "https://www.joyclub.com/en/business/5694134.little_caprice_dreams.html",
       "https://aiwards.com/studio/littlecaprice-dreams-com"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "prime_fx3_50",
+      "line": "shot on Sony FX3, Sony FE 50mm f/1.4 GM, f/2, 1/50s, ISO 640, soft window light",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "magma-film",
@@ -14977,10 +15897,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 100,
+      "stylize": 80,
       "chaos": 12,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 1",
       "motion": "low",
       "mjKeywords": [
@@ -14993,7 +15913,8 @@
         "medium framing",
         "HD"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 100 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 100
     },
     "venues": [
       "Berlin flat",
@@ -15028,7 +15949,14 @@
     "sources": [
       "https://theporndude.com/top-premium-sites"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_fx6",
+      "line": "shot on Sony FX6, Sony FE 24-70mm f/2.8 GM II at 50mm, f/2.8, 1/50s, ISO 800, large soft key plus fill",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "vip4k",
@@ -15122,7 +16050,8 @@
         "daylight",
         "casual"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 80 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 80
     },
     "venues": [
       "European apartment",
@@ -15159,7 +16088,14 @@
     "sources": [
       "https://www.rabbitsreviews.com/porn/reviews/vip-4k"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "pov_fx3",
+      "line": "handheld POV on Sony FX3, Sony FE 16-35mm f/2.8 GM II at 20mm, f/4, 1/50s, ISO 1250, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "enjoyx",
@@ -15234,10 +16170,10 @@
     "mj": {
       "ar": "16:9",
       "model": "--v 6.1",
-      "stylize": 450,
+      "stylize": 150,
       "chaos": 10,
       "weird": 0,
-      "styleRaw": false,
+      "styleRaw": true,
       "quality": "--q 2",
       "motion": "low",
       "mjKeywords": [
@@ -15250,7 +16186,8 @@
         "warm glam grade",
         "dolly"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --stylize 450 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 150 --chaos 10 --q 2 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy",
+      "stylizeBefore": 450
     },
     "venues": [
       "luxury apartment",
@@ -15285,7 +16222,14 @@
     "sources": [
       "https://www.premiumdiscounts.com/discount-code/enjoyx/"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "studio_c70",
+      "line": "shot on Canon EOS C70, Canon RF 24-70mm f/2.8L at 35mm, f/2.8, 1/50s, ISO 800, LED softboxes",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   },
   {
     "id": "clips-generic",
@@ -15375,7 +16319,8 @@
         "direct address",
         "lamp"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 10 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "home bedroom set",
@@ -15414,7 +16359,14 @@
       "https://nsfwranker.com/review/manyvids",
       "https://en.wikipedia.org/wiki/Clips4Sale"
     ],
-    "confidence": "medium"
+    "confidence": "medium",
+    "gear": {
+      "kind": "phone",
+      "template": "phone_tripod",
+      "line": "shot on {iphone} on a tripod at seated eye level, main camera 24mm, ISO 320, one LED panel",
+      "confidence": "likely",
+      "basis": "phone-native platform; creators commonly shoot on the latest iPhone Pro"
+    }
   },
   {
     "id": "riggs-films",
@@ -15505,7 +16457,8 @@
         "suburban",
         "laid back"
       ],
-      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch"
+      "suffix": "--ar 16:9 --v 6.1 --style raw --stylize 60 --chaos 12 --q 1 --no text, watermark, logo, caption, UI, identical faces, cloned women, same face, beauty filter, plastic skin, airbrush, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+      "stylizeBefore": 60
     },
     "venues": [
       "Aussie backyard pool",
@@ -15542,6 +16495,13 @@
     "sources": [
       "https://riggsfilms.vip/memberships"
     ],
-    "confidence": "low"
+    "confidence": "low",
+    "gear": {
+      "kind": "mirrorless",
+      "template": "gonzo_a7s",
+      "line": "handheld Sony A7S III, Sony FE 24-70mm f/2.8 GM II at 28mm, f/4, 1/50s, ISO 1600, practical lighting",
+      "confidence": "guess",
+      "basis": "gear not public; most common setup for this production tier"
+    }
   }
 ]

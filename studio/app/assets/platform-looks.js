@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260925e";
+  var V = "20260925f";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -47,6 +47,61 @@
   }
   // Keep the idea out of the params: no "::" weights or "--flags" typed by the user.
   function sanitizeIdea(t) { return String(t || "").replace(/::-?[\d.]*/g, " ").replace(/(^|\s)[\u2014\u2013-]{1,2}[a-z]+(\s+[\w:.\/-]+)?/gi, " ").replace(/[{}]/g, " ").replace(/\s{2,}/g, " ").trim(); }
+
+  // ---- Camera: "Platform camera" (real gear per look, from looks.json gear) | "iPhone" -------------
+  // Newest Pro iPhone as of Sep 2026 (iPhone 18 Pro, released Sep 18 2026). Update this one constant later.
+  var IPHONE_MODEL = "iPhone 18 Pro";
+  // Any camera / lens / phone-model wording already in a look, so only ONE camera appears in the prompt.
+  var GEAR_RE = /\b(i-?phones?|android|pixel\s*\d|galaxy\s*s\d+|smartphone|arri|alexa|red\s+(?:komodo|v-raptor|dragon|epic)|sony|canon|nikon|fuji\w*|panasonic|lumix|blackmagic|go-?pro\w*|hasselblad|leica|insta360|camcorder|handycam|dash[\s-]?(?:cam|lens|mounted)|webcam|dslr|mirrorless|\d+(?:-\d+)?\s?mm|anamorphic\w*|macro lens|fisheye|ultra-wide|stereoscopic|vr lens|cinema (?:primes?|lens(?:es)?|camera)|primes?|zoom lens(?:es)?|chest[\s-]rig\w*|film-to-tape|35mm film|super\s?8|shot on)\b/i;
+  // Glossy / marketing words that fight photo realism (both tabs). Brand set, light and colour words stay.
+  var GLOSS_RE = /\b(epic|sci-fi[\s-]cinema|perfume[\s-]commercial|commercial aesthetic|aspirational luxury|cinema[\s-]grade|cinematic grade|blockbuster|masterpiece|8k|4k|ultra[\s-]?hd|hdr|hyper[\s-]?real\w*|award[\s-]winning|flawless|high bitrate|trailer)\b/i;
+  // Stills only (Midjourney tab): camera-move / film-marketing words that make a photo read as CGI.
+  var GLOSS_MJ_RE = /\b(cinematic|drone|crane|dolly|steadicam|gimbal|slider|slow[\s-]?mo|slow reveals?|slow push|push-ins?|establishing shot|aerials?|glossy|polished|parallax|orbit)\b/i;
+  var ARTIFACTS = {
+    phone: "Smart HDR tone mapping, slight sensor noise in the shadows, computational sharpening, deep phone depth of field",
+    mirrorless: "natural lens falloff, mild chromatic aberration at the edges, true optical depth of field, fine ISO grain",
+    cinema: "natural lens falloff, mild chromatic aberration at the edges, true optical shallow depth of field, fine ISO grain",
+    stills: "natural lens falloff, mild chromatic aberration, true shallow depth of field, fine ISO grain, strobe catchlights",
+    action: "wide-angle barrel distortion, slight rolling-shutter wobble, sensor noise in the shadows, auto exposure shifts",
+    camcorder: "camcorder video softness, auto white balance drift, video noise, slight interlacing",
+    webcam: "webcam compression, soft focus, auto exposure pumping, slight noise",
+    virtual: ""
+  };
+  function gearOf(look) { return look.gear || { kind: "phone", line: "shot on {iphone}, main camera 24mm, handheld, available light", confidence: "guess" }; }
+  function camKind(look) { return S.cam === "iphone" ? "phone" : gearOf(look).kind; }
+  function camLine(look, tab) {
+    if (S.cam === "iphone") {
+      return tab === "video" ? "Shot on " + IPHONE_MODEL + ", " + (String(look.aspect) === "9:16" ? "vertical " : "") + "handheld smartphone footage, " + IPHONE_MODEL + " main camera"
+        : "shot on " + IPHONE_MODEL + ", " + IPHONE_MODEL + " main camera, smartphone photo";
+    }
+    var g = gearOf(look);
+    if (g.kind === "virtual") return "";
+    return g.line.replace(/\{iphone\}/g, IPHONE_MODEL);
+  }
+  // Scrub is skipped for rendered looks in Platform mode (their "virtual camera" text is the style).
+  function camScrubOn(look) { return !(gearOf(look).kind === "virtual" && S.cam !== "iphone"); }
+  function camScrubList(text, look, tab) {
+    if (!camScrubOn(look)) return String(text || "");
+    var stills = tab !== "video";
+    return String(text || "").replace(/\bcandid iPhone photo\b/gi, "candid photo").split(/,\s*/).filter(function (f) {
+      return f && !GEAR_RE.test(f) && !GLOSS_RE.test(f) && !(stills && GLOSS_MJ_RE.test(f));
+    }).join(", ");
+  }
+  function camScrubProse(text, look) {
+    if (!camScrubOn(look)) return String(text || "");
+    return String(text || "").split(/(?<=\.)\s+/).map(function (sen) {
+      var m = sen.match(/^([A-Z][A-Za-z ]{0,20}:\s*)/), lab = m ? m[1] : "", body = m ? sen.slice(lab.length) : sen;
+      var end = /\.\s*$/.test(body) ? "." : ""; body = body.replace(/\.\s*$/, "");
+      var kept = body.split(/;\s*/).map(function (part) {
+        return part.split(/,\s*/).filter(function (c) { return c && (/adults 21\+/i.test(c) || (!GEAR_RE.test(c) && !GLOSS_RE.test(c))); }).join(", ");
+      }).filter(Boolean).join("; ");
+      return kept ? lab + kept + end : "";
+    }).filter(Boolean).join(" ");
+  }
+  function stylizeOf(look) {
+    var st = Number((look.mj || {}).stylize) || 0;
+    return S.cam === "iphone" ? Math.min(st, 100) : st;  // phone capture reads real at low stylize
+  }
 
   // ---- Heat levels (18+ mode only; default Tease) -------------------------------------------
   var HEATS = ["tease", "spicy", "xxx"];
@@ -92,12 +147,12 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, tab: "mj", heat: "tease", result: null, last: {}, notice: "", _forceAdult: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, tab: "mj", heat: "tease", cam: "platform", result: null, last: {}, notice: "", _forceAdult: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "tab", "heat", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; }); } catch (e) {}
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "tab", "heat", "cam", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; }); } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, tab: S.tab, heat: S.heat, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, tab: S.tab, heat: S.heat, cam: S.cam, result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -151,6 +206,8 @@
     suf = suf.replace(/\s--(tile|repeat|r)\b(\s+\d+)?/gi, "").replace(/\s--seed\s+\d+/gi, "");
     // scrub the --no list too
     suf = suf.replace(/--no\s+(.*)$/i, function (_, list) { return "--no " + scrubList(list); });
+    suf = suf.replace(/--stylize\s+\d+/i, "--stylize " + stylizeOf(look));
+    if (/--v\s+6/.test(suf) && !/--style raw/.test(suf)) suf = suf.replace(/(--v\s+[\d.]+)/, "$1 --style raw");
     return suf + " --seed " + seed;
   }
   // Wardrobe for this roll: idea clothing > heat wardrobe > look/pool wardrobe.
@@ -196,15 +253,19 @@
     var heritage = fill(V2.heritageFace, r);
     if (S.groupScene) heritage = "lead woman: " + heritage;
     var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
+    var head = headOf(look, w.fromIdea || heat !== "tease", heat), real = realism(look, heat);
+    head = camScrubList(head, look, "mj"); real = camScrubList(real, look, "mj");  // only one camera in the prompt
     var parts = [
       HEAT[heat].lead,                        // heat wording (Tease / Spicy / XXX)
-      headOf(look, w.fromIdea || heat !== "tease", heat), // mjPrompt without {idea}
+      camLine(look, "mj"),                    // camera: platform gear or iPhone
+      head,                                   // mjPrompt without {idea}
       fill(V2.venue, r),                      // venue
       heritage,                               // heritage/skin + unique face + face picks
       fill(V2.body, r),                       // hair + build + heightFeel + ageBand
       styling,                                // wardrobe (idea first) + makeup + nails + tattoos
       "adult 21+",                            // always, in code
-      realism(look, heat)                     // realismBlock
+      real,                                   // realismBlock
+      ARTIFACTS[camKind(look)] || ""          // real-capture artifacts for that camera
     ];
     var body = dedupe(scrubFraming(scrubList(parts.join(", ").replace(/\s+/g, " ").replace(/,\s*,/g, ","))));
     if (!/adult 21\+/.test(body)) body += ", adult 21+";
@@ -216,14 +277,26 @@
     heat = heat || "tease";
     var V2 = S.variety.slotTemplates;
     var w = wardrobeFor(idea, heat, r);
-    var t = String(look.promptTemplate || "");
-    t = idea ? t.replace("{idea}", "Main action (priority): " + idea) : t.replace(/^\{idea\}\s*[\u2014-]\s*/, "").replace("{idea}", "");
+    // Scrub only the look's own text; the idea is added afterwards so no filter can ever drop it.
+    var rest = String(look.promptTemplate || "").replace(/^\{idea\}\s*[\u2014-]\s*/, "").replace(/\{idea\}/g, "");
+    var k = rest.indexOf(". "), first = k > 0 ? rest.slice(0, k) : rest, after = k > 0 ? rest.slice(k + 2) : "";
+    first = camScrubProse(first + ".", look).replace(/\.\s*$/, "");
+    if (FRAMING_RE.test(first) || (heat !== "tease" && CLEAN_RE.test(first))) first = "";
+    after = camScrubProse(after, look);
+    var t = [(idea ? "Main action (priority): " + idea + (first ? " \u2014 " + first : "") : first), after].filter(Boolean).join(". ").replace(/\.\.\s/g, ". ");
     if (w.fromIdea || heat !== "tease") t = t.replace(/Wardrobe:[^.]*\./i, "Wardrobe: " + w.text + ".");
     if (heat !== "tease") t = t.replace(/Mood:[^.]*\./i, "Mood: " + (heat === "xxx" ? "erotic, explicit, uninhibited" : "provocative, seductive, confident") + ".");
     // Drop any clause with family / youth / non-consent framing, sentence by sentence.
-    t = t.split(/(?<=\.)\s+/).map(function (sen) { return sen.split(/;\s*/).filter(function (c) { if (/adults 21\+/i.test(c)) return true; return !FRAMING_RE.test(c) && !(heat !== "tease" && CLEAN_RE.test(c)); }).join("; "); }).filter(Boolean).join(" ");
+    t = t.split(/(?<=\.)\s+/).map(function (sen) {
+      if (/^Main action \(priority\):/.test(sen)) return sen;
+      var m = sen.match(/^([A-Z][A-Za-z ]{0,20}:\s*)/), lab = m ? m[1] : "", body = m ? sen.slice(lab.length) : sen;
+      var end = /\.\s*$/.test(body) ? "." : ""; body = body.replace(/\.\s*$/, "");
+      var kept = body.split(/;\s*/).filter(function (c) { if (/adults 21\+/i.test(c)) return true; return !FRAMING_RE.test(c) && !(heat !== "tease" && CLEAN_RE.test(c)); }).join("; ");
+      return kept ? lab + kept + end : "";
+    }).filter(Boolean).join(" ");
     var i = t.indexOf(". ");
-    var heatLine = HEAT[heat].video;
+    var cl = camLine(look, "video"), art = ARTIFACTS[camKind(look)] || "";
+    var heatLine = HEAT[heat].video + (cl ? " Camera: " + cl + (art ? "; " + art : "") + "." : "");
     t = i > 0 ? t.slice(0, i + 1) + " " + heatLine + t.slice(i + 1) : heatLine + " " + t;
     var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
     var lead = (S.groupScene ? "Group scene; lead woman: " : "One woman per frame: ") + fill(V2.heritageFace, r) + "; " + fill(V2.body, r) + ".";
@@ -237,9 +310,9 @@
     var mj = look.mj || {}, no = "";
     var m = String(mj.suffix || "").match(/--no\s+(.*)$/i); if (m) no = "--no " + scrubList(m[1]);
     return {
-      ar: mj.ar ? "--ar " + mj.ar : "", v: mj.model || "", stylize: mj.stylize != null ? "--stylize " + mj.stylize : "",
+      ar: mj.ar ? "--ar " + mj.ar : "", v: mj.model || "", stylize: mj.stylize != null ? "--stylize " + stylizeOf(look) : "",
       chaos: mj.chaos != null ? "--chaos " + mj.chaos : "", weird: mj.weird ? "--weird " + mj.weird : "", q: mj.quality || "",
-      style: mj.styleRaw ? "--style raw" : "", seed: "--seed " + seed, no: no, repeat: "", tile: false, realism: false
+      style: (mj.styleRaw || /^--v\s*6/.test(mj.model || "")) ? "--style raw" : "", seed: "--seed " + seed, no: no, repeat: "", tile: false, realism: false
     };
   }
   function applyBank(bank) {
@@ -286,6 +359,9 @@
     ".pml-sw{width:30px;height:16px;border-radius:9px;background:rgba(255,255,255,.15);position:relative}" +
     ".pml-sw:after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#94a3b8;transition:left .15s}" +
     ".pml-toggle.on .pml-sw{background:var(--acc)}.pml-toggle.on .pml-sw:after{left:16px;background:#05070d}" +
+    ".pml-cam{min-height:44px}.pml-cam.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
+    ".pml-gear{margin-top:6px;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.45;color:#94a3b8}" +
+    ".pml-conf{display:inline-block;margin-left:8px;padding:0 6px;border-radius:4px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);color:#cbd5e1}.pml-conf-guess{border-color:rgba(251,191,36,.5);color:#fde68a}.pml-conf-known{border-color:rgba(74,222,128,.5);color:#86efac}" +
     ".pml-htag{font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:3px 7px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e2e8f0}";
 
   function h(tag, attrs, kids) {
@@ -414,6 +490,15 @@
       else if (!l.adult) hr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "SFW look · Tease only" }));
       P.appendChild(hr);
     }
+    var cr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-camera", role: "radiogroup", "aria-label": "Camera" }, [h("span", { cls: "pml-k", text: "Camera" })]);
+    [["platform", "\ud83c\udfa5 Platform camera"], ["iphone", "\ud83d\udcf1 " + IPHONE_MODEL]].forEach(function (c) {
+      cr.appendChild(h("button", { cls: "pml-btn pml-cam" + (S.cam === c[0] ? " on" : ""), type: "button", role: "radio", "aria-checked": S.cam === c[0] ? "true" : "false", "data-cam": c[0], text: c[1],
+        on: { click: function () { S.cam = c[0]; save(); renderPanel(); } } }));
+    });
+    if (S.result && (S.result.cam || "platform") !== S.cam) cr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(cr);
+    var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
+    P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
     R.note = h("div", { cls: "pml-note", "data-pm": "look-notice", style: S.notice ? "" : "display:none", text: S.notice });
     P.appendChild(R.note);
     P.appendChild(h("button", { cls: "pml-remix", type: "button", "data-pm": "look-remix", style: "margin-top:12px", text: S.result ? "REMIX AGAIN" : "REMIX", on: { click: doRemix } }));
@@ -421,7 +506,7 @@
     if (S.result) {
       var res = S.result;
       P.appendChild(h("div", { cls: "pml-row", style: "margin-top:12px;justify-content:space-between" }, [
-        h("span", { cls: "pml-k", text: (res.tab === "video" ? "Video prompt" : "Midjourney prompt") + (res.heat && isAdult() ? " · " + HEAT_LABEL[res.heat] : "") + " · written to Prompt Output" }),
+        h("span", { cls: "pml-k", text: (res.tab === "video" ? "Video prompt" : "Midjourney prompt") + (res.heat && isAdult() ? " · " + HEAT_LABEL[res.heat] : "") + (res.cam === "iphone" ? " · " + IPHONE_MODEL : " · platform camera") + " · written to Prompt Output" }),
         h("div", { cls: "pml-row" }, [
           h("button", { cls: "pml-btn", type: "button", "data-pm": "look-copy", text: "Copy", on: { click: function () { copy(res.text, "Prompt copied"); } } }),
           h("button", { cls: "pml-btn", type: "button", "data-pm": "look-again", text: "Remix again", on: { click: doRemix } }),
@@ -455,7 +540,7 @@
     if (S.tab === "video") text = assembleVideo(l, idea, r, heat);
     else text = assembleMJ(l, idea, r, seed, heat);
     var tags = tagsFor(l, heat);
-    S.result = { text: text, tab: S.tab, look: l.id, heat: heat, seed: S.tab === "video" ? null : seed, roll: r, tags: tags };
+    S.result = { text: text, tab: S.tab, look: l.id, heat: heat, cam: S.cam, seed: S.tab === "video" ? null : seed, roll: r, tags: tags };
     save();
     try { S.api.current.setPrompt(text); } catch (e) {}
     if (S.tab !== "video") applyBank(bankFor(l, seed));
@@ -481,12 +566,13 @@
     _assembleMJ: function (id, idea, group) { var l = lookById(id); S.groupScene = !!group; var r = roll(l); return assembleMJ(l, stripBlocked(idea).text, r, seed32()); },
     _strip: stripBlocked,
     _load: fetchData,
+    iphoneModel: IPHONE_MODEL,
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult];
-      S.heat = o.heat || "tease"; S.groupScene = !!o.group; S._forceAdult = o.adult == null ? null : !!o.adult;
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.groupScene = !!o.group; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), r = roll(l);
       var out = o.tab === "video" ? assembleVideo(l, i, r, heat) : assembleMJ(l, i, r, seed32(), heat);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2];
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3];
       return out;
     }
   };
