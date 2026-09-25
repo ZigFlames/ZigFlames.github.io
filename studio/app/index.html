@@ -17,11 +17,12 @@
     <style>html,body{margin:0;min-height:100%;background:#08080a;color:#f5f0e8;}</style>
     <script src="./assets/pm-storage.js?v=20260909a"></script>
     <script src="./assets/access-gate.js?v=20260909a"></script>
+    <script src="./assets/pm-hashtags.js?v=20260925a"></script>
   </head>
   <body>
     <div id="root"></div>
     <!-- live build marker -->
-    <div id="pm-build" hidden data-v="20260909a"></div>
+    <div id="pm-build" hidden data-v="20260925a"></div>
     <noscript><p style="padding:2rem;font-family:sans-serif;">Enable JavaScript to open Prompt Machine.</p></noscript>
     <script>
       (async function () {
@@ -55,14 +56,14 @@
           }
           var s = document.createElement('script');
           s.type = 'module';
-          s.src = './assets/prompt-machine-v4.js?v=20260909a';
+          s.src = './assets/prompt-machine-v4.js?v=20260925a';
           s.onerror = function () {
             fail('Prompt Machine failed to load. Hard-refresh or open your Owner door again.');
           };
           document.head.appendChild(s);
           var l = document.createElement('link');
           l.rel = 'stylesheet';
-          l.href = './assets/prompt-machine-v4.css?v=20260909a';
+          l.href = './assets/prompt-machine-v4.css?v=20260925a';
           document.head.appendChild(l);
         } catch (e) {
           fail('Could not unlock the machine. Try Owner door or refresh.');
