@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260925d";
+  var V = "20260925e";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -30,6 +30,52 @@
     } catch (e) { return e && e.message ? e.message : "Adults 21+ only."; }
   }
 
+  // Never produce family, youth, school or non-consent framing, at any heat level (applies to every look).
+  var FRAMING_RE = /\b(famil(?:y|ies)|taboo|siblings?|sisters?|brothers?|moms?|mommy|mothers?|dads?|daddy|fathers?|daughters?|sons?|aunts?|uncles?|cousins?|nieces?|nephews?|in-laws?|free[\s-]?use|non[\s-]?consen\w*|forced|forcing|coerc\w*|sleeping|asleep|unconscious|drunk|passed[\s-]out|hidden[\s-]?cam\w*|spy[\s-]?cam\w*|peeping|school\w*|classroom|dorm\w*|homework|study nooks?|babysit\w*|innocent|youthful|young[\s-]looking|little girls?|tiny girls?|roommates?)\b/i;
+  function scrubFraming(list) { return String(list || "").split(/,\s*/).filter(function (f) { return f && !FRAMING_RE.test(f); }).join(", "); }
+  // Clothing named in the idea wins: skip the random wardrobe slot and the look's wardrobe hints.
+  var GARMENT_RE = /\b(micro[\s-]?bikinis?|string[\s-]?bikinis?|g[\s-]?strings?|thongs?|bikinis?|lingerie|bralettes?|bras?|panties|panty|underwear|knickers|bodysuits?|bodystockings?|teddy|babydoll|corsets?|bustiers?|garters?|stockings|fishnets?|pantyhose|tights|latex|pvc|leather|lace|sheer|mesh|swimsuits?|swimwear|one[\s-]?piece|booty shorts|hot ?pants|micro shorts|daisy dukes|shorts|leggings|yoga pants|mini[\s-]?skirts?|skirts?|mini[\s-]?dress|dress|gown|robe|towel|apron|harness|pasties|nipple covers?|crop[\s-]?tops?|tank[\s-]?tops?|t-shirt|tee|jersey|heels|stilettos|thigh[\s-]?highs|boots|topless|nude|naked|bare|unclothed|nothing on)\b/gi;
+  var NUDE_RE = /\b(topless|nude|naked|bare|unclothed|nothing on)\b/i;
+  // Broader: wardrobe fragments inside a look's own prompt text.
+  var HEAD_WARDROBE_RE = /\b(clothes|clothing|outfits?|wear|wardrobe|loungewear|streetwear|swimwear|sportswear|athleisure|tees?|hoodies?|sweat\w*|pajamas?|jeans|denim|cut-offs|blouses?|dress(?:es)?|sundress(?:es)?|lingerie|underwear|bras?|bikinis?|sets|cardigan|linen|cashmere|robes?|costumes?|costumey|armor|uniforms?|stilettos|heels|jewelry|silk|attire)\b/i;
+  // Clean-leaning mood words that water down Spicy / XXX.
+  var CLEAN_RE = /\b(goofy|comedic|comedy|sitcom|wholesome|homey|cozy|laugh|laughing|banter|gentle|reaction|costume props|travel vlog|casual chatting|bright mood|casual mood|documentary|soft fill|rowdy energy)\b/i;
+  function garmentsOf(idea) {
+    var out = []; GARMENT_RE.lastIndex = 0; var m;
+    while ((m = GARMENT_RE.exec(String(idea || "")))) { if (out.map(function (x) { return x.toLowerCase(); }).indexOf(m[0].toLowerCase()) < 0) out.push(m[0]); }
+    GARMENT_RE.lastIndex = 0; return out;
+  }
+  // Keep the idea out of the params: no "::" weights or "--flags" typed by the user.
+  function sanitizeIdea(t) { return String(t || "").replace(/::-?[\d.]*/g, " ").replace(/(^|\s)[\u2014\u2013-]{1,2}[a-z]+(\s+[\w:.\/-]+)?/gi, " ").replace(/[{}]/g, " ").replace(/\s{2,}/g, " ").trim(); }
+
+  // ---- Heat levels (18+ mode only; default Tease) -------------------------------------------
+  var HEATS = ["tease", "spicy", "xxx"];
+  var HEAT_LABEL = { tease: "Tease", spicy: "Spicy", xxx: "XXX" };
+  var HEAT = {
+    tease: { lead: "flirty teasing pose, suggestive, playful come-hither look, sexy", video: "Flirty and suggestive: teasing moves, playful come-hither looks." },
+    spicy: { lead: "provocative seductive posing, arched back, sultry bold gaze, revealing, lots of bare skin, sheer fabric, sexy and daring", video: "Spicy and provocative: seductive posing, arched back, sultry gaze, revealing outfit, lots of bare skin." },
+    xxx: { lead: "explicit adult erotica, topless, bare breasts, explicit adult posing, sensual, erotic, uncensored", video: "Explicit adult: topless or nude, explicit adult posing, sensual and erotic, uncensored." }
+  };
+  var SPICY_WARDROBE = ["micro bikini", "string bikini", "sheer mesh bodysuit", "lace thong and cropped tank", "see-through lace lingerie set", "wet white tank top and thong", "cheeky micro shorts and bralette", "fishnet bodystocking", "sheer robe over a G-string", "strappy cut-out swimsuit"];
+  var XXX_WARDROBE = ["fully nude", "topless, nude except heels", "topless, only a G-string", "nude except thigh-high stockings", "topless in only a thong", "fully nude with body chain", "topless, sheer open robe"];
+  var HEAT_TAGS = { tease: ["#18plus", "#adultsonly", "#spicy"], xxx: ["#nsfw", "#xxx", "#explicit", "#uncensored", "#18plus", "#adultsonly", "#adultcontent"] };
+  function heatFor(look) {
+    // Safeguards: heat only in 18+ mode and on adult looks; style-only looks cap at Spicy.
+    if (!look || !look.adult || !isAdult()) return "tease";
+    var h = HEATS.indexOf(S.heat) >= 0 ? S.heat : "tease";
+    if (look.craftOnly && h === "xxx") h = "spicy";
+    return h;
+  }
+  function tagsFor(look, heat) {
+    var ht = look.hashtags || {}, safe = (ht.safe || []).slice(), nsfw = ht.nsfw || [], out;
+    if (!isAdult() || !look.adult) out = safe;
+    else if (heat === "tease") out = safe.concat(nsfw.filter(function (t) { return HEAT_TAGS.tease.indexOf(t) >= 0; }), HEAT_TAGS.tease);
+    else if (heat === "spicy") out = safe.concat(nsfw);
+    else out = nsfw.concat(HEAT_TAGS.xxx, safe.slice(0, 4));
+    var seen = {};
+    return out.filter(function (t) { var k = t.toLowerCase(); if (seen[k] || hasBlocked(t) || FRAMING_RE.test(t.replace(/^#/, ""))) return false; seen[k] = 1; return true; });
+  }
+
   // ---- Random -------------------------------------------------------------------
   function rnd() { var a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] / 4294967296; }
   function seed32() { var a = new Uint32Array(1); crypto.getRandomValues(a); return a[0]; }
@@ -46,14 +92,14 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, tab: "mj", result: null, last: {}, notice: "" };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, tab: "mj", heat: "tease", result: null, last: {}, notice: "", _forceAdult: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "tab", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; }); } catch (e) {}
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "tab", "heat", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; }); } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, tab: S.tab, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, tab: S.tab, heat: S.heat, result: S.result })); } catch (e) {}
   }
-  function isAdult() { try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
+  function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
   function displayLabel(l) {
     // Never show blocklisted words in the UI either (e.g. the RK sub-site brand name).
@@ -72,8 +118,12 @@
   // ---- Assembly (follows variety.json assemblyOrder exactly) ----------------------------
   function roll(look) {
     var P = S.variety.pools, L = HIST, r = {};
-    r.venue = (look.venues && look.venues.length && rnd() >= FALLBACK_P) ? pick(look.venues, L.venue) : pick(P.venueEvent, L.venue);
-    r.wardrobe = (look.wardrobeHints && look.wardrobeHints.length && rnd() >= FALLBACK_P) ? pick(look.wardrobeHints, L.wardrobe) : pick(P.wardrobe, L.wardrobe);
+    var ok = function (x) { return x && !FRAMING_RE.test(x) && !hasBlocked(x); };
+    var lv = (look.venues || []).filter(ok), lw = (look.wardrobeHints || []).filter(ok);
+    r.venue = (lv.length && rnd() >= FALLBACK_P) ? pick(lv, L.venue) : pick((P.venueEvent || []).filter(ok), L.venue);
+    r.wardrobe = (lw.length && rnd() >= FALLBACK_P) ? pick(lw, L.wardrobe) : pick((P.wardrobe || []).filter(ok), L.wardrobe);
+    r.spicyWardrobe = pick(SPICY_WARDROBE, L.spicyWardrobe);
+    r.xxxWardrobe = pick(XXX_WARDROBE, L.xxxWardrobe);
     ["skinTone", "heritageRegion", "faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "complexionDetail", "distinctiveFeature",
       "hairColor", "hairStyle", "hairTexture", "build", "heightFeel", "makeupLevel", "nails", "tattoosPiercings"].forEach(function (k) { r[k] = pick(P[k], L[k]); });
     // ageBand: adult bands only (all 21+); refuse anything that isn't.
@@ -84,8 +134,9 @@
     S.last = r;
     return r;
   }
-  function realism(look) {
-    var b = String(look.realismBlock || "");
+  function realism(look, heat) {
+    var b = String(look.realismBlock || "").replace(/photoreal documentary snapshot/gi, "photoreal candid snapshot");
+    if (heat && heat !== "tease") b = b.replace(/natural sweat sheen only where skin heats/gi, "glistening skin, natural sweat sheen").replace(/,\s*dirty sensor spots/gi, "").replace(/,\s*imperfect exposure/gi, "");
     if (S.groupScene) {
       b = b.replace(/one (woman|character) per frame( unless the group toggle is on)?/gi, "group scene, every person a distinct adult 21+ with a unique face");
       if (!/group scene/i.test(b)) b += ", group scene, every person a distinct adult 21+ with a unique face";
@@ -102,31 +153,81 @@
     suf = suf.replace(/--no\s+(.*)$/i, function (_, list) { return "--no " + scrubList(list); });
     return suf + " --seed " + seed;
   }
-  function assembleMJ(look, idea, r, seed) {
+  // Wardrobe for this roll: idea clothing > heat wardrobe > look/pool wardrobe.
+  function wardrobeFor(idea, heat, r) {
+    var g = garmentsOf(idea);
+    if (g.length) {
+      var clothes = g.filter(function (x) { return !NUDE_RE.test(x); }), nude = g.filter(function (x) { return NUDE_RE.test(x); });
+      var outfit = clothes.join(" and ");
+      var parts = [];
+      if (nude.length) parts.push(nude.join(", "));
+      if (outfit) {
+        if (heat === "xxx" && !nude.length) parts.push("topless, wearing nothing but a " + outfit);
+        else if (heat === "spicy") parts.push("wearing only a tiny " + outfit + ", revealing");
+        else parts.push("wearing only a " + outfit);
+        parts.push(outfit + " in clear focus");     // repeat the key outfit term
+      } else if (heat === "xxx" && !/nude|naked/i.test(nude.join(" "))) parts.push("nude");
+      return { text: parts.join(", "), fromIdea: true };
+    }
+    if (heat === "spicy") return { text: r.spicyWardrobe, fromIdea: false };
+    if (heat === "xxx") return { text: r.xxxWardrobe, fromIdea: false };
+    return { text: r.wardrobe, fromIdea: false };
+  }
+  // The look's own prompt text without {idea}; drops contradicting wardrobe + clean-leaning bits when needed.
+  function headOf(look, dropWardrobe, heat) {
+    var head = String(look.mjPrompt || "").replace(/^\{idea\},?\s*/, "").replace("{idea}", "");
+    var lw = String(look.wardrobe || "").toLowerCase();
+    return head.split(/,\s*/).filter(function (f) {
+      if (!f) return false;
+      if (FRAMING_RE.test(f)) return false;
+      if (dropWardrobe && (HEAD_WARDROBE_RE.test(f) || (lw && lw.indexOf(f.toLowerCase()) >= 0 && !/adults? 21\+/i.test(f)))) return false;
+      if (heat !== "tease" && CLEAN_RE.test(f)) return false;
+      return true;
+    }).join(", ");
+  }
+  function dedupe(text) {
+    var seen = {};
+    return String(text).split(/,\s*/).filter(function (f) { var k = f.trim().toLowerCase(); if (!k || seen[k]) return false; seen[k] = 1; return true; }).join(", ");
+  }
+  function assembleMJ(look, idea, r, seed, heat) {
+    heat = heat || "tease";
     var V2 = S.variety.slotTemplates;
-    var head = String(look.mjPrompt || "");
-    head = idea ? head.replace("{idea}", idea) : head.replace(/^\{idea\},?\s*/, "").replace("{idea}", "");
+    var w = wardrobeFor(idea, heat, r);
     var heritage = fill(V2.heritageFace, r);
     if (S.groupScene) heritage = "lead woman: " + heritage;
+    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
     var parts = [
-      head,                                   // mjPrompt({idea})
+      HEAT[heat].lead,                        // heat wording (Tease / Spicy / XXX)
+      headOf(look, w.fromIdea || heat !== "tease", heat), // mjPrompt without {idea}
       fill(V2.venue, r),                      // venue
       heritage,                               // heritage/skin + unique face + face picks
       fill(V2.body, r),                       // hair + build + heightFeel + ageBand
-      fill(V2.styling, r),                    // wardrobe + makeup + nails + tattoos
+      styling,                                // wardrobe (idea first) + makeup + nails + tattoos
       "adult 21+",                            // always, in code
-      realism(look)                           // realismBlock
+      realism(look, heat)                     // realismBlock
     ];
-    var body = scrubList(parts.join(", ").replace(/\s+/g, " ").replace(/,\s*,/g, ","));
+    var body = dedupe(scrubFraming(scrubList(parts.join(", ").replace(/\s+/g, " ").replace(/,\s*,/g, ","))));
     if (!/adult 21\+/.test(body)) body += ", adult 21+";
-    return body + " " + suffixOf(look, seed);  // suffix (last) + --seed
+    // Idea first and weighted (MJ multi-prompt ::2), then the rest of the prompt.
+    var lead = idea ? idea + "::2 " : "";
+    return lead + body + " " + suffixOf(look, seed);  // suffix (last) + --seed
   }
-  function assembleVideo(look, idea, r) {
+  function assembleVideo(look, idea, r, heat) {
+    heat = heat || "tease";
     var V2 = S.variety.slotTemplates;
+    var w = wardrobeFor(idea, heat, r);
     var t = String(look.promptTemplate || "");
-    t = idea ? t.replace("{idea}", idea) : t.replace(/^\{idea\}\s*[—-]\s*/, "").replace("{idea}", "");
+    t = idea ? t.replace("{idea}", "Main action (priority): " + idea) : t.replace(/^\{idea\}\s*[\u2014-]\s*/, "").replace("{idea}", "");
+    if (w.fromIdea || heat !== "tease") t = t.replace(/Wardrobe:[^.]*\./i, "Wardrobe: " + w.text + ".");
+    if (heat !== "tease") t = t.replace(/Mood:[^.]*\./i, "Mood: " + (heat === "xxx" ? "erotic, explicit, uninhibited" : "provocative, seductive, confident") + ".");
+    // Drop any clause with family / youth / non-consent framing, sentence by sentence.
+    t = t.split(/(?<=\.)\s+/).map(function (sen) { return sen.split(/;\s*/).filter(function (c) { if (/adults 21\+/i.test(c)) return true; return !FRAMING_RE.test(c) && !(heat !== "tease" && CLEAN_RE.test(c)); }).join("; "); }).filter(Boolean).join(" ");
+    var i = t.indexOf(". ");
+    var heatLine = HEAT[heat].video;
+    t = i > 0 ? t.slice(0, i + 1) + " " + heatLine + t.slice(i + 1) : heatLine + " " + t;
+    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
     var lead = (S.groupScene ? "Group scene; lead woman: " : "One woman per frame: ") + fill(V2.heritageFace, r) + "; " + fill(V2.body, r) + ".";
-    var out = t + " Setting: " + fill(V2.venue, r) + ". " + lead + " Styling: " + fill(V2.styling, r) + ". " +
+    var out = t + " Setting: " + fill(V2.venue, r) + ". " + lead + " Styling: " + styling + ". " +
       "Aspect " + look.aspect + ", clip length " + look.clipLength + ", motion " + ((look.mj && look.mj.motion) || "low") + ". adult 21+.";
     out = scrubProse(out);
     if (!/adult 21\+/.test(out)) out += " adult 21+.";
@@ -174,6 +275,7 @@
     ".pml-in{flex:1 1 240px;min-height:44px;font-size:16px;padding:10px 12px;border-radius:8px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);color:#f1f5f9;outline:none}" +
     ".pml-btn{min-height:40px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation}" +
     ".pml-btn:hover{background:rgba(255,255,255,.1)}" +
+    ".pml-heat{min-width:72px}.pml-heat[disabled]{opacity:.35;cursor:not-allowed}.pml-heat-tease.on{border-color:#f9a8d4;color:#fff;background:rgba(244,114,182,.14)}.pml-heat-spicy.on{border-color:#fb923c;color:#fff;background:rgba(251,146,60,.16)}.pml-heat-xxx.on{border-color:#ef4444;color:#fff;background:rgba(239,68,68,.18)}" +
     ".pml-tab.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
     ".pml-remix{width:100%;min-height:54px;border-radius:10px;border:0;font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:800;letter-spacing:.3em;color:#05070d;cursor:pointer;background:linear-gradient(90deg,var(--acc),#f1f5f9);box-shadow:0 0 26px rgba(125,211,252,.35);touch-action:manipulation}" +
     ".pml-remix[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none}" +
@@ -299,6 +401,19 @@
       tabs.appendChild(h("button", { cls: "pml-btn pml-tab" + (S.tab === t[0] ? " on" : ""), type: "button", "data-tab": t[0], text: t[1], on: { click: function () { S.tab = t[0]; S.result = null; save(); renderPanel(); } } }));
     });
     P.appendChild(tabs);
+    if (isAdult()) {
+      var eff = heatFor(l);
+      var hr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-heat", role: "radiogroup", "aria-label": "Heat level" }, [h("span", { cls: "pml-k", text: "Heat" })]);
+      HEATS.forEach(function (k) {
+        var capped = (!l.adult && k !== "tease") || (l.craftOnly && k === "xxx");
+        hr.appendChild(h("button", { cls: "pml-btn pml-heat pml-heat-" + k + (eff === k ? " on" : ""), type: "button", role: "radio", "aria-checked": eff === k ? "true" : "false", "data-heat": k, disabled: capped ? true : null,
+          title: capped ? (l.adult ? "Style-only look: heat capped at Spicy" : "SFW look: Tease only") : HEAT_LABEL[k], text: HEAT_LABEL[k],
+          on: { click: function () { if (capped) return; S.heat = k; save(); renderPanel(); } } }));
+      });
+      if (l.craftOnly && l.adult) hr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "style-only look · max Spicy" }));
+      else if (!l.adult) hr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "SFW look · Tease only" }));
+      P.appendChild(hr);
+    }
     R.note = h("div", { cls: "pml-note", "data-pm": "look-notice", style: S.notice ? "" : "display:none", text: S.notice });
     P.appendChild(R.note);
     P.appendChild(h("button", { cls: "pml-remix", type: "button", "data-pm": "look-remix", style: "margin-top:12px", text: S.result ? "REMIX AGAIN" : "REMIX", on: { click: doRemix } }));
@@ -306,7 +421,7 @@
     if (S.result) {
       var res = S.result;
       P.appendChild(h("div", { cls: "pml-row", style: "margin-top:12px;justify-content:space-between" }, [
-        h("span", { cls: "pml-k", text: (res.tab === "video" ? "Video prompt" : "Midjourney prompt") + " · written to Prompt Output" }),
+        h("span", { cls: "pml-k", text: (res.tab === "video" ? "Video prompt" : "Midjourney prompt") + (res.heat && isAdult() ? " · " + HEAT_LABEL[res.heat] : "") + " · written to Prompt Output" }),
         h("div", { cls: "pml-row" }, [
           h("button", { cls: "pml-btn", type: "button", "data-pm": "look-copy", text: "Copy", on: { click: function () { copy(res.text, "Prompt copied"); } } }),
           h("button", { cls: "pml-btn", type: "button", "data-pm": "look-again", text: "Remix again", on: { click: doRemix } }),
@@ -329,20 +444,18 @@
     if (l.adult && !isAdult()) { setNotice("This look is 18+. Switch the machine to NSFW or XXX mode to use it."); return; }
     var raw = R.idea ? R.idea.value : S.idea;
     var cleaned = stripBlocked(raw);
-    var idea = cleaned.text.slice(0, 200);
+    var idea = sanitizeIdea(cleaned.text).slice(0, 200);
     var msg = "";
     if (cleaned.removed.length) msg = "Adults 21+ only — removed: " + cleaned.removed.join(", ") + ".";
     var banned = reuseBannedMinor(idea);
     if (banned) { setNotice("Adults 21+ only. " + banned); return; }
     S.idea = idea; if (R.idea) R.idea.value = idea;
-    var r = roll(l), seed = seed32(), text, tags = [];
-    if (S.tab === "video") text = assembleVideo(l, idea, r);
-    else text = assembleMJ(l, idea, r, seed);
-    var ht = l.hashtags || {};
-    tags = (ht.safe || []).slice();
-    if (isAdult()) (ht.nsfw || []).forEach(function (t) { if (tags.indexOf(t) < 0) tags.push(t); });
-    tags = tags.filter(function (t) { return !hasBlocked(t); });
-    S.result = { text: text, tab: S.tab, look: l.id, seed: S.tab === "video" ? null : seed, roll: r, tags: tags };
+    var heat = heatFor(l);
+    var r = roll(l), seed = seed32(), text;
+    if (S.tab === "video") text = assembleVideo(l, idea, r, heat);
+    else text = assembleMJ(l, idea, r, seed, heat);
+    var tags = tagsFor(l, heat);
+    S.result = { text: text, tab: S.tab, look: l.id, heat: heat, seed: S.tab === "video" ? null : seed, roll: r, tags: tags };
     save();
     try { S.api.current.setPrompt(text); } catch (e) {}
     if (S.tab !== "video") applyBank(bankFor(l, seed));
@@ -366,7 +479,16 @@
     setAdult: function () { if (S.el && S.looks) { renderGrid(); renderPanel(); } },
     // exposed for tests
     _assembleMJ: function (id, idea, group) { var l = lookById(id); S.groupScene = !!group; var r = roll(l); return assembleMJ(l, stripBlocked(idea).text, r, seed32()); },
-    _strip: stripBlocked
+    _strip: stripBlocked,
+    _load: fetchData,
+    _run: function (id, idea, o) {
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult];
+      S.heat = o.heat || "tease"; S.groupScene = !!o.group; S._forceAdult = o.adult == null ? null : !!o.adult;
+      var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), r = roll(l);
+      var out = o.tab === "video" ? assembleVideo(l, i, r, heat) : assembleMJ(l, i, r, seed32(), heat);
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2];
+      return out;
+    }
   };
   window.addEventListener("pm:clear-all", onClearAll);
 })();
