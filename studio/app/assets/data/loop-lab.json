@@ -1,0 +1,1485 @@
+{
+  "version": "2026-09-26a",
+  "notes": "Loop Lab data. Edit wording, order and presets here; the app reads this file (no code changes needed). 'words' = wording variants (Remix rolls between them; the first one is the default). No artist names anywhere: describe the sound.",
+  "targets": {
+    "grok": {
+      "label": "Grok",
+      "positiveLabel": "Grok Imagine prompt",
+      "negativeLabel": "Avoid line (append to the prompt)",
+      "positiveSoftMax": 1000,
+      "negativeField": false,
+      "negativePrefix": "Avoid: ",
+      "template": "Visual: {visual}. AUDIO: music only, speech: none, sound effects: none. Music: {positive}.",
+      "visual": "locked-off close-up of a vinyl record spinning on a turntable in a dim studio, no people",
+      "maxClipSeconds": 15,
+      "hint": "Grok has no standalone music model: music comes from Grok Imagine video audio (clips up to ~15 s). Paste the prompt into grok.com/imagine, add the Avoid line at the end (Grok follows 'avoid' wording loosely), then rip the audio from the clip.",
+      "sketchHint": "Grok Imagine can't take your sketch audio as input. Describe the sketch in the Idea box, or use the Suno target (Upload → Cover / Extend) to finish a real sketch."
+    },
+    "suno": {
+      "label": "Suno",
+      "positiveLabel": "Style of Music",
+      "negativeLabel": "Exclude Styles",
+      "structureLabel": "Lyrics box (structure tags)",
+      "positiveMax": 1000,
+      "negativeMax": 200,
+      "negativeField": true,
+      "negativePrefix": "",
+      "hint": "Suno Custom mode: paste Positive into Style of Music (1,000 chars on v4.5 to v5.5) and Negative into Exclude Styles (200 chars). Turn on Instrumental for loops. No artist names: Suno rejects them.",
+      "sketchHint": "Finish a sketch: Create → Upload audio (your sketch) → Cover or Extend, paste Style + Exclude Styles, and paste the structure tags into the Lyrics box."
+    },
+    "generic": {
+      "label": "Generic",
+      "positiveLabel": "Prompt",
+      "negativeLabel": "Negative prompt",
+      "negativeField": true,
+      "negativePrefix": "",
+      "hint": "Any music generator: paste Positive into the prompt field and Negative into its negative / exclude field (or append it as 'Avoid: …').",
+      "sketchHint": "If your generator accepts audio input, upload the sketch and use these prompts to extend or cover it."
+    }
+  },
+  "order": {
+    "loop": [
+      "idea",
+      "loopType",
+      "genre",
+      "tempoKey",
+      "instruments",
+      "drums",
+      "mood",
+      "texture",
+      "mix",
+      "loopRules"
+    ],
+    "sketch": [
+      "idea",
+      "sketch",
+      "genre",
+      "tempoKey",
+      "instruments",
+      "drums",
+      "mood",
+      "texture",
+      "arrangement",
+      "mix",
+      "sketchRules"
+    ]
+  },
+  "loopRules": [
+    "seamless {bars}-bar loop",
+    "loop point lands exactly on the downbeat",
+    "constant tempo",
+    "starts and ends on beat one",
+    "instrumental"
+  ],
+  "sketchRules": [
+    "keep the original motif and melody",
+    "keep the same key and BPM",
+    "same groove and sound palette as the sketch",
+    "full song with a clear arrangement build-up"
+  ],
+  "arrangement": [
+    "sparse intro with the main motif",
+    "drums and bass enter at the verse",
+    "hook opens up with more layers",
+    "bridge breaks down to a stripped motif",
+    "last hook is the biggest",
+    "outro strips back to the motif"
+  ],
+  "structure": [
+    {
+      "tag": "Intro",
+      "hint": "{lead} motif alone"
+    },
+    {
+      "tag": "Verse",
+      "hint": "drums and bass enter, motif continues"
+    },
+    {
+      "tag": "Hook",
+      "hint": "full arrangement, {color} layered in"
+    },
+    {
+      "tag": "Verse",
+      "hint": "variation, lighter drums"
+    },
+    {
+      "tag": "Hook",
+      "hint": "full arrangement"
+    },
+    {
+      "tag": "Bridge",
+      "hint": "breakdown, filtered {lead}, no drums"
+    },
+    {
+      "tag": "Hook",
+      "hint": "biggest hook, every layer in"
+    },
+    {
+      "tag": "Outro",
+      "hint": "{lead} motif alone, clean ending"
+    }
+  ],
+  "genres": [
+    {
+      "id": "cinematic-hiphop",
+      "label": "Cinematic hip-hop",
+      "words": [
+        "cinematic hip-hop",
+        "cinematic hip-hop instrumental",
+        "epic cinematic rap beat"
+      ],
+      "bpm": 88,
+      "drums": "hard boom-bap drums with deep kick",
+      "colors": [
+        "strings",
+        "choir",
+        "brass",
+        "bells"
+      ]
+    },
+    {
+      "id": "boom-bap",
+      "label": "Boom bap",
+      "words": [
+        "boom bap",
+        "90s boom bap",
+        "East Coast boom bap"
+      ],
+      "bpm": 90,
+      "drums": "dusty swung boom-bap drums",
+      "colors": [
+        "piano",
+        "horns",
+        "bass-guitar"
+      ]
+    },
+    {
+      "id": "trap",
+      "label": "Trap",
+      "words": [
+        "trap",
+        "modern trap",
+        "hard trap"
+      ],
+      "bpm": 140,
+      "drums": "trap drums with rolling hi-hats",
+      "colors": [
+        "808",
+        "synth-pad",
+        "bells"
+      ]
+    },
+    {
+      "id": "drill",
+      "label": "Drill",
+      "words": [
+        "drill",
+        "UK drill",
+        "NY drill"
+      ],
+      "bpm": 142,
+      "drums": "sliding drill drums with syncopated hi-hats",
+      "colors": [
+        "808",
+        "strings",
+        "choir"
+      ]
+    },
+    {
+      "id": "lofi",
+      "label": "Lo-fi hip-hop",
+      "words": [
+        "lo-fi hip-hop",
+        "chill lo-fi beat",
+        "lo-fi study beat"
+      ],
+      "bpm": 78,
+      "drums": "soft lazy drums, swung hats",
+      "colors": [
+        "rhodes",
+        "guitar",
+        "vinyl"
+      ]
+    },
+    {
+      "id": "rnb",
+      "label": "R&B",
+      "words": [
+        "R&B",
+        "smooth R&B",
+        "late-night R&B"
+      ],
+      "bpm": 72,
+      "drums": "laid-back R&B drums with finger snaps",
+      "colors": [
+        "rhodes",
+        "synth-pad",
+        "bass-guitar"
+      ]
+    },
+    {
+      "id": "soul-sample",
+      "label": "Soul sample",
+      "words": [
+        "soul sample",
+        "chopped soul sample beat",
+        "70s soul sample flip"
+      ],
+      "bpm": 86,
+      "drums": "punchy chopped breakbeat",
+      "colors": [
+        "organ",
+        "horns",
+        "strings"
+      ]
+    },
+    {
+      "id": "orchestral-trap",
+      "label": "Orchestral trap",
+      "words": [
+        "orchestral trap",
+        "cinematic orchestral trap",
+        "epic orchestral trap"
+      ],
+      "bpm": 140,
+      "drums": "half-time trap drums with booming 808",
+      "colors": [
+        "strings",
+        "brass",
+        "choir"
+      ]
+    },
+    {
+      "id": "western",
+      "label": "Western / desperado",
+      "words": [
+        "Western desperado cinematic",
+        "spaghetti-western cinematic",
+        "dusty desert Western score"
+      ],
+      "bpm": 92,
+      "drums": "slow marching snare and tom hits",
+      "colors": [
+        "whistle",
+        "nylon-guitar",
+        "trumpet"
+      ]
+    },
+    {
+      "id": "piano-ballad",
+      "label": "Piano ballad",
+      "words": [
+        "piano ballad",
+        "emotional piano ballad",
+        "intimate piano ballad"
+      ],
+      "bpm": 70,
+      "drums": "minimal brushed drums",
+      "colors": [
+        "strings",
+        "synth-pad",
+        "cello"
+      ]
+    },
+    {
+      "id": "g-funk",
+      "label": "G-funk",
+      "words": [
+        "G-funk",
+        "West Coast G-funk",
+        "laid-back G-funk"
+      ],
+      "bpm": 94,
+      "drums": "bouncy West Coast drums with claps",
+      "colors": [
+        "synth-lead",
+        "bass-guitar",
+        "rhodes"
+      ]
+    },
+    {
+      "id": "jazz-rap",
+      "label": "Jazz rap",
+      "words": [
+        "jazz rap",
+        "jazzy hip-hop",
+        "smoky jazz hip-hop"
+      ],
+      "bpm": 88,
+      "drums": "swung jazzy drums with ride cymbal",
+      "colors": [
+        "upright-bass",
+        "sax",
+        "rhodes"
+      ]
+    },
+    {
+      "id": "afrobeats",
+      "label": "Afrobeats",
+      "words": [
+        "afrobeats",
+        "smooth afrobeats",
+        "afro-pop groove"
+      ],
+      "bpm": 104,
+      "drums": "afrobeats percussion with log drums and shakers",
+      "colors": [
+        "guitar",
+        "percussion",
+        "synth-pad"
+      ]
+    },
+    {
+      "id": "reggaeton",
+      "label": "Reggaeton",
+      "words": [
+        "reggaeton",
+        "dembow reggaeton",
+        "modern reggaeton"
+      ],
+      "bpm": 94,
+      "drums": "dembow rhythm",
+      "colors": [
+        "synth-lead",
+        "808",
+        "guitar"
+      ]
+    },
+    {
+      "id": "amapiano",
+      "label": "Amapiano",
+      "words": [
+        "amapiano",
+        "deep amapiano",
+        "log-drum amapiano"
+      ],
+      "bpm": 112,
+      "drums": "amapiano shakers and log-drum bass",
+      "colors": [
+        "piano",
+        "synth-pad",
+        "percussion"
+      ]
+    },
+    {
+      "id": "neo-soul",
+      "label": "Neo-soul",
+      "words": [
+        "neo-soul",
+        "warm neo-soul",
+        "neo-soul groove"
+      ],
+      "bpm": 80,
+      "drums": "loose behind-the-beat drums",
+      "colors": [
+        "rhodes",
+        "bass-guitar",
+        "guitar"
+      ]
+    },
+    {
+      "id": "gospel",
+      "label": "Gospel",
+      "words": [
+        "gospel",
+        "gospel soul",
+        "church gospel"
+      ],
+      "bpm": 76,
+      "drums": "gospel drums with big claps",
+      "colors": [
+        "organ",
+        "choir",
+        "piano"
+      ]
+    },
+    {
+      "id": "phonk",
+      "label": "Phonk",
+      "words": [
+        "phonk",
+        "dark phonk",
+        "drift phonk"
+      ],
+      "bpm": 130,
+      "drums": "cowbell phonk drums with distorted 808",
+      "colors": [
+        "cowbell",
+        "808",
+        "vocal-chops"
+      ]
+    },
+    {
+      "id": "film-score",
+      "label": "Film score",
+      "words": [
+        "film score",
+        "cinematic film score",
+        "dramatic orchestral score"
+      ],
+      "bpm": 80,
+      "drums": "orchestral percussion and taikos",
+      "colors": [
+        "strings",
+        "brass",
+        "choir"
+      ]
+    },
+    {
+      "id": "chillhop",
+      "label": "Chillhop",
+      "words": [
+        "chillhop",
+        "jazzy chillhop",
+        "sunny chillhop"
+      ],
+      "bpm": 85,
+      "drums": "crisp chillhop drums",
+      "colors": [
+        "rhodes",
+        "guitar",
+        "flute"
+      ]
+    },
+    {
+      "id": "dancehall",
+      "label": "Dancehall",
+      "words": [
+        "dancehall",
+        "modern dancehall",
+        "island dancehall"
+      ],
+      "bpm": 98,
+      "drums": "dancehall riddim drums",
+      "colors": [
+        "synth-lead",
+        "percussion",
+        "808"
+      ]
+    },
+    {
+      "id": "latin-trap",
+      "label": "Latin trap",
+      "words": [
+        "Latin trap",
+        "dark Latin trap",
+        "melodic Latin trap"
+      ],
+      "bpm": 136,
+      "drums": "trap drums with Latin percussion",
+      "colors": [
+        "nylon-guitar",
+        "808",
+        "strings"
+      ]
+    }
+  ],
+  "bpmPresets": [
+    70,
+    75,
+    80,
+    85,
+    88,
+    90,
+    95,
+    100,
+    110,
+    120,
+    130,
+    140,
+    150,
+    160
+  ],
+  "keys": [
+    "C",
+    "C#",
+    "D",
+    "Eb",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "Ab",
+    "A",
+    "Bb",
+    "B"
+  ],
+  "scales": [
+    "minor",
+    "major",
+    "harmonic minor",
+    "dorian",
+    "phrygian",
+    "mixolydian"
+  ],
+  "loopTypes": [
+    {
+      "id": "melody",
+      "label": "Melody",
+      "words": [
+        "melody loop",
+        "melodic loop",
+        "lead melody loop"
+      ],
+      "noDrums": true,
+      "instrumental": true,
+      "negatives": [
+        "drums",
+        "percussion",
+        "bass"
+      ]
+    },
+    {
+      "id": "chords",
+      "label": "Chords",
+      "words": [
+        "chord progression loop",
+        "chords loop",
+        "harmony loop"
+      ],
+      "noDrums": true,
+      "instrumental": true,
+      "negatives": [
+        "drums",
+        "percussion",
+        "lead-melody"
+      ]
+    },
+    {
+      "id": "drums",
+      "label": "Drums only",
+      "words": [
+        "drum loop",
+        "drums only loop",
+        "drum groove loop"
+      ],
+      "drumsOnly": true,
+      "instrumental": true,
+      "negatives": [
+        "melody",
+        "chords",
+        "bass",
+        "pads"
+      ]
+    },
+    {
+      "id": "bass",
+      "label": "Bass only",
+      "words": [
+        "bass loop",
+        "bassline loop",
+        "bass only loop"
+      ],
+      "noDrums": true,
+      "bassOnly": true,
+      "instrumental": true,
+      "negatives": [
+        "drums",
+        "chords",
+        "melody"
+      ]
+    },
+    {
+      "id": "full",
+      "label": "Full loop",
+      "words": [
+        "full beat loop",
+        "full instrumental loop",
+        "complete beat loop"
+      ],
+      "instrumental": true,
+      "negatives": []
+    },
+    {
+      "id": "stabs",
+      "label": "One-shot stabs",
+      "words": [
+        "one-shot stabs",
+        "single hit stabs",
+        "short one-shot hits"
+      ],
+      "noDrums": true,
+      "instrumental": true,
+      "oneShot": true,
+      "negatives": [
+        "drums",
+        "sustained-pads",
+        "long-notes"
+      ]
+    },
+    {
+      "id": "vocal-chops",
+      "label": "Vocal chops",
+      "words": [
+        "vocal chop loop",
+        "chopped vocal loop",
+        "pitched vocal chops"
+      ],
+      "noDrums": true,
+      "instrumental": false,
+      "negatives": [
+        "drums",
+        "full-lyrics"
+      ]
+    }
+  ],
+  "bars": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ],
+  "instruments": [
+    {
+      "id": "piano",
+      "label": "Piano",
+      "words": [
+        "piano",
+        "grand piano",
+        "felt piano"
+      ]
+    },
+    {
+      "id": "rhodes",
+      "label": "Rhodes",
+      "words": [
+        "Rhodes electric piano",
+        "warm Rhodes",
+        "Rhodes keys"
+      ]
+    },
+    {
+      "id": "organ",
+      "label": "Organ",
+      "words": [
+        "Hammond organ",
+        "church organ",
+        "soul organ"
+      ]
+    },
+    {
+      "id": "strings",
+      "label": "Strings",
+      "words": [
+        "string section",
+        "lush strings",
+        "cinematic strings"
+      ]
+    },
+    {
+      "id": "cello",
+      "label": "Cello",
+      "words": [
+        "solo cello",
+        "deep cello",
+        "legato cello"
+      ]
+    },
+    {
+      "id": "violin",
+      "label": "Violin",
+      "words": [
+        "solo violin",
+        "soaring violin",
+        "pizzicato violin"
+      ]
+    },
+    {
+      "id": "brass",
+      "label": "Brass",
+      "words": [
+        "brass section",
+        "bold brass stabs",
+        "French horns"
+      ]
+    },
+    {
+      "id": "horns",
+      "label": "Soul horns",
+      "words": [
+        "soul horns",
+        "horn section",
+        "punchy horn stabs"
+      ]
+    },
+    {
+      "id": "trumpet",
+      "label": "Trumpet",
+      "words": [
+        "lonely trumpet",
+        "muted trumpet",
+        "mariachi-style trumpet"
+      ]
+    },
+    {
+      "id": "sax",
+      "label": "Sax",
+      "words": [
+        "tenor sax",
+        "smoky saxophone",
+        "alto sax"
+      ]
+    },
+    {
+      "id": "choir",
+      "label": "Choir",
+      "words": [
+        "choir",
+        "wordless choir",
+        "epic choir pads"
+      ]
+    },
+    {
+      "id": "808",
+      "label": "808",
+      "words": [
+        "808 bass",
+        "deep 808",
+        "sliding 808"
+      ]
+    },
+    {
+      "id": "bass-guitar",
+      "label": "Bass guitar",
+      "words": [
+        "bass guitar",
+        "funky bass guitar",
+        "round electric bass"
+      ]
+    },
+    {
+      "id": "upright-bass",
+      "label": "Upright bass",
+      "words": [
+        "upright bass",
+        "walking upright bass",
+        "acoustic double bass"
+      ]
+    },
+    {
+      "id": "synth-bass",
+      "label": "Synth bass",
+      "words": [
+        "synth bass",
+        "analog synth bass",
+        "Moog-style bass"
+      ]
+    },
+    {
+      "id": "guitar",
+      "label": "Guitar",
+      "words": [
+        "clean electric guitar",
+        "soulful guitar licks",
+        "chorus-drenched guitar"
+      ]
+    },
+    {
+      "id": "nylon-guitar",
+      "label": "Nylon guitar",
+      "words": [
+        "nylon-string guitar",
+        "Spanish guitar",
+        "fingerpicked nylon guitar"
+      ]
+    },
+    {
+      "id": "acoustic-guitar",
+      "label": "Acoustic guitar",
+      "words": [
+        "acoustic guitar",
+        "strummed acoustic guitar",
+        "fingerpicked acoustic guitar"
+      ]
+    },
+    {
+      "id": "flute",
+      "label": "Flute",
+      "words": [
+        "flute",
+        "breathy flute",
+        "airy flute melody"
+      ]
+    },
+    {
+      "id": "whistle",
+      "label": "Whistle",
+      "words": [
+        "whistled melody",
+        "lonesome whistle",
+        "reverb whistle lead"
+      ]
+    },
+    {
+      "id": "harp",
+      "label": "Harp",
+      "words": [
+        "harp",
+        "harp arpeggios",
+        "glassy harp"
+      ]
+    },
+    {
+      "id": "bells",
+      "label": "Bells",
+      "words": [
+        "bells",
+        "glockenspiel",
+        "tubular bells"
+      ]
+    },
+    {
+      "id": "music-box",
+      "label": "Music box",
+      "words": [
+        "music box",
+        "tinkling music box",
+        "detuned music box"
+      ]
+    },
+    {
+      "id": "kalimba",
+      "label": "Kalimba",
+      "words": [
+        "kalimba",
+        "thumb piano",
+        "kalimba plucks"
+      ]
+    },
+    {
+      "id": "synth-pad",
+      "label": "Synth pad",
+      "words": [
+        "synth pad",
+        "warm analog pad",
+        "airy synth pad"
+      ]
+    },
+    {
+      "id": "synth-lead",
+      "label": "Synth lead",
+      "words": [
+        "whiny synth lead",
+        "portamento synth lead",
+        "analog synth lead"
+      ]
+    },
+    {
+      "id": "percussion",
+      "label": "Percussion",
+      "words": [
+        "hand percussion",
+        "congas and shakers",
+        "layered percussion"
+      ]
+    },
+    {
+      "id": "cowbell",
+      "label": "Cowbell",
+      "words": [
+        "cowbell",
+        "pitched cowbell",
+        "phonk cowbell"
+      ]
+    },
+    {
+      "id": "vocal-chops",
+      "label": "Vocal chops",
+      "words": [
+        "vocal chops",
+        "pitched vocal chops",
+        "chopped soul vocals"
+      ]
+    },
+    {
+      "id": "vinyl",
+      "label": "Vinyl crackle",
+      "words": [
+        "vinyl crackle",
+        "record surface noise",
+        "dusty vinyl hiss"
+      ]
+    }
+  ],
+  "moods": [
+    "dark",
+    "triumphant",
+    "emotional",
+    "nostalgic",
+    "romantic",
+    "tense",
+    "menacing",
+    "hopeful",
+    "melancholy",
+    "confident",
+    "dreamy",
+    "gritty",
+    "epic",
+    "lonesome",
+    "late-night",
+    "playful"
+  ],
+  "textures": [
+    {
+      "id": "dusty-vinyl",
+      "label": "Dusty vinyl",
+      "words": [
+        "dusty vinyl texture",
+        "sampled-from-vinyl feel",
+        "crackly vinyl warmth"
+      ]
+    },
+    {
+      "id": "tape",
+      "label": "Tape saturation",
+      "words": [
+        "tape saturation",
+        "warm tape saturation",
+        "cassette tape warmth"
+      ]
+    },
+    {
+      "id": "70s-soul",
+      "label": "70s soul",
+      "words": [
+        "70s soul recording",
+        "vintage 70s soul sound",
+        "70s studio warmth"
+      ]
+    },
+    {
+      "id": "90s",
+      "label": "90s boom bap",
+      "words": [
+        "90s sampler grit",
+        "gritty 90s sampler sound",
+        "SP-1200 style crunch"
+      ]
+    },
+    {
+      "id": "clean-modern",
+      "label": "Clean modern",
+      "words": [
+        "clean modern production",
+        "crisp modern mix",
+        "polished modern sound"
+      ]
+    },
+    {
+      "id": "lofi",
+      "label": "Lo-fi",
+      "words": [
+        "lo-fi texture",
+        "lo-fi warble",
+        "bit-crushed lo-fi"
+      ]
+    },
+    {
+      "id": "hall",
+      "label": "Cinematic hall",
+      "words": [
+        "cinematic concert-hall space",
+        "big scoring-stage room",
+        "wide cinematic hall"
+      ]
+    },
+    {
+      "id": "western-reverb",
+      "label": "Spaghetti-western reverb",
+      "words": [
+        "spring-reverb Western twang",
+        "wide desert reverb",
+        "60s Western film-score reverb"
+      ]
+    },
+    {
+      "id": "80s-analog",
+      "label": "80s analog",
+      "words": [
+        "80s analog synth warmth",
+        "retro 80s analog sound",
+        "vintage analog gear"
+      ]
+    }
+  ],
+  "mixNotes": [
+    {
+      "id": "dry",
+      "label": "Dry",
+      "words": [
+        "dry mix, minimal reverb",
+        "dry and upfront",
+        "close dry mix"
+      ]
+    },
+    {
+      "id": "unmastered",
+      "label": "No mastering",
+      "words": [
+        "unmastered, lots of headroom",
+        "no master bus processing",
+        "unmastered, peaks around -6 dB"
+      ]
+    },
+    {
+      "id": "sample-ready",
+      "label": "Sample-ready",
+      "words": [
+        "sample-ready, clean start and end",
+        "chop-friendly, clean transients",
+        "sample pack ready"
+      ]
+    },
+    {
+      "id": "wide",
+      "label": "Wide stereo",
+      "words": [
+        "wide stereo image",
+        "wide stereo spread",
+        "spacious stereo"
+      ]
+    },
+    {
+      "id": "mono-low",
+      "label": "Mono low end",
+      "words": [
+        "mono low end",
+        "centered mono bass",
+        "tight mono lows"
+      ]
+    },
+    {
+      "id": "live-feel",
+      "label": "Live feel",
+      "words": [
+        "live-played feel, slightly unquantized",
+        "human timing",
+        "played by hand, not quantized"
+      ]
+    }
+  ],
+  "negatives": {
+    "catalog": {
+      "fade": {
+        "label": "Fade in/out",
+        "tag": "fade in, fade out"
+      },
+      "reverb-tail": {
+        "label": "Long reverb tail",
+        "tag": "long reverb tail"
+      },
+      "tempo-drift": {
+        "label": "Tempo drift",
+        "tag": "tempo drift"
+      },
+      "intro-outro": {
+        "label": "Intro/outro",
+        "tag": "intro, outro"
+      },
+      "vocals": {
+        "label": "Vocals",
+        "tag": "vocals, singing, rap"
+      },
+      "drums": {
+        "label": "Drums",
+        "tag": "drums"
+      },
+      "percussion": {
+        "label": "Percussion",
+        "tag": "percussion"
+      },
+      "bass": {
+        "label": "Bass",
+        "tag": "bass"
+      },
+      "melody": {
+        "label": "Melody",
+        "tag": "melody"
+      },
+      "lead-melody": {
+        "label": "Lead melody",
+        "tag": "lead melody"
+      },
+      "chords": {
+        "label": "Chords",
+        "tag": "chords"
+      },
+      "pads": {
+        "label": "Pads",
+        "tag": "pads"
+      },
+      "sustained-pads": {
+        "label": "Sustained pads",
+        "tag": "sustained pads"
+      },
+      "long-notes": {
+        "label": "Long notes",
+        "tag": "long sustained notes"
+      },
+      "full-lyrics": {
+        "label": "Full lyrics",
+        "tag": "full lyrics, verses"
+      },
+      "limiter": {
+        "label": "Mastering limiter",
+        "tag": "mastering limiter, loudness maximizer"
+      },
+      "clipping": {
+        "label": "Clipping",
+        "tag": "clipping, distortion artifacts"
+      },
+      "risers": {
+        "label": "Risers/FX",
+        "tag": "risers, sweeps, sound effects"
+      },
+      "key-change": {
+        "label": "Key change",
+        "tag": "key change"
+      },
+      "tempo-change": {
+        "label": "Tempo change",
+        "tag": "tempo change"
+      },
+      "new-melody": {
+        "label": "New main melody",
+        "tag": "new main melody"
+      },
+      "genre-switch": {
+        "label": "Genre switch",
+        "tag": "genre switch"
+      },
+      "autotune": {
+        "label": "Autotune",
+        "tag": "autotune"
+      },
+      "edm": {
+        "label": "EDM drops",
+        "tag": "EDM, big drops"
+      },
+      "rock": {
+        "label": "Rock guitars",
+        "tag": "rock, distorted guitar"
+      },
+      "hat-rolls": {
+        "label": "Hi-hat rolls",
+        "tag": "rapid hi-hat rolls"
+      },
+      "crowd": {
+        "label": "Crowd noise",
+        "tag": "crowd noise, applause"
+      },
+      "sidechain": {
+        "label": "Sidechain pumping",
+        "tag": "sidechain pumping"
+      },
+      "cheesy": {
+        "label": "Cheesy/corny",
+        "tag": "cheesy, corny, elevator music"
+      },
+      "muddy": {
+        "label": "Muddy low end",
+        "tag": "muddy low end"
+      },
+      "spoken": {
+        "label": "Spoken word",
+        "tag": "spoken word, talking"
+      }
+    },
+    "autoLoop": [
+      "fade",
+      "reverb-tail",
+      "tempo-drift",
+      "intro-outro",
+      "limiter",
+      "clipping",
+      "risers"
+    ],
+    "autoSketch": [
+      "key-change",
+      "tempo-change",
+      "new-melody",
+      "genre-switch",
+      "limiter",
+      "clipping"
+    ],
+    "autoInstrumental": [
+      "vocals"
+    ],
+    "optional": [
+      "autotune",
+      "edm",
+      "rock",
+      "hat-rolls",
+      "crowd",
+      "sidechain",
+      "cheesy",
+      "muddy",
+      "spoken"
+    ],
+    "priority": [
+      "vocals",
+      "drums",
+      "fade",
+      "reverb-tail",
+      "tempo-drift",
+      "intro-outro",
+      "melody",
+      "chords",
+      "bass",
+      "percussion",
+      "lead-melody",
+      "pads",
+      "key-change",
+      "tempo-change",
+      "new-melody",
+      "genre-switch",
+      "limiter",
+      "clipping",
+      "risers",
+      "sustained-pads",
+      "long-notes",
+      "full-lyrics"
+    ]
+  },
+  "presets": [
+    {
+      "id": "zig-cinematic",
+      "label": "Zig Cinematic Hip-Hop",
+      "picks": {
+        "genre": "cinematic-hiphop",
+        "bpm": 88,
+        "key": "D",
+        "scale": "minor",
+        "loopType": "melody",
+        "bars": 8,
+        "instruments": [
+          "piano",
+          "strings",
+          "choir"
+        ],
+        "moods": [
+          "dark",
+          "triumphant",
+          "epic"
+        ],
+        "textures": [
+          "hall",
+          "tape"
+        ],
+        "mix": [
+          "unmastered",
+          "sample-ready"
+        ]
+      }
+    },
+    {
+      "id": "piano-driven",
+      "label": "Piano-Driven Instrumental",
+      "picks": {
+        "genre": "piano-ballad",
+        "bpm": 80,
+        "key": "A",
+        "scale": "minor",
+        "loopType": "melody",
+        "bars": 4,
+        "instruments": [
+          "piano",
+          "rhodes",
+          "synth-pad"
+        ],
+        "moods": [
+          "emotional",
+          "nostalgic"
+        ],
+        "textures": [
+          "tape",
+          "clean-modern"
+        ],
+        "mix": [
+          "dry",
+          "unmastered"
+        ]
+      }
+    },
+    {
+      "id": "urban-soundtrack",
+      "label": "Urban Soundtrack",
+      "picks": {
+        "genre": "orchestral-trap",
+        "bpm": 140,
+        "key": "F",
+        "scale": "minor",
+        "loopType": "full",
+        "bars": 8,
+        "instruments": [
+          "strings",
+          "brass",
+          "808",
+          "synth-pad"
+        ],
+        "moods": [
+          "tense",
+          "gritty",
+          "late-night"
+        ],
+        "textures": [
+          "clean-modern",
+          "hall"
+        ],
+        "mix": [
+          "unmastered",
+          "wide"
+        ]
+      }
+    },
+    {
+      "id": "desperado",
+      "label": "Desperado Western",
+      "picks": {
+        "genre": "western",
+        "bpm": 92,
+        "key": "E",
+        "scale": "harmonic minor",
+        "loopType": "melody",
+        "bars": 8,
+        "instruments": [
+          "nylon-guitar",
+          "whistle",
+          "trumpet",
+          "strings"
+        ],
+        "moods": [
+          "lonesome",
+          "tense",
+          "epic"
+        ],
+        "textures": [
+          "western-reverb",
+          "dusty-vinyl"
+        ],
+        "mix": [
+          "unmastered",
+          "sample-ready"
+        ]
+      }
+    },
+    {
+      "id": "first-crush",
+      "label": "First Crush R&B",
+      "picks": {
+        "genre": "rnb",
+        "bpm": 72,
+        "key": "Ab",
+        "scale": "major",
+        "loopType": "chords",
+        "bars": 4,
+        "instruments": [
+          "rhodes",
+          "guitar",
+          "synth-pad",
+          "bass-guitar"
+        ],
+        "moods": [
+          "romantic",
+          "late-night",
+          "dreamy"
+        ],
+        "textures": [
+          "70s-soul",
+          "tape"
+        ],
+        "mix": [
+          "dry",
+          "unmastered"
+        ]
+      }
+    },
+    {
+      "id": "money-moves",
+      "label": "Money Moves Anthem",
+      "picks": {
+        "genre": "trap",
+        "bpm": 142,
+        "key": "G",
+        "scale": "minor",
+        "loopType": "full",
+        "bars": 8,
+        "instruments": [
+          "808",
+          "brass",
+          "piano",
+          "choir"
+        ],
+        "moods": [
+          "triumphant",
+          "confident"
+        ],
+        "textures": [
+          "clean-modern"
+        ],
+        "mix": [
+          "unmastered",
+          "mono-low"
+        ]
+      }
+    }
+  ],
+  "artistMap": {
+    "_note": "Artist or producer names typed in the Idea box are swapped for a sound description (Suno rejects artist names). Empty value = just remove it.",
+    "ennio morricone": "spaghetti-western orchestral score",
+    "morricone": "spaghetti-western orchestral score",
+    "hans zimmer": "huge hybrid orchestral score",
+    "zimmer": "huge hybrid orchestral score",
+    "john williams": "classic heroic film orchestra",
+    "ludwig goransson": "modern hybrid film score",
+    "j dilla": "off-grid swung drums",
+    "dilla": "off-grid swung drums",
+    "dj premier": "chopped 90s boom-bap scratches",
+    "pete rock": "warm filtered soul-sample boom bap",
+    "rza": "gritty kung-fu soul samples",
+    "madlib": "dusty psychedelic sample collage",
+    "nujabes": "jazzy lo-fi piano hip-hop",
+    "dr dre": "West Coast piano-driven hip-hop",
+    "dr. dre": "West Coast piano-driven hip-hop",
+    "metro boomin": "dark cinematic trap",
+    "kanye": "chipmunk soul sample hip-hop",
+    "kanye west": "chipmunk soul sample hip-hop",
+    "the alchemist": "moody dusty soul loops",
+    "alchemist": "moody dusty soul loops",
+    "9th wonder": "soulful chopped R&B samples",
+    "timbaland": "syncopated futuristic hip-hop percussion",
+    "pharrell": "minimal funky drum programming",
+    "the neptunes": "minimal funky drum programming",
+    "mike dean": "huge analog synth solos",
+    "southside": "hard trap 808s",
+    "tay keith": "bouncy Memphis trap drums",
+    "zaytoven": "church-organ trap",
+    "pierre bourne": "bright spacey trap melodies",
+    "wheezy": "melodic trap bells",
+    "drake": "moody late-night R&B rap",
+    "the weeknd": "dark 80s-synth R&B",
+    "frank ocean": "dreamy minimal R&B",
+    "sza": "airy alt-R&B",
+    "snoop dogg": "laid-back West Coast funk",
+    "tupac": "soulful 90s West Coast",
+    "2pac": "soulful 90s West Coast",
+    "biggie": "90s East Coast boom bap",
+    "nas": "90s East Coast jazz-sample boom bap",
+    "jay-z": "soul-sample luxury rap",
+    "jay z": "soul-sample luxury rap",
+    "eminem": "aggressive cinematic hip-hop",
+    "kendrick lamar": "jazzy experimental West Coast",
+    "kendrick": "jazzy experimental West Coast",
+    "travis scott": "psychedelic dark trap",
+    "future": "dark melodic trap",
+    "21 savage": "menacing minimal trap",
+    "pop smoke": "Brooklyn drill",
+    "burna boy": "afrofusion groove",
+    "wizkid": "smooth afrobeats",
+    "bad bunny": "modern reggaeton",
+    "daddy yankee": "classic dembow reggaeton",
+    "beyonce": "powerful modern R&B",
+    "rihanna": "Caribbean-tinged pop R&B"
+  }
+}
