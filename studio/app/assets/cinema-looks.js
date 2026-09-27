@@ -7,7 +7,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260927a";
+  var V = "20260927b";
   var STORE = "pm.cinema.v1", MINE_STORE = "pm.cinema.mine.v1";
   var X = null; // PMLooks.shared
 
@@ -327,7 +327,8 @@
   // ---- UI -------------------------------------------------------------------------------
   var CSS2 = "" +
     ".pmc .pml-chips.open{flex-wrap:wrap;overflow:visible}" +
-    ".pmc-chipbar{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:6px}" +
+    ".pmc-chipbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:space-between;margin-top:6px}" +
+    ".pmc-chipbar>.pml-row{flex-wrap:nowrap}.pmc-chipbar .pml-btn{white-space:nowrap}" +
     ".pmc-n{opacity:.6;margin-left:5px}" +
     ".pmc-guess{border-color:rgba(251,191,36,.55);color:#fde68a}" +
     ".pmc-style{border-color:rgba(192,132,252,.55);color:#d8b4fe}" +
@@ -342,7 +343,7 @@
     ".pmc-x{margin-left:4px;opacity:.7}" +
     ".pmc-danger{border-color:rgba(248,113,113,.5);color:#fecaca}" +
     ".pmc-soon{margin-top:12px;border-style:dashed;opacity:.85}" +
-    "@media (max-width:640px){.pml-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.pmc-sheet{grid-template-columns:1fr}.pmc-sheet dt{padding-top:6px}}";
+    "@media (max-width:640px){.pmc-chipbar>.pml-k{flex:1 0 100%}.pmc-chipbar>.pml-row{flex:1 0 100%;gap:6px}.pmc-chipbar>.pml-row>.pml-btn{flex:1 1 0;justify-content:center;padding:8px 6px;min-height:44px}.pml-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.pmc-sheet{grid-template-columns:1fr}.pmc-sheet dt{padding-top:6px}}";
   var R = {};
   function h() { return X.h.apply(null, arguments); }
   function renderAll() { if (!S.el) return; if (!S.data) return render(); renderChips(); renderGrid(); renderPanel(); }
@@ -386,13 +387,13 @@
     var counts = {}; looks().forEach(function (l) { counts[l.group] = (counts[l.group] || 0) + 1; });
     counts.All = looks().length; counts["My Looks"] = S.mine.length;
     var gl = groupList();
-    R.chipbar.appendChild(h("span", { cls: "pml-k", text: gl.length - 2 + " categories" }));
+    R.chipbar.appendChild(h("span", { cls: "pml-k", text: gl.length - 2 + " categories \u00b7 " + looks().length + " looks" }));
     R.chipbar.appendChild(h("div", { cls: "pml-row" }, [
       h("button", { cls: "pml-btn pml-toggle" + (S.mash ? " on" : ""), type: "button", "data-pm": "cinema-mash", "aria-pressed": S.mash ? "true" : "false",
         title: "Blend 2 or 3 looks: the first one you tap leads (camera, framing, aspect)", on: { click: function () { S.mash = !S.mash; if (S.mash && !S.mix.length && S.sel) S.mix = [S.sel]; if (!S.mash && S.mix.length) S.sel = S.mix[0]; S.result = null; save(); renderAll(); } } },
         [h("span", { cls: "pml-sw" }), "Mash-up"]),
       h("button", { cls: "pml-btn", type: "button", "data-pm": "cinema-shuffle", title: "Random 2-3 look combo", text: "\ud83c\udfb2 Shuffle", on: { click: shuffle } }),
-      h("button", { cls: "pml-btn", type: "button", "data-pm": "cinema-chips-toggle", "aria-expanded": S.chipsOpen ? "true" : "false", text: S.chipsOpen ? "Collapse \u25b4" : "All categories \u25be",
+      h("button", { cls: "pml-btn", type: "button", "data-pm": "cinema-chips-toggle", "aria-expanded": S.chipsOpen ? "true" : "false", text: S.chipsOpen ? "Collapse \u25b4" : "Categories \u25be", "aria-label": S.chipsOpen ? "Collapse categories" : "Show all categories",
         on: { click: function () { S.chipsOpen = !S.chipsOpen; save(); renderChips(); } } })
     ]));
     R.chips.className = "pml-chips" + (S.chipsOpen ? " open" : "");
