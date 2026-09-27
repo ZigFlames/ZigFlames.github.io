@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260926b";
+  var V = "20260927a";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -110,15 +110,17 @@
   var CLEAN_TOKEN = "zzcleanskinzz";  // kept whole through dedupe, expanded at the end
   var CLEAN_SKIN_NO = "vitiligo, skin patches, blotchy skin, depigmentation, albinism, birthmarks";
   function cleanOn() { return S.cleanSkin !== false; }
-  function cleanPool(arr, k) {
-    if (!cleanOn() || !arr) return arr;
+  function cleanPool(arr, k) { return cleanPoolOn(arr, k, cleanOn()); }
+  function cleanPoolOn(arr, k, on) {
+    if (!on || !arr) return arr;
     var out = arr.filter(function (x) { return !SKIN_MARK_RE.test(x); });
     if (k === "complexionDetail" && out.indexOf("natural skin texture") < 0) out.push("natural skin texture");  // stands in for "visible pores"
     return out.length ? out : arr;
   }
   // Realism text: keep real texture, drop pores / uneven tone wording (reads as blotches).
-  function cleanSkinText(text) {
-    if (!cleanOn()) return String(text || "");
+  function cleanSkinText(text) { return cleanSkinTextOn(text, cleanOn()); }
+  function cleanSkinTextOn(text, on) {
+    if (!on) return String(text || "");
     var t = String(text || "").replace(/\bunretouched skin with pores\b/gi, "unretouched natural skin texture").replace(/\b(real|visible) pores\b/gi, "natural skin texture");
     return t.split(/,\s*/).filter(function (f) { return f && (/natural skin texture/i.test(f) || !SKIN_MARK_RE.test(f)); }).join(", ");
   }
@@ -231,8 +233,9 @@
     suf = addCleanNo(suf);
     return suf + " --seed " + seed;
   }
-  function addCleanNo(suf) {
-    if (!cleanOn()) return suf;
+  function addCleanNo(suf) { return addCleanNoOn(suf, cleanOn()); }
+  function addCleanNoOn(suf, on) {
+    if (!on) return suf;
     if (/--no\s+/i.test(suf)) return suf.replace(/--no\s+(.*)$/i, function (_, list) { list = list.replace(/[,\s]+$/, ""); return "--no " + (list ? list + ", " : "") + CLEAN_SKIN_NO; });
     return (suf ? suf + " " : "") + "--no " + CLEAN_SKIN_NO;
   }
@@ -404,8 +407,9 @@
     (kids || []).forEach(function (c) { if (c == null || c === false) return; e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return e;
   }
-  function copy(text, what) {
-    var done = function () { toast((what || "Copied") + "", ""); };
+  function copy(text, what) { copyText(text, function () { toast((what || "Copied") + "", ""); }); }
+  function copyText(text, done) {
+    done = done || function () {};
     try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; } } catch (e) {}
     fallback();
     function fallback() { var t = h("textarea", {}); t.value = text; t.style.position = "fixed"; t.style.opacity = "0"; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); done(); } catch (e) {} t.remove(); }
@@ -602,6 +606,17 @@
     _strip: stripBlocked,
     _load: fetchData,
     iphoneModel: IPHONE_MODEL,
+    // Shared building blocks reused by Cinema Looks (cinema-looks.js): same safety, camera, clean-skin, random and UI code.
+    shared: {
+      BLOCK_RE: BLOCK_RE, FRAMING_RE: FRAMING_RE, GEAR_RE: GEAR_RE, SKIN_MARK_RE: SKIN_MARK_RE,
+      hasBlocked: hasBlocked, stripBlocked: stripBlocked, scrubList: scrubList, scrubProse: scrubProse,
+      reuseBannedMinor: reuseBannedMinor, sanitizeIdea: sanitizeIdea,
+      IPHONE_MODEL: IPHONE_MODEL, ARTIFACTS: ARTIFACTS,
+      CLEAN_SKIN_STYLE: CLEAN_SKIN_STYLE, CLEAN_SKIN_NO: CLEAN_SKIN_NO, CLEAN_TOKEN: CLEAN_TOKEN,
+      cleanPool: cleanPoolOn, cleanSkinText: cleanSkinTextOn, addCleanNo: addCleanNoOn,
+      rnd: rnd, seed32: seed32, pick: pick, fill: fill, dedupe: dedupe,
+      h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
+    },
     _run: function (id, idea, o) {
       o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin];
       S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.groupScene = !!o.group; S._forceAdult = o.adult == null ? null : !!o.adult;
