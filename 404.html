@@ -6,11 +6,23 @@
   <title>Page not found — ZigFlames</title>
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#08080a">
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@500;600;700&amp;family=Cormorant+Garamond:ital,wght@0,500;1,500&amp;family=IBM+Plex+Sans:wght@400;500&amp;display=swap" rel="stylesheet">
+  <script>
+    /* Root-absolute paths above keep this page styled at any depth (e.g. /shop/item).
+       Common guessed/shared paths go to the matching homepage section instead of a dead end. */
+    (function () {
+      var p = location.pathname.toLowerCase().replace(/\/+$/, "").split("/")[1] || "";
+      var map = { shop: "shop", store: "shop", merch: "shop", buy: "shop",
+                  music: "listen", listen: "listen", "first-crush": "listen", firstcrush: "listen", stream: "listen",
+                  about: "about", bio: "about", contact: "contact", booking: "contact", book: "contact",
+                  work: "work", home: "top", index: "top" };
+      if (map.hasOwnProperty(p)) location.replace("/#" + map[p]);
+    })();
+  </script>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -19,7 +31,7 @@
       <p class="eyebrow">404</p>
       <h1 style="font-family:var(--display);letter-spacing:0.12em;font-size:clamp(2rem,6vw,3.5rem);">Lost in the static</h1>
       <p class="lede" style="margin-inline:auto;">This page is not in the catalog.</p>
-      <a class="btn btn-primary" href="index.html">Back to ZigFlames</a>
+      <a class="btn btn-primary" href="/">Back to ZigFlames</a>
     </div>
   </main>
 </body>
