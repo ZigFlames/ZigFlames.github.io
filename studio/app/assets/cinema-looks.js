@@ -7,7 +7,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260927c";
+  var V = "20260927d";
   var STORE = "pm.cinema.v1", MINE_STORE = "pm.cinema.mine.v1";
   var X = null; // PMLooks.shared
 
@@ -342,7 +342,7 @@
     ".pmc-mix b{font-family:ui-monospace,Menlo,monospace}" +
     ".pmc-x{margin-left:4px;opacity:.7}" +
     ".pmc-danger{border-color:rgba(248,113,113,.5);color:#fecaca}" +
-    ".pmc-jump{min-height:40px;border-color:rgba(125,211,252,.45);color:#e0f2fe}" +
+    "#pm-cartoon{scroll-margin-top:96px}.pmc-jump{min-height:40px;border-color:rgba(125,211,252,.45);color:#e0f2fe}" +
     "@media (max-width:640px){.pmc-chipbar>.pml-k{flex:1 0 100%}.pmc-chipbar>.pml-row{flex:1 0 100%;gap:6px}.pmc-chipbar>.pml-row>.pml-btn{flex:1 1 0;justify-content:center;padding:8px 6px;min-height:44px}.pml-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.pmc-sheet{grid-template-columns:1fr}.pmc-sheet dt{padding-top:6px}}";
   var R = {};
   function h() { return X.h.apply(null, arguments); }

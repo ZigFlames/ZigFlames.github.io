@@ -7,7 +7,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260927c";
+  var V = "20260927d";
   var STORE = "pm.cartoon.v1", SHEET_STORE = "pm.cartoon.sheet.v1", BOARD_STORE = "pm.cartoon.board.v1";
   var K = null, X = null; // K: kit from Cinema Looks, X: PMLooks.shared
 
