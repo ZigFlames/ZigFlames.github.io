@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260925f";
+  var V = "20260926b";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -103,6 +103,26 @@
     return S.cam === "iphone" ? Math.min(st, 100) : st;  // phone capture reads real at low stylize
   }
 
+  // ---- Clean skin (default ON): no skin marks / conditions in the randomizer --------------------
+  // Grok Imagine renders any skin-condition wording (e.g. vitiligo) as patchy skin, so these picks are skipped.
+  var SKIN_MARK_RE = /\b(vitiligo|albin\w*|birth ?marks?|freckl\w*|scars?|scarred|acne|rosacea|sun[\s-]?spots?|age spots?|stretch marks?|\w*pigment\w*|blotch\w*|patch(?:es|y)?|pores?|pockmark\w*|blemish\w*|moles?|beauty marks?|melasma|psoriasis|eczema|uneven (?:tone|skin)|ruddy|weathered|oily)\b/i;
+  var CLEAN_SKIN_STYLE = "clear, smooth, even-toned flawless skin, uniform complexion";
+  var CLEAN_TOKEN = "zzcleanskinzz";  // kept whole through dedupe, expanded at the end
+  var CLEAN_SKIN_NO = "vitiligo, skin patches, blotchy skin, depigmentation, albinism, birthmarks";
+  function cleanOn() { return S.cleanSkin !== false; }
+  function cleanPool(arr, k) {
+    if (!cleanOn() || !arr) return arr;
+    var out = arr.filter(function (x) { return !SKIN_MARK_RE.test(x); });
+    if (k === "complexionDetail" && out.indexOf("natural skin texture") < 0) out.push("natural skin texture");  // stands in for "visible pores"
+    return out.length ? out : arr;
+  }
+  // Realism text: keep real texture, drop pores / uneven tone wording (reads as blotches).
+  function cleanSkinText(text) {
+    if (!cleanOn()) return String(text || "");
+    var t = String(text || "").replace(/\bunretouched skin with pores\b/gi, "unretouched natural skin texture").replace(/\b(real|visible) pores\b/gi, "natural skin texture");
+    return t.split(/,\s*/).filter(function (f) { return f && (/natural skin texture/i.test(f) || !SKIN_MARK_RE.test(f)); }).join(", ");
+  }
+
   // ---- Heat levels (18+ mode only; default Tease) -------------------------------------------
   var HEATS = ["tease", "spicy", "xxx"];
   var HEAT_LABEL = { tease: "Tease", spicy: "Spicy", xxx: "XXX" };
@@ -147,12 +167,12 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, tab: "mj", heat: "tease", cam: "platform", result: null, last: {}, notice: "", _forceAdult: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, result: null, last: {}, notice: "", _forceAdult: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "tab", "heat", "cam", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; }); } catch (e) {}
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "tab", "heat", "cam", "cleanSkin", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; }); } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, tab: S.tab, heat: S.heat, cam: S.cam, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -180,7 +200,7 @@
     r.spicyWardrobe = pick(SPICY_WARDROBE, L.spicyWardrobe);
     r.xxxWardrobe = pick(XXX_WARDROBE, L.xxxWardrobe);
     ["skinTone", "heritageRegion", "faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "complexionDetail", "distinctiveFeature",
-      "hairColor", "hairStyle", "hairTexture", "build", "heightFeel", "makeupLevel", "nails", "tattoosPiercings"].forEach(function (k) { r[k] = pick(P[k], L[k]); });
+      "hairColor", "hairStyle", "hairTexture", "build", "heightFeel", "makeupLevel", "nails", "tattoosPiercings"].forEach(function (k) { r[k] = pick(cleanPool(P[k], k), L[k]); });
     // ageBand: adult bands only (all 21+); refuse anything that isn't.
     var bands = (P.ageBand || []).filter(function (b) { var n = parseInt(b, 10); return n >= 21; });
     r.ageBand = pick(bands.length ? bands : ["26-32"], L.ageBand);
@@ -199,7 +219,7 @@
       b = b.replace(/one (woman|character|person) per frame unless the group toggle is on/gi, "one $1 per frame");
       if (!/one (woman|character|person) per frame/i.test(b)) b += ", one woman per frame";
     }
-    return b.replace(/\s*unless the group toggle is on/gi, "");
+    return cleanSkinText(b.replace(/\s*unless the group toggle is on/gi, ""));
   }
   function suffixOf(look, seed) {
     var suf = String((look.mj && look.mj.suffix) || "").trim();
@@ -208,7 +228,13 @@
     suf = suf.replace(/--no\s+(.*)$/i, function (_, list) { return "--no " + scrubList(list); });
     suf = suf.replace(/--stylize\s+\d+/i, "--stylize " + stylizeOf(look));
     if (/--v\s+6/.test(suf) && !/--style raw/.test(suf)) suf = suf.replace(/(--v\s+[\d.]+)/, "$1 --style raw");
+    suf = addCleanNo(suf);
     return suf + " --seed " + seed;
+  }
+  function addCleanNo(suf) {
+    if (!cleanOn()) return suf;
+    if (/--no\s+/i.test(suf)) return suf.replace(/--no\s+(.*)$/i, function (_, list) { list = list.replace(/[,\s]+$/, ""); return "--no " + (list ? list + ", " : "") + CLEAN_SKIN_NO; });
+    return (suf ? suf + " " : "") + "--no " + CLEAN_SKIN_NO;
   }
   // Wardrobe for this roll: idea clothing > heat wardrobe > look/pool wardrobe.
   function wardrobeFor(idea, heat, r) {
@@ -252,7 +278,7 @@
     var w = wardrobeFor(idea, heat, r);
     var heritage = fill(V2.heritageFace, r);
     if (S.groupScene) heritage = "lead woman: " + heritage;
-    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
+    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
     var head = headOf(look, w.fromIdea || heat !== "tease", heat), real = realism(look, heat);
     head = camScrubList(head, look, "mj"); real = camScrubList(real, look, "mj");  // only one camera in the prompt
     var parts = [
@@ -268,6 +294,7 @@
       ARTIFACTS[camKind(look)] || ""          // real-capture artifacts for that camera
     ];
     var body = dedupe(scrubFraming(scrubList(parts.join(", ").replace(/\s+/g, " ").replace(/,\s*,/g, ","))));
+    body = body.replace(CLEAN_TOKEN, CLEAN_SKIN_STYLE);
     if (!/adult 21\+/.test(body)) body += ", adult 21+";
     // Idea first and weighted (MJ multi-prompt ::2), then the rest of the prompt.
     var lead = idea ? idea + "::2 " : "";
@@ -298,17 +325,18 @@
     var cl = camLine(look, "video"), art = ARTIFACTS[camKind(look)] || "";
     var heatLine = HEAT[heat].video + (cl ? " Camera: " + cl + (art ? "; " + art : "") + "." : "");
     t = i > 0 ? t.slice(0, i + 1) + " " + heatLine + t.slice(i + 1) : heatLine + " " + t;
-    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
+    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
     var lead = (S.groupScene ? "Group scene; lead woman: " : "One woman per frame: ") + fill(V2.heritageFace, r) + "; " + fill(V2.body, r) + ".";
     var out = t + " Setting: " + fill(V2.venue, r) + ". " + lead + " Styling: " + styling + ". " +
       "Aspect " + look.aspect + ", clip length " + look.clipLength + ", motion " + ((look.mj && look.mj.motion) || "low") + ". adult 21+.";
-    out = scrubProse(out);
+    out = scrubProse(out).replace(CLEAN_TOKEN, CLEAN_SKIN_STYLE);
     if (!/adult 21\+/.test(out)) out += " adult 21+.";
     return out;
   }
   function bankFor(look, seed) {
     var mj = look.mj || {}, no = "";
     var m = String(mj.suffix || "").match(/--no\s+(.*)$/i); if (m) no = "--no " + scrubList(m[1]);
+    if (cleanOn()) no = no ? no.replace(/[,\s]+$/, "") + ", " + CLEAN_SKIN_NO : "--no " + CLEAN_SKIN_NO;
     return {
       ar: mj.ar ? "--ar " + mj.ar : "", v: mj.model || "", stylize: mj.stylize != null ? "--stylize " + stylizeOf(look) : "",
       chaos: mj.chaos != null ? "--chaos " + mj.chaos : "", weird: mj.weird ? "--weird " + mj.weird : "", q: mj.quality || "",
@@ -359,7 +387,7 @@
     ".pml-sw{width:30px;height:16px;border-radius:9px;background:rgba(255,255,255,.15);position:relative}" +
     ".pml-sw:after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#94a3b8;transition:left .15s}" +
     ".pml-toggle.on .pml-sw{background:var(--acc)}.pml-toggle.on .pml-sw:after{left:16px;background:#05070d}" +
-    ".pml-cam{min-height:44px}.pml-cam.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
+    ".pml-cam{min-height:44px}.pml-skin{min-height:44px}.pml-cam.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
     ".pml-gear{margin-top:6px;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.45;color:#94a3b8}" +
     ".pml-conf{display:inline-block;margin-left:8px;padding:0 6px;border-radius:4px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);color:#cbd5e1}.pml-conf-guess{border-color:rgba(251,191,36,.5);color:#fde68a}.pml-conf-known{border-color:rgba(74,222,128,.5);color:#86efac}" +
     ".pml-htag{font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:3px 7px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e2e8f0}";
@@ -497,6 +525,13 @@
     });
     if (S.result && (S.result.cam || "platform") !== S.cam) cr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(cr);
+    var sk = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-skin" }, [h("span", { cls: "pml-k", text: "Skin" }),
+      h("button", { cls: "pml-toggle pml-skin" + (cleanOn() ? " on" : ""), type: "button", "data-pm": "look-clean-skin", "aria-pressed": cleanOn() ? "true" : "false",
+        title: "Skips skin marks and conditions (vitiligo, freckles, scars, birthmarks...) and asks for clear, even-toned skin",
+        on: { click: function () { S.cleanSkin = !cleanOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Clean skin"]),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: cleanOn() ? "no skin marks \u00b7 even tone" : "random skin details" })]);
+    if (S.result && (S.result.clean !== false) !== cleanOn()) sk.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(sk);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
     P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
     R.note = h("div", { cls: "pml-note", "data-pm": "look-notice", style: S.notice ? "" : "display:none", text: S.notice });
@@ -540,7 +575,7 @@
     if (S.tab === "video") text = assembleVideo(l, idea, r, heat);
     else text = assembleMJ(l, idea, r, seed, heat);
     var tags = tagsFor(l, heat);
-    S.result = { text: text, tab: S.tab, look: l.id, heat: heat, cam: S.cam, seed: S.tab === "video" ? null : seed, roll: r, tags: tags };
+    S.result = { text: text, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), seed: S.tab === "video" ? null : seed, roll: r, tags: tags };
     save();
     try { S.api.current.setPrompt(text); } catch (e) {}
     if (S.tab !== "video") applyBank(bankFor(l, seed));
@@ -568,11 +603,11 @@
     _load: fetchData,
     iphoneModel: IPHONE_MODEL,
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.groupScene = !!o.group; S._forceAdult = o.adult == null ? null : !!o.adult;
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.groupScene = !!o.group; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), r = roll(l);
       var out = o.tab === "video" ? assembleVideo(l, i, r, heat) : assembleMJ(l, i, r, seed32(), heat);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3];
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4];
       return out;
     }
   };
