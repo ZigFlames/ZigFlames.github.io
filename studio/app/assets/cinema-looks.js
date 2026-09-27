@@ -7,7 +7,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260927b";
+  var V = "20260927c";
   var STORE = "pm.cinema.v1", MINE_STORE = "pm.cinema.mine.v1";
   var X = null; // PMLooks.shared
 
@@ -342,7 +342,7 @@
     ".pmc-mix b{font-family:ui-monospace,Menlo,monospace}" +
     ".pmc-x{margin-left:4px;opacity:.7}" +
     ".pmc-danger{border-color:rgba(248,113,113,.5);color:#fecaca}" +
-    ".pmc-soon{margin-top:12px;border-style:dashed;opacity:.85}" +
+    ".pmc-jump{min-height:40px;border-color:rgba(125,211,252,.45);color:#e0f2fe}" +
     "@media (max-width:640px){.pmc-chipbar>.pml-k{flex:1 0 100%}.pmc-chipbar>.pml-row{flex:1 0 100%;gap:6px}.pmc-chipbar>.pml-row>.pml-btn{flex:1 1 0;justify-content:center;padding:8px 6px;min-height:44px}.pml-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.pmc-sheet{grid-template-columns:1fr}.pmc-sheet dt{padding-top:6px}}";
   var R = {};
   function h() { return X.h.apply(null, arguments); }
@@ -358,6 +358,9 @@
     R.search = h("input", { cls: "pml-search", type: "search", placeholder: "Search " + looks().length + " looks (e.g. 90s, fisheye, noir, anamorphic, kung fu)\u2026", "aria-label": "Search cinema looks",
       autocomplete: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "search", "data-pm": "cinema-search", on: { input: function (e) { S.q = e.target.value; renderGrid(); } } });
     R.search.value = S.q;
+    top.appendChild(h("div", { cls: "pml-row", style: "justify-content:flex-end;margin-bottom:8px" }, [
+      h("button", { cls: "pml-btn pmc-jump", type: "button", "data-pm": "cinema-jump-cartoon", text: "\u270f\ufe0f Cartoon Maker \u2193", title: "Finish your sketch into a cartoon, scene by scene",
+        on: { click: function () { var c = document.getElementById("pm-cartoon"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } } })]));
     top.appendChild(R.search);
     R.chipbar = h("div", { cls: "pmc-chipbar" });
     top.appendChild(R.chipbar);
@@ -372,14 +375,21 @@
     root.appendChild(top);
     R.panel = h("div", { cls: "pml-card", style: "margin-top:12px" });
     root.appendChild(R.panel);
-    // Hook for a later feature (not built yet): upload a sketch and finish it into a cartoon, scene by scene.
-    root.appendChild(h("div", { cls: "pml-card pmc-soon", "data-pm": "cinema-sketch-soon" }, [
-      h("div", { cls: "pml-k", text: "Coming soon" }),
-      h("div", { style: "margin-top:4px;font-weight:700;color:#f1f5f9", text: "\u270f\ufe0f Sketch \u2192 Cartoon" }),
-      h("div", { style: "margin-top:4px;color:#94a3b8;font-size:12.5px;line-height:1.45", text: "Upload your own sketch, pick a Comics & Animation look, and finish it into a cartoon scene by scene. Planned, not live yet." })
-    ]));
+    // Cartoon Maker (cartoon-maker.js): finish your own sketch or write cartoon scenes, scene by scene.
+    R.cartoon = h("div", { cls: "pml-card pmk", id: "pm-cartoon", "data-pm": "cartoon-maker", style: "margin-top:12px" }, [h("div", { cls: "pml-k", text: "Loading Cartoon Maker\u2026" })]);
+    root.appendChild(R.cartoon);
     el.appendChild(root);
     renderChips(); renderGrid(); renderPanel();
+    mountCartoon(R.cartoon);
+  }
+  function kit() { return { X: X, stripSfw: stripSfw, hasSfwHit: hasSfwHit, adultWords: adultWords, PERSON_RE: PERSON_RE }; }
+  function mountCartoon(box) {
+    function go() { if (box.isConnected && window.PMCartoon) window.PMCartoon.mount(box, S.api, kit()); }
+    if (window.PMCartoon) return go();
+    var sc = document.getElementById("pm-cartoon-js");
+    if (!sc) { sc = document.createElement("script"); sc.id = "pm-cartoon-js"; sc.src = "./assets/cartoon-maker.js?v=" + V; document.head.appendChild(sc); }
+    sc.addEventListener("load", go);
+    sc.addEventListener("error", function () { box.textContent = "Cartoon Maker failed to load. Refresh to retry."; });
   }
   function groupList() { return ["All"].concat(S.data.groups || []).concat(["My Looks"]); }
   function renderChips() {
@@ -573,7 +583,7 @@
         if (S.el === el) el.innerHTML = '<div class="pml-card" style="color:#fca5a5">Could not load cinema looks (' + String(e.message || e).replace(/</g, "&lt;") + '). Refresh to retry.</div>';
       });
     },
-    unmount: function (el) { if (S.el === el) S.el = null; },
+    unmount: function (el) { if (S.el === el) { S.el = null; try { if (window.PMCartoon && R.cartoon) window.PMCartoon.unmount(R.cartoon); } catch (e) {} } },
     _load: fetchData,
     count: function () { return looks().length; },
     groups: function () { return (S.data && S.data.groups) || []; },
@@ -587,8 +597,8 @@
       S.tab = keep[0]; S.cam = keep[1]; S.cast = keep[2]; S.ensemble = keep[3]; S.cleanSkin = keep[4];
       return { text: out.text, refused: out.refused || null, notice: c.msg, cast: out.cast ? out.cast.mode : null };
     },
-    // Placeholder for the planned Sketch -> Cartoon feature (not built yet).
-    sketch: { status: "planned", plan: "Upload a sketch (image), pick a Comics & Animation look, describe each scene; generate a per-scene finishing prompt (line cleanup, color, background) for an image-to-image model. Needs an image-capable backend." }
+    // Cartoon Maker lives in cartoon-maker.js (window.PMCartoon), mounted under the looks panel.
+    sketch: { status: "live", module: "PMCartoon" }
   };
   window.addEventListener("pm:clear-all", onClearAll);
 })();
