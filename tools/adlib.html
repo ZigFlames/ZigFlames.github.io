@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>ZigFlames Ad-Lib Pad</title>
+  <meta name="zf-build" content="adlib-20260927e" />
+  <link rel="icon" href="data:," />
   <style>
     :root {
       --bg: #0b0b0c;
@@ -112,6 +114,10 @@
     .pad.stacked .stack-badge { display: inline-block; }
     .file-btn.stack-btn { border-color: #6ea8fe; color: #cfe0ff; }
     input[type="file"] { display: none; }
+    .save-status { font-size: 0.75rem; color: var(--muted); min-height: 1em; }
+    .save-status.ok { color: var(--ok); }
+    .save-status.warn { color: var(--danger); }
+    .store-note { margin: -0.75rem 1.25rem 1rem; font-size: 0.75rem; color: var(--muted); }
   
     .zf-tools-bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;padding:.65rem .85rem;margin:0 0 1rem;background:rgba(11,11,12,.92);border:1px solid #2a2a30;border-radius:12px;backdrop-filter:blur(8px);font-size:.8rem}
     .zf-tools-bar a{color:#ffcc33;text-decoration:none;font-weight:700}
@@ -126,7 +132,7 @@
   <div class="zf-tools-bar">
     <a href="/tools/">← Studio Tools</a>
     <nav aria-label="Studio tools">
-      <a href="/tools/adlib.html">Ad-Lib</a>
+      <a href="/tools/adlib.html?v=20260927e">Ad-Lib</a>
       <a href="/tools/trim.html">Trim</a>
       <a href="/tools/echo.html">Echo</a>
       <a href="/tools/pitch.html">Pitch</a>
@@ -141,16 +147,58 @@
       <button id="muteBtn" type="button">Mute</button>
       <button id="addPad" type="button">+ Pad</button>
       <button id="unlock" class="primary" type="button">Enable Audio</button>
+      <span id="saveStatus" class="save-status" role="status" aria-live="polite"></span>
     </div>
   </header>
   <p class="hint">
-    Drop or record short ad-libs. We trim silence and normalize. Stack a second sample on a pad — both fire together. Hit the key (or tap the pad) to fire over whatever beat is playing elsewhere — Grok, a DAW, another tab. No Suno. Samples stay in this browser until you clear them.
+    Drop or record short ad-libs. We trim silence and normalize. Stack a second sample on a pad — both fire together. Hit the key (or tap the pad) to fire over whatever beat is playing elsewhere — Grok, a DAW, another tab. No Suno. Everything you load, record, rename or set here autosaves in this browser and comes back when you reopen it, until you hit Clear.
   </p>
+  <p id="storeNote" class="store-note"></p>
   <main id="pads"></main>
 
   <script>
     const DB_NAME = 'zigflames-adlib-pad';
     const DB_STORE = 'pads';
+    const BUILD = '20260927e';
+    // Small, synchronous copy of everything except the audio (names, keys, order, file labels, master, mute).
+    // localStorage writes finish instantly, so nothing typed is lost if the browser is closed mid-edit.
+    // The audio itself lives in IndexedDB (same database as before; existing pads are never wiped).
+    const LS_KEY = 'zf.adlib.state.v1';
+    let dbOk = true;
+    let dbPromise = null;
+    const $status = document.getElementById('saveStatus');
+    const $storeNote = document.getElementById('storeNote');
+    let pendingSaves = 0;
+
+    function readState() {
+      try {
+        const j = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+        if (!j || typeof j !== 'object') return null;
+        return {
+          order: Array.isArray(j.order) ? j.order.filter((x) => typeof x === 'string').slice(0, 64) : [],
+          master: Number.isFinite(Number(j.master)) ? Math.min(1, Math.max(0, Number(j.master))) : null,
+          muted: j.muted === true,
+          savedAt: Number(j.savedAt) || 0,
+          pads: j.pads && typeof j.pads === 'object' ? j.pads : {},
+        };
+      } catch (_) { return null; }
+    }
+    function writeState() {
+      try {
+        const o = { v: 1, build: BUILD, savedAt: Date.now(), order: [...pads.keys()], master: Number($master.value), muted, pads: {} };
+        for (const pad of pads.values()) o.pads[pad.id] = { name: pad.name, key: pad.key, labels: (pad.labels || []).slice(0, 2) };
+        localStorage.setItem(LS_KEY, JSON.stringify(o));
+        localStorage.setItem('zf.tools.last', JSON.stringify({ path: '/tools/adlib.html', name: 'Ad-Lib Pad', t: Date.now() }));
+      } catch (_) {}
+    }
+    function setStatus(text, cls) {
+      $status.textContent = text || '';
+      $status.className = 'save-status' + (cls ? ' ' + cls : '');
+    }
+    function savedNow() {
+      const t = new Date();
+      setStatus('\u2713 Saved in this browser ' + t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), 'ok');
+    }
     const DEFAULT_PADS = [
       { id: 'burn', name: 'Burn Them!', key: '1' },
       { id: 'sick', name: 'Sick Flames!', key: '2' },
@@ -180,7 +228,9 @@
     }
 
     function openDb() {
-      return new Promise((resolve, reject) => {
+      if (dbPromise) return dbPromise;
+      dbPromise = new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error('IndexedDB unavailable')); return; }
         const req = indexedDB.open(DB_NAME, 2);
         req.onupgradeneeded = () => {
           const db = req.result;
@@ -189,9 +239,17 @@
           }
           // v1→v2: old single-pcm rows migrate on read in boot()
         };
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => {
+          const db = req.result;
+          db.onversionchange = () => { try { db.close(); } catch (_) {} dbPromise = null; };
+          db.onclose = () => { dbPromise = null; };
+          resolve(db);
+        };
         req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error('Database blocked by another tab'));
       });
+      dbPromise.catch(() => { dbPromise = null; });
+      return dbPromise;
     }
 
     function syncBufferAlias(pad) {
@@ -207,27 +265,62 @@
       };
     }
 
-    async function savePadMeta(pad) {
+    // Autosave: every change writes the small state to localStorage right away, then the pad (with its audio)
+    // to IndexedDB. Saves for one pad run in order so an older write never lands after a newer one.
+    function savePadMeta(pad) {
+      writeState();
+      if (!dbOk) return Promise.resolve();
+      pendingSaves++;
+      setStatus('Saving\u2026');
+      const run = () => writePad(pad);
+      pad.saveChain = (pad.saveChain || Promise.resolve()).then(run, run);
+      return pad.saveChain.then(() => {
+        if (--pendingSaves <= 0) { pendingSaves = 0; savedNow(); }
+      }, (err) => {
+        pendingSaves = Math.max(0, pendingSaves - 1);
+        console.warn('Ad-Lib Pad save failed', err);
+        setStatus(err && err.name === 'QuotaExceededError' ? '\u26a0 Browser storage is full \u2014 sample not saved' : '\u26a0 Could not save \u2014 try again', 'warn');
+      });
+    }
+    async function writePad(pad) {
       const db = await openDb();
       syncBufferAlias(pad);
-      const layers = (pad.buffers || []).slice(0, 2).map(layerRecord);
+      // If a stored sample could not be decoded on this device, keep its original data untouched.
+      const layers = (pad.buffers && pad.buffers.length) ? pad.buffers.slice(0, 2).map(layerRecord) : (pad.rawLayers || []);
+      const order = [...pads.keys()].indexOf(pad.id);
       const record = {
         id: pad.id,
         name: pad.name,
         key: pad.key,
         layers,
-        // legacy single-layer fields for older readers
-        sampleRate: pad.buffer ? pad.buffer.sampleRate : null,
-        channels: pad.buffer ? pad.buffer.numberOfChannels : null,
-        length: pad.buffer ? pad.buffer.length : null,
-        pcm: pad.buffer ? bufferToPcm(pad.buffer) : null,
+        labels: (pad.labels || []).slice(0, 2),
+        order: order < 0 ? 999 : order,
+        created: pad.created || Date.now(),
+        updatedAt: Date.now(),
+        build: BUILD,
       };
       await new Promise((resolve, reject) => {
         const tx = db.transaction(DB_STORE, 'readwrite');
         tx.objectStore(DB_STORE).put(record);
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('Save aborted'));
       });
+    }
+    let nameTimers = new Map();
+    function saveSoon(pad, ms) {
+      writeState();
+      clearTimeout(nameTimers.get(pad.id));
+      nameTimers.set(pad.id, setTimeout(() => { nameTimers.delete(pad.id); savePadMeta(pad); }, ms || 500));
+    }
+    function flushSaves() {
+      writeState();
+      for (const [id, t] of nameTimers) {
+        clearTimeout(t);
+        const pad = pads.get(id);
+        if (pad) savePadMeta(pad);
+      }
+      nameTimers.clear();
     }
 
     async function loadAllPads() {
@@ -464,10 +557,11 @@
         return;
       }
       const msParts = pad.buffers.map((b) => Math.round((b.length / b.sampleRate) * 1000) + ' ms');
+      const names = (pad.labels || []).filter(Boolean);
       if (n > 1) {
-        setMeta(pad, `${label || 'Stacked'} · ×2 stacked · ${msParts.join(' + ')} · trimmed + normalized`);
+        setMeta(pad, `${names.length ? names.join(' + ') : (label || 'Stacked')} · ×2 stacked · ${msParts.join(' + ')} · trimmed + normalized`);
       } else {
-        setMeta(pad, `${label || 'Ready'} · ${msParts[0]} · trimmed + normalized`);
+        setMeta(pad, `${names[0] || label || 'Ready'} · ${msParts[0]} · trimmed + normalized`);
       }
     }
 
@@ -476,19 +570,24 @@
       ensureAudio();
       const processed = trimAndNormalize(rawBuffer);
       if (!pad.buffers) pad.buffers = [];
+      if (mode !== 'stack') delete pad.rawLayers;
       if (mode === 'stack') {
         if (!pad.buffers.length) {
           setMeta(pad, 'Load first');
           return;
         }
+        if (!pad.labels) pad.labels = [];
         if (pad.buffers.length >= 2) {
           pad.buffers[1] = processed;
         } else {
           pad.buffers.push(processed);
         }
+        pad.labels[1] = label || 'Layer 2';
+        pad.labels.length = 2;
         refreshPadVisual(pad, label || 'Layer 2');
       } else {
         pad.buffers = [processed];
+        pad.labels = [label || 'Sample'];
         refreshPadVisual(pad, label);
       }
       await savePadMeta(pad);
@@ -506,6 +605,8 @@
         name: config.name,
         key: config.key,
         buffers: [],
+        labels: Array.isArray(config.labels) ? config.labels.slice(0, 2) : [],
+        created: config.created || Date.now(),
         buffer: null,
         recorder: null,
         chunks: [],
@@ -550,9 +651,15 @@
       pad.exportBtn = el.querySelector('.export');
       pad.clearBtn = el.querySelector('.clear');
 
-      pad.nameInput.addEventListener('change', async () => {
-        pad.name = pad.nameInput.value.trim() || pad.name;
-        await savePadMeta(pad);
+      pad.nameInput.addEventListener('input', () => {
+        const v = pad.nameInput.value.trim();
+        if (v) pad.name = v.slice(0, 80);
+        saveSoon(pad, 500);
+      });
+      pad.nameInput.addEventListener('change', () => {
+        pad.name = pad.nameInput.value.trim().slice(0, 80) || pad.name;
+        pad.nameInput.value = pad.name;
+        saveSoon(pad, 0);
       });
 
       function setKeyLabel(label) {
@@ -649,11 +756,17 @@
             pad.recBtn.textContent = 'Record';
             pad.recBtn.classList.remove('danger');
             stream.getTracks().forEach((t) => t.stop());
-            const blob = new Blob(pad.chunks, { type: mime });
+            const blob = new Blob(pad.chunks, { type: (pad.recorder && pad.recorder.mimeType) || mime });
             setMeta(pad, 'Processing take…');
-            const ab = await blob.arrayBuffer();
-            const buf = await audioCtx.decodeAudioData(ab.slice(0));
-            await assignBuffer(pad, buf, 'Recording');
+            try {
+              const ab = await blob.arrayBuffer();
+              const buf = await audioCtx.decodeAudioData(ab.slice(0));
+              const t = new Date();
+              await assignBuffer(pad, buf, 'Recording ' + t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+            } catch (err) {
+              setMeta(pad, 'Could not read that take \u2014 try again');
+              console.warn(err);
+            }
           };
           pad.recorder.start();
           pad.recording = true;
@@ -690,6 +803,8 @@
           activeSources.delete(pad.id);
         }
         pad.buffers = [];
+        pad.labels = [];
+        delete pad.rawLayers;
         pad.buffer = null;
         drawWave(pad.canvas, null);
         pad.el.classList.remove('armed', 'playing', 'stacked');
@@ -728,12 +843,17 @@
 
     $master.addEventListener('input', () => {
       if (masterGain && !muted) masterGain.gain.value = Number($master.value);
+      writeState();
     });
     $mute.addEventListener('click', () => {
       muted = !muted;
       $mute.textContent = muted ? 'Unmute' : 'Mute';
       if (masterGain) masterGain.gain.value = muted ? 0 : Number($master.value);
+      writeState();
     });
+    // Closing the tab / app switch on iPad or Android: write everything that is still pending.
+    window.addEventListener('pagehide', flushSaves);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSaves(); });
     $unlock.addEventListener('click', () => {
       ensureAudio();
       $unlock.textContent = 'Audio On';
@@ -743,6 +863,7 @@
       const n = pads.size + 1;
       const pad = makePad({ id: 'pad-' + Date.now(), name: 'Ad-Lib ' + n, key: String(n % 10) });
       await savePadMeta(pad);
+      try { pad.el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
     });
 
     function revivePcm(pcm) {
@@ -761,30 +882,99 @@
       return [];
     }
 
+    function idTime(id) { const m = /^pad-(\d+)$/.exec(String(id)); return m ? Number(m[1]) : 0; }
+
+    async function askPersist() {
+      try {
+        if (!navigator.storage || !navigator.storage.persist) { $storeNote.textContent = 'Samples, names and settings save automatically in this browser.'; return; }
+        let p = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+        if (!p) p = await navigator.storage.persist();
+        $storeNote.textContent = 'Samples, names and settings save automatically in this browser' + (p ? ' (persistent storage on).' : '.');
+      } catch (_) {}
+    }
+
     async function boot() {
-      const saved = await loadAllPads();
-      if (saved.length) {
-        for (const row of saved) {
-          const pad = makePad({ id: row.id, name: row.name, key: row.key });
+      const st = readState();
+      if (st) {
+        if (st.master != null) $master.value = String(st.master);
+        if (st.muted) { muted = true; $mute.textContent = 'Unmute'; }
+      }
+      let rows = [];
+      try {
+        rows = await loadAllPads();
+      } catch (err) {
+        dbOk = false;
+        console.warn('Ad-Lib Pad storage unavailable', err);
+        setStatus('\u26a0 This browser is blocking storage (private mode?) \u2014 samples will not be kept', 'warn');
+      }
+      rows = rows.filter((r) => r && typeof r.id === 'string');
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      const lsPads = (st && st.pads) || {};
+      // Order: last saved order first, then anything else by saved position / creation time.
+      const ids = [];
+      for (const id of (st ? st.order : [])) if ((byId.has(id) || (!rows.length && lsPads[id])) && !ids.includes(id)) ids.push(id);
+      rows.slice().sort((a, b) => {
+        const oa = Number.isFinite(a.order) ? a.order : 1e6, ob = Number.isFinite(b.order) ? b.order : 1e6;
+        if (oa !== ob) return oa - ob;
+        return (a.created || idTime(a.id)) - (b.created || idTime(b.id)) || String(a.id).localeCompare(String(b.id));
+      }).forEach((r) => { if (!ids.includes(r.id)) ids.push(r.id); });
+
+      if (!ids.length) {
+        for (const d of DEFAULT_PADS) makePad(d);
+        writeState();
+        if (dbOk) for (const pad of pads.values()) await savePadMeta(pad);
+        askPersist();
+        return;
+      }
+      let resync = [];
+      for (const id of ids) {
+        const row = byId.get(id) || { id };
+        const ls0 = lsPads[id] && typeof lsPads[id] === 'object' ? lsPads[id] : {};
+        // The quick copy wins only when it is newer than the database row (e.g. a name typed right before closing).
+        const lsNewer = !byId.has(id) || (row.updatedAt && st && st.savedAt >= row.updatedAt);
+        const ls = lsNewer ? ls0 : {};
+        const name = (typeof ls.name === 'string' && ls.name.trim()) || row.name || (typeof ls0.name === 'string' && ls0.name) || 'Ad-Lib';
+        const key = (typeof ls.key === 'string' && ls.key) || row.key || ls0.key || '';
+        const labels = Array.isArray(row.labels) ? row.labels : (Array.isArray(ls.labels) ? ls.labels : []);
+        const pad = makePad({ id, name, key, labels, created: row.created || idTime(id) || undefined });
+        if (row.name !== name || row.key !== key) resync.push(pad);
+        try {
           const layerRows = layersFromRow(row);
           if (layerRows.length) {
             ensureAudio();
             pad.buffers = layerRows.map((L) => {
               const pcm = revivePcm(L.pcm);
+              if (!pcm.length || pcm.length !== L.length * L.channels || !(L.sampleRate >= 3000)) throw new Error('Stored sample is damaged');
               return pcmToBuffer(pcm, L.sampleRate, L.channels);
             });
             refreshPadVisual(pad, 'Loaded');
+          } else if (!byId.has(id) && Array.isArray(ls.labels) && ls.labels.length) {
+            setMeta(pad, 'Sample was removed by the browser \u2014 load it again');
           }
-        }
-      } else {
-        for (const d of DEFAULT_PADS) {
-          const pad = makePad(d);
-          await savePadMeta(pad);
+        } catch (err) {
+          console.warn('Could not restore pad', id, err);
+          pad.buffers = [];
+          pad.rawLayers = layersFromRow(row);
+          setMeta(pad, 'Could not restore this sample \u2014 load it again');
         }
       }
+      writeState();
+      if (dbOk) {
+        // Bring IndexedDB up to date (names typed right before the browser closed, new order / labels fields).
+        for (const pad of pads.values()) {
+          const row = byId.get(pad.id);
+          if (!row || resync.includes(pad) || !Number.isFinite(row.order) || !Array.isArray(row.labels) || row.pcm) savePadMeta(pad);
+        }
+        if (!pendingSaves) setStatus('\u2713 Restored from this browser', 'ok');
+      }
+      askPersist();
     }
 
-    boot().catch(console.error);
+    boot().catch((err) => {
+      console.warn('Ad-Lib Pad boot problem', err);
+      if (!pads.size) for (const d of DEFAULT_PADS) makePad(d);
+      setStatus('\u26a0 Could not restore everything \u2014 your pads may need reloading', 'warn');
+    });
   </script>
 </body>
 </html>

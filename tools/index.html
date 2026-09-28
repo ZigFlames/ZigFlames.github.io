@@ -49,13 +49,25 @@
       <p class="pm-tagline">Trim. Pitch. Echo. Trigger. No Suno — just your samples.</p>
       <p class="pm-lead">Browser machines for ZigFlames ad-libs and one-shots. Drop a clip, shape it, download, then fire it from the pad over whatever beat is playing.</p>
 
+      <p id="resumeTool" class="pm-actions" hidden style="margin:0 0 1rem"></p>
+      <script>
+        // Came back after closing the browser? Offer a one-tap return to the last tool (its pads are saved in this browser).
+        try {
+          var last = JSON.parse(localStorage.getItem('zf.tools.last') || 'null');
+          if (last && last.path === '/tools/adlib.html' && Date.now() - Number(last.t || 0) < 90 * 864e5) {
+            var r = document.getElementById('resumeTool'), a = document.createElement('a');
+            a.className = 'btn'; a.href = '/tools/adlib.html?v=20260927e'; a.textContent = '\u21a9 Back to Ad-Lib Pad \u2014 your pads are saved';
+            r.appendChild(a); r.hidden = false;
+          }
+        } catch (e) {}
+      </script>
       <div class="tools-grid">
         <a class="tool-card" href="/automatics/">
           <p class="tool-kicker">Machine</p>
           <h2>AUTOMATICS</h2>
           <p>Browser beat machine — chop, sequence, export. Full deck PWA.</p>
         </a>
-        <a class="tool-card" href="/tools/adlib.html">
+        <a class="tool-card" href="/tools/adlib.html?v=20260927e">
           <p class="tool-kicker">Pad</p>
           <h2>Ad-Lib Pad</h2>
           <p>Load or record pads. Stack two samples on one pad — both fire on key/tap.</p>
