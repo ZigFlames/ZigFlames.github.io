@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Storage check &amp; backup | ZigFlames Studio</title>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<style>
+  body{margin:0;background:#0d0b09;color:#f5f0e8;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+  main{max-width:860px;margin:0 auto;padding:24px 18px 60px}
+  h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:28px 0 8px;color:#ff9a1f}
+  p.m{color:#b9ad9c;margin:4px 0 14px}
+  table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:6px 8px;border-bottom:1px solid #2a231c;text-align:left;vertical-align:top}
+  th{color:#b9ad9c;font-weight:600} td.n{text-align:right;white-space:nowrap;color:#b9ad9c}
+  .ok{color:#7ddc8a}.warn{color:#ffb35c}.bad{color:#ff6b5c}
+  button,label.b{background:#ff9a1f;color:#1a1410;border:0;border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer;font-size:14px;display:inline-block}
+  button.g{background:#2a231c;color:#f5f0e8}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+  pre{white-space:pre-wrap;background:#17130f;border:1px solid #2a231c;border-radius:8px;padding:10px;font-size:12px;max-height:260px;overflow:auto}
+  code{background:#17130f;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Studio storage check &amp; backup</h1>
+  <p class="m">Your Prompt Machine vocab, characters, drafts, ad-lib pads, bars and AUTOMATICS songs are saved <b>only in this browser</b> on this device. A different browser, a private tab, the Google app's built-in browser or a home-screen app each keep separate storage, so your work can look "gone" there when it's actually still in the original one. This page only reads storage. It never deletes anything.</p>
+
+  <div class="row" id="env"></div>
+
+  <h2>1 · What this browser has</h2>
+  <table id="ls"><thead><tr><th>Saved item</th><th>What it is</th><th class="n">Size</th></tr></thead><tbody></tbody></table>
+  <h2>Audio / project databases</h2>
+  <table id="idb"><thead><tr><th>Database</th><th>Stores (records)</th></tr></thead><tbody></tbody></table>
+
+  <h2>2 · Back up</h2>
+  <p class="m">Downloads a JSON file with every ZigFlames text setting from this browser (vocab, characters, drafts, looks, loop lab, MJ params, bars, ad-lib pad names). Audio samples and AUTOMATICS songs aren't included. Use AUTOMATICS → Songs to export those.</p>
+  <div class="row"><button id="exp">Download backup (.json)</button></div>
+
+  <h2>3 · Restore into this browser</h2>
+  <p class="m">Merge only: by default it adds items this browser doesn't have and leaves existing ones alone. If you tick "replace", each current value is copied to <code>pm.importBackup.*</code> before it's replaced. Nothing gets deleted either way.</p>
+  <div class="row">
+    <label class="b g"><input type="checkbox" id="rep"> also replace items that already exist here</label>
+    <label class="b">Choose backup file…<input type="file" id="imp" accept=".json,application/json" hidden></label>
+  </div>
+  <pre id="log" hidden></pre>
+</main>
+<script>
+(function(){
+  var KNOWN=[
+    [/^faceoff\.vocabBank\.v1$/,'Prompt Machine · Vocabulary Bank'],
+    [/^flux-character-builder:saved$/,'Prompt Machine · saved characters'],
+    [/^flux-character-builder:draft$/,'Prompt Machine · current draft'],
+    [/^flux-character-builder:/,'Prompt Machine · studio data'],
+    [/^pm\.backup\./,'Prompt Machine · automatic backup copy'],
+    [/^pm\.lastClear\.v1$/,'Prompt Machine · snapshot from before the last Reset / Clear All'],
+    [/^pm\.mj\.v1$/,'Prompt Machine · MJ Param Bank'],
+    [/^pm\.looplab\.v1$/,'Prompt Machine · Loop Lab'],
+    [/^pm\.looks\.v1$/,'Prompt Machine · Platform Looks'],
+    [/^pm\.cinema/,'Prompt Machine · Cinema Looks'],
+    [/^pm\.cartoon/,'Prompt Machine · Cartoon Maker'],
+    [/^pm_access_v1$/,'Prompt Machine · access unlock'],
+    [/^pm\./,'Prompt Machine · setting'],
+    [/^faceoff\./,'Prompt Machine · setting'],
+    [/^seedExpander\./,'Prompt Machine · Seed Expander custom words'],
+    [/^studio\./,'Prompt Machine · studio setting/history'],
+    [/^zf\.adlib\./,'Ad-Lib Pad · pad names / settings'],
+    [/^zig\.bars/,'Bars notepad'],
+    [/^automatics\./,'AUTOMATICS · setting'],
+    [/^zf\.|^zig/,'ZigFlames · setting']
+  ];
+  function what(k){for(var i=0;i<KNOWN.length;i++)if(KNOWN[i][0].test(k))return KNOWN[i][1];return null}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function kb(n){return n<1024?n+' B':(n/1024).toFixed(1)+' KB'}
+  function zfKeys(){var out=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(what(k))out.push(k)}}catch(e){}return out.sort()}
+  function chipCount(raw){try{var j=JSON.parse(raw);var c=Array.isArray(j&&j.categories)?j.categories:(Array.isArray(j)?j:[]);return c.reduce(function(a,x){return a+((x&&x.chips&&x.chips.length)||0)},0)}catch(e){return 0}}
+  function render(){
+    var env=document.getElementById('env'),bits=[];
+    var standalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone;
+    bits.push('<span>Site: <b>'+esc(location.origin)+'</b></span>');
+    bits.push('<span>'+(standalone?'<span class="warn">Running as home-screen app (separate storage from the browser)</span>':'Running in a browser tab')+'</span>');
+    env.innerHTML=bits.join(' · ');
+    if(navigator.storage&&navigator.storage.persisted)navigator.storage.persisted().then(function(p){env.insertAdjacentHTML('beforeend',' · <span class="'+(p?'ok':'warn')+'">'+(p?'Storage is persistent':'Storage may be cleared by the browser when space is low')+'</span>')});
+    var tb=document.querySelector('#ls tbody'),keys=zfKeys(),h='';
+    keys.forEach(function(k){var v=localStorage.getItem(k)||'',extra='';if(k==='faceoff.vocabBank.v1')extra=' ('+chipCount(v)+' chips)';if(k==='flux-character-builder:saved'){try{extra=' ('+JSON.parse(v).length+' saved)'}catch(e){}}
+      h+='<tr><td><code>'+esc(k)+'</code></td><td>'+esc(what(k))+extra+'</td><td class="n">'+kb(v.length)+'</td></tr>'});
+    tb.innerHTML=h||'<tr><td colspan="3" class="bad">No ZigFlames data in this browser. If you made things before, they\'re most likely in another browser or app on this device (or another device). Open zigflames.com/studio/recover.html there and download a backup.</td></tr>';
+    var ib=document.querySelector('#idb tbody');
+    var names=['zigflames-adlib-pad','automatics-system','automatics-kit'];
+    Promise.resolve(indexedDB.databases?indexedDB.databases().catch(function(){return[]}):[]).then(function(list){
+      var have=(list||[]).map(function(d){return d.name});
+      var rows=names.map(function(n){
+        if(have.length&&have.indexOf(n)<0)return Promise.resolve('<tr><td><code>'+n+'</code></td><td class="m">not in this browser</td></tr>');
+        return new Promise(function(res){
+          var q=indexedDB.open(n);var created=false;
+          q.onupgradeneeded=function(){created=true;try{q.transaction.abort()}catch(e){}};
+          q.onerror=function(){res('<tr><td><code>'+n+'</code></td><td class="m">'+(created?'not in this browser':'could not open')+'</td></tr>')};
+          q.onsuccess=function(){var db=q.result,st=[].slice.call(db.objectStoreNames);if(!st.length){db.close();return res('<tr><td><code>'+n+'</code></td><td class="m">empty</td></tr>')}
+            var t=db.transaction(st,'readonly'),parts=[];st.forEach(function(s){var c=t.objectStore(s).count();c.onsuccess=function(){parts.push(s+' ('+c.result+')')}});
+            t.oncomplete=function(){db.close();res('<tr><td><code>'+n+'</code></td><td>'+esc(parts.join(', '))+'</td></tr>')};t.onerror=function(){db.close();res('<tr><td><code>'+n+'</code></td><td>?</td></tr>')}};
+        });
+      });
+      return Promise.all(rows).then(function(r){ib.innerHTML=r.join('')});
+    });
+  }
+  document.getElementById('exp').onclick=function(){
+    var data={},keys=zfKeys();keys.forEach(function(k){if(k!=='pm_access_v1')data[k]=localStorage.getItem(k)});
+    var blob=new Blob([JSON.stringify({kind:'zigflames-studio-backup',version:1,origin:location.origin,exportedAt:new Date().toISOString(),userAgent:navigator.userAgent,items:data},null,1)],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='zigflames-studio-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1000);
+  };
+  document.getElementById('imp').onchange=function(e){
+    var f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+    var log=document.getElementById('log');log.hidden=false;log.textContent='Reading '+f.name+'…';
+    f.text().then(function(t){
+      var j=JSON.parse(t);var items=j&&j.kind==='zigflames-studio-backup'?j.items:null;if(!items)throw new Error('Not a ZigFlames studio backup file.');
+      var rep=document.getElementById('rep').checked,stamp=Date.now(),added=[],replaced=[],kept=[],same=[];
+      Object.keys(items).forEach(function(k){if(!what(k)||k==='pm_access_v1'||typeof items[k]!=='string')return;
+        var cur=localStorage.getItem(k);
+        if(cur==null){localStorage.setItem(k,items[k]);added.push(k)}
+        else if(cur===items[k])same.push(k)
+        else if(rep){localStorage.setItem('pm.importBackup.'+stamp+'.'+k,cur);localStorage.setItem(k,items[k]);replaced.push(k)}
+        else kept.push(k)});
+      log.textContent='Added: '+(added.join(', ')||'none')+'\nReplaced (old value saved as pm.importBackup.'+stamp+'.*): '+(replaced.join(', ')||'none')+'\nKept existing (tick "replace" to overwrite): '+(kept.join(', ')||'none')+'\nAlready identical: '+same.length+'\n\nReopen the studio to see restored items.';
+      render();
+    }).catch(function(err){log.textContent='Import failed: '+err.message+' (nothing was changed)'});
+  };
+  render();
+})();
+</script>
+</body>
+</html>

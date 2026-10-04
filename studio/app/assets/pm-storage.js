@@ -112,7 +112,63 @@
       return fallback;
     }
   }
-  window.__pmStorage = { safeSet: safeSet, safeGet: safeGet, emit: emit };
+  // v20261004: ask the browser to keep this site's storage (reduces eviction under storage pressure / ITP).
+  try {
+    if (navigator.storage && navigator.storage.persisted) {
+      navigator.storage.persisted().then(function (p) { if (!p && navigator.storage.persist) return navigator.storage.persist(); }).catch(function () {});
+    }
+  } catch (eP) {}
+  // v20261004: snapshot before "Reset All" / "Clear All" wipes the draft, so it can be undone.
+  // Narrow hook: only fires when the studio draft key itself is removed; never removes anything on its own.
+  var LAST_CLEAR = 'pm.lastClear.v1';
+  try {
+    var origRemove = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = function (key) {
+      try {
+        if (this === window.localStorage && key === 'flux-character-builder:draft') {
+          var d = localStorage.getItem('flux-character-builder:draft');
+          var b = localStorage.getItem(backupKey('flux-character-builder:draft'));
+          var richest = (d && draftSignal(d) >= (b ? draftSignal(b) : 0)) ? d : (b || d);
+          if (richest && draftSignal(richest) >= 2) {
+            origRemove.call(localStorage, LAST_CLEAR);
+            localStorage.setItem(LAST_CLEAR, JSON.stringify({ at: Date.now(), draft: richest, mj: localStorage.getItem('pm.mj.v1') }));
+          }
+        }
+      } catch (eS) {}
+      return origRemove.apply(this, arguments);
+    };
+  } catch (eH) {}
+  function restoreLastClear() {
+    try {
+      var snap = JSON.parse(localStorage.getItem(LAST_CLEAR) || 'null');
+      if (!snap || !snap.draft) return false;
+      localStorage.setItem('flux-character-builder:draft', snap.draft);
+      localStorage.setItem(backupKey('flux-character-builder:draft'), snap.draft);
+      if (snap.mj) localStorage.setItem('pm.mj.v1', snap.mj);
+      return true;
+    } catch (e) { return false; }
+  }
+  window.addEventListener('pm:clear-all', function () {
+    try {
+      if (!localStorage.getItem(LAST_CLEAR)) return;
+      var el = document.getElementById('pm-undo-clear');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'pm-undo-clear';
+        el.setAttribute('role', 'status');
+        el.style.cssText = 'position:fixed;z-index:99999;left:50%;bottom:1.25rem;transform:translateX(-50%);display:flex;gap:.75rem;align-items:center;padding:.7rem 1rem;border-radius:10px;background:#1a1410;border:1px solid #ff9a1f;color:#f5f0e8;font:600 13px/1.4 IBM Plex Sans,system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.45)';
+        var t = document.createElement('span'); t.textContent = 'Cleared. Your previous selections + MJ params were saved.';
+        var u = document.createElement('button'); u.type = 'button'; u.textContent = 'Undo'; u.setAttribute('data-pm', 'undo-clear');
+        u.style.cssText = 'background:#ff9a1f;color:#1a1410;border:0;border-radius:6px;padding:.35rem .7rem;font:700 13px system-ui;cursor:pointer';
+        u.onclick = function () { if (restoreLastClear()) location.reload(); };
+        el.appendChild(t); el.appendChild(u); document.body.appendChild(el);
+      }
+      el.style.display = 'flex';
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { el.style.display = 'none'; }, 15000);
+    } catch (e) {}
+  });
+  window.__pmStorage = { safeSet: safeSet, safeGet: safeGet, emit: emit, restoreLastClear: restoreLastClear };
   window.addEventListener('pm-storage', function (ev) {
     var d = ev.detail || {};
     if (d.ok && !d.recovered) return;
