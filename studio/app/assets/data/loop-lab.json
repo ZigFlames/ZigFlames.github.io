@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-26a",
+  "version": "2026-10-04a",
   "notes": "Loop Lab data. Edit wording, order and presets here; the app reads this file (no code changes needed). 'words' = wording variants (Remix rolls between them; the first one is the default). No artist names anywhere: describe the sound.",
   "targets": {
     "grok": {
@@ -42,6 +42,7 @@
       "idea",
       "loopType",
       "genre",
+      "hiphop",
       "tempoKey",
       "instruments",
       "drums",
@@ -54,6 +55,7 @@
       "idea",
       "sketch",
       "genre",
+      "hiphop",
       "tempoKey",
       "instruments",
       "drums",
@@ -1481,5 +1483,38 @@
     "daddy yankee": "classic dembow reggaeton",
     "beyonce": "powerful modern R&B",
     "rihanna": "Caribbean-tinged pop R&B"
+  },
+  "hiphop": {
+    "_note": "Hip-hop anchor (on by default): every Loop Lab prompt carries hip-hop genre words so generators stop drifting into ballad / EDM / pop. Toggle lives next to Genre.",
+    "prefix": "hip-hop",
+    "fallbackGenre": {
+      "label": "Boom bap hip-hop",
+      "words": [
+        "boom bap hip-hop",
+        "90s boom bap hip-hop",
+        "dusty East Coast boom bap hip-hop"
+      ]
+    },
+    "melodic": {
+      "label": "hip-hop sample flavor",
+      "words": [
+        "dusty hip-hop sample made for an MPC chop, head-nod boom bap feel",
+        "crate-digger hip-hop sample, warm vinyl grit, made to be chopped on an MPC",
+        "boom bap sample flavor, dusty and soulful, sits under a hard-hitting hip-hop beat"
+      ]
+    },
+    "drums": {
+      "label": "hip-hop drums",
+      "words": [
+        "hard-hitting boom bap drums, punchy kick, crisp snare on 2 and 4, swung 16th hi-hats, MPC swing",
+        "dusty boom bap drum break, knocking kick, cracking snare, shuffled hats, head-nod pocket",
+        "hip-hop drums with an MPC swing, fat kick, snappy snare, off-beat open hat"
+      ]
+    },
+    "autoNegatives": [
+      "edm",
+      "rock"
+    ],
+    "matchHint": "Genres whose wording already contains hip-hop / boom bap / trap / drill / rap / phonk / G-funk / chillhop are left as-is."
   }
 }

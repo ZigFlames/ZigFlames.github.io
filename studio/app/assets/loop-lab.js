@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260926a";
+  var V = "20261004a";
   var STORE = "pm.looplab.v1";
   var D = null, loading = null;
   var S = null, EL = null, API = null, R = {};
@@ -40,7 +40,7 @@
   // ---- state --------------------------------------------------------------------------------
   function blank() {
     return { target: "grok", mode: "loop", idea: "", genre: "", bpm: 90, key: "", scale: "minor", loopType: "melody", bars: 4,
-      instruments: [], moods: [], textures: [], mix: [], negOff: [], negOn: [], negText: "", seed: 0, preset: null };
+      instruments: [], moods: [], textures: [], mix: [], negOff: [], negOn: [], negText: "", seed: 0, preset: null, hiphop: true };
   }
   function applyPreset(p, keep) {
     var b = keep ? S : blank(), pk = p.picks || {};
@@ -69,6 +69,11 @@
   }
 
   // ---- assembly -------------------------------------------------------------------------------
+  // Hip-hop anchor: genres already worded as hip-hop are left alone; everything else gets "hip-hop" added.
+  var HIPHOP_RE = /hip[- ]?hop|boom[- ]?bap|\btrap\b|drill|\brap\b|phonk|g-funk|chillhop/i;
+  // the literal genre word the generators key on; subgenres (trap, phonk, jazz rap...) still get "hip-hop" in front
+  var HIPHOP_WORD_RE = /hip[- ]?hop|boom[- ]?bap/i;
+  function hipHopOn() { return S.hiphop !== false && !!D.hiphop; }
   var DRUM_IDS = ["percussion", "cowbell"], BASS_IDS = ["808", "bass-guitar", "upright-bass", "synth-bass"];
   function build() {
     var r = rng(S.seed || 1), T = D.targets[S.target] || D.targets.generic, sketch = S.mode === "sketch";
@@ -102,7 +107,24 @@
       idea: idea.text,
       loopType: sketch ? "" : (lt.oneShot ? word(lt, r) + ", each hit isolated" : S.bars + "-bar " + word(lt, r)),
       sketch: "finish my sketch into a full song",
-      genre: g ? (function (gw) { return gw + (instrumental && !/instrumental/i.test(gw) ? " instrumental" : ""); })(word(g, r)) : (instrumental ? "instrumental" : ""),
+      genre: (function () {
+        var gw = g ? word(g, r) : "";
+        if (hipHopOn()) {
+          if (!gw) gw = word(D.hiphop.fallbackGenre, r);
+          else if (!HIPHOP_WORD_RE.test(gw)) gw = (D.hiphop.prefix || "hip-hop") + " " + gw;
+        }
+        if (!gw) return instrumental ? "instrumental" : "";
+        return gw + (instrumental && !/instrumental/i.test(gw) ? " instrumental" : "");
+      })(),
+      hiphop: (function () {
+        if (!hipHopOn()) return "";
+        var drumFree = sketch ? false : !!(lt.noDrums || lt.oneShot);
+        var genreIsHipHop = !!(g && HIPHOP_RE.test((g.words || []).join(" ") + " " + g.label));
+        if (drumFree) return word(D.hiphop.melodic, r);
+        if (sketch) return word(D.hiphop.melodic, r) + (genreIsHipHop ? "" : ", " + word(D.hiphop.drums, r));
+        // drums / full loops: hip-hop genres already bring their own drum wording
+        return genreIsHipHop && g.drums ? "" : word(D.hiphop.drums, r);
+      })(),
       tempoKey: bpm + " BPM" + (S.key ? ", " + S.key + " " + S.scale : ""),
       instruments: inst.length ? inst[0] + " lead" + (inst.length > 1 ? ", with " + listJoin(inst.slice(1)) : "") : "",
       drums: g && (sketch || S.loopType === "full" || S.loopType === "drums") ? g.drums : "",
@@ -114,7 +136,8 @@
       arrangement: D.arrangement.join(", "),
       sketchRules: D.sketchRules.join(", ")
     };
-    var order = D.order[sketch ? "sketch" : "loop"] || [];
+    var order = (D.order[sketch ? "sketch" : "loop"] || []).slice();
+    if (order.indexOf("hiphop") < 0) order.splice(Math.max(0, order.indexOf("genre") + 1), 0, "hiphop");
     var frags = order.map(function (k) { return slots[k] || ""; }).filter(Boolean);
     var leadName = inst[0] || "lead", colorName = color ? word(byId(D.instruments, color), rng(7)) : (inst[1] || "strings");
     var structure = sketch ? D.structure.map(function (s) { return "[" + s.tag + (s.hint ? ": " + s.hint.replace("{lead}", leadName).replace("{color}", colorName) : "") + "]"; }) : [];
@@ -128,6 +151,7 @@
     if (!frags.length) positive = "";
     // negatives
     var C = D.negatives.catalog, auto = sketch ? D.negatives.autoSketch.slice() : D.negatives.autoLoop.concat(lt.negatives || []);
+    if (hipHopOn()) (D.hiphop.autoNegatives || []).forEach(function (x) { if (C[x] && auto.indexOf(x) < 0) auto.push(x); });
     if (!sketch && lt.instrumental !== false) auto = auto.concat(D.negatives.autoInstrumental);
     if (sketch) auto = auto.concat(D.negatives.autoInstrumental);
     auto = uniq(auto).filter(function (x) { return C[x]; });
@@ -234,7 +258,10 @@
     var ssel = h("select", { cls: "pll-sel", "data-pm": "ll-scale", "aria-label": "Scale", on: { change: function (e) { S.scale = e.target.value; S.preset = null; changed(); } } }, D.scales.map(function (k) { return h("option", { value: k, text: k }); }));
     ssel.value = S.scale;
     var grid = h("div", { cls: "pll-grid pll-sec" }, [
-      h("div", {}, [h("div", { cls: "pll-k", text: "Genre" }), h("div", { style: "margin-top:6px" }, [gsel])]),
+      h("div", {}, [h("div", { cls: "pll-k", text: "Genre" }), h("div", { cls: "pll-row", style: "margin-top:6px" }, [gsel,
+        h("button", { cls: "pll-chip" + (S.hiphop !== false ? " on" : ""), type: "button", "data-pm": "ll-hiphop", "aria-pressed": S.hiphop !== false ? "true" : "false",
+          title: "Keep every prompt hip-hop (adds hip-hop / boom bap wording + MPC sample or drum flavor)",
+          text: S.hiphop !== false ? "Hip-hop ON" : "Hip-hop OFF", on: { click: function () { S.hiphop = S.hiphop === false; changed(); } } })])]),
       h("div", {}, [h("div", { cls: "pll-k", text: "Key & scale" }), h("div", { cls: "pll-row", style: "margin-top:6px" }, [ksel, ssel])]),
       h("div", {}, [h("div", { cls: "pll-k", text: "BPM" }), h("div", { cls: "pll-row", style: "margin-top:6px" }, [bpm])])
     ]);
