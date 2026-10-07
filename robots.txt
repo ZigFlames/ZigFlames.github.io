@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /automatics/
+Disallow: /automatics/snapshots/
 
 Sitemap: https://zigflames.com/sitemap.xml
