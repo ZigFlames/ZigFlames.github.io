@@ -1,0 +1,11 @@
+{
+  "current": {
+    "id": "20261006-2015-refresh",
+    "commit": "pending",
+    "iso": "2026-10-06T20:15:39-04:00",
+    "version": "v1.3.0+20261006",
+    "notes": "Safe Refresh \u2014 soft-reload keeps songs",
+    "path": ""
+  },
+  "builds": []
+}
