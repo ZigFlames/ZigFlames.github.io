@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+Allow: /go/
+Allow: /beat/
+Allow: /zig-beat/
 Disallow: /automatics/
 Disallow: /automatics/snapshots/
 

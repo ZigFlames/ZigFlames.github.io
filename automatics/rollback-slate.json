@@ -1,10 +1,10 @@
 {
   "current": {
-    "id": "20261006-2224-23ad3a9",
-    "commit": "23ad3a9",
-    "iso": "2026-10-06T22:24:43-04:00",
+    "id": "20261006-2234-pending",
+    "commit": "pending",
+    "iso": "2026-10-06T22:34:00-04:00",
     "version": "v1.3.0+20261006",
-    "notes": "AUTOMATICS: MAKE SONG from loop + sample key detect (chromagram)",
+    "notes": "AUTOMATICS: always-latest entries \u2014 NetworkFirst HTML, vanity /go/automatics, Safe Open tip",
     "path": ""
   },
   "builds": [

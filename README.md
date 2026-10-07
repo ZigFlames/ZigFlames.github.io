@@ -40,3 +40,6 @@ Custom domain later:
 **zigflames.com is currently a Squarespace parking page.** This repo is not connected to that domain yet. DNS will need to be pointed later (away from Squarespace, toward GitHub Pages or another static host). Until then, the site can live on the free GitHub Pages URL.
 
 Contact: [artist@zigflames.com](mailto:artist@zigflames.com)
+
+## AUTOMATICS (beat machine)
+Bookmark **https://zigflames.com/go/automatics/** so browsers always open the newest build (see Safe Open). `/automatics/` stays noindex.
