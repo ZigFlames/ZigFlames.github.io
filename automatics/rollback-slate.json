@@ -1,7 +1,7 @@
 {
   "current": {
-    "id": "20261006-2140-64758db",
-    "commit": "64758db",
+    "id": "20261006-2140-29428fe",
+    "commit": "29428fe",
     "iso": "2026-10-06T21:40:16-04:00",
     "version": "v1.3.0+20261006",
     "notes": "AUTOMATICS: per-drum voice mix \u2014 vol, 3-band EQ, pan, mute, punch",
