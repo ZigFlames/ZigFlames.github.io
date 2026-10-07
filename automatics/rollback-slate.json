@@ -1,13 +1,21 @@
 {
   "current": {
-    "id": "20261006-2119-52d4838",
-    "commit": "52d4838",
-    "iso": "2026-10-06T21:19:18-04:00",
+    "id": "20261006-2140-64758db",
+    "commit": "64758db",
+    "iso": "2026-10-06T21:40:16-04:00",
     "version": "v1.3.0+20261006",
-    "notes": "AUTOMATICS security: noindex/robots, LOCK NOW + idle/visibility auto-lock, session unlock, Safe Open",
+    "notes": "AUTOMATICS: per-drum voice mix \u2014 vol, 3-band EQ, pan, mute, punch",
     "path": ""
   },
   "builds": [
+    {
+      "id": "20261006-2119-52d4838",
+      "commit": "52d4838",
+      "iso": "2026-10-06T21:19:18-04:00",
+      "version": "v1.3.0+20261006",
+      "notes": "Auto-snapshot before deploy",
+      "path": "snapshots/20261006-2119-52d4838/"
+    },
     {
       "id": "20261006-2017-5357f2a",
       "commit": "5357f2a",
