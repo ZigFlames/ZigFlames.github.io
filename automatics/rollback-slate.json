@@ -1,13 +1,21 @@
 {
   "current": {
-    "id": "20261006-2140-29428fe",
-    "commit": "29428fe",
-    "iso": "2026-10-06T21:40:16-04:00",
+    "id": "20261006-2200-pending",
+    "commit": "pending",
+    "iso": "2026-10-06T22:00:35-04:00",
     "version": "v1.3.0+20261006",
-    "notes": "AUTOMATICS: per-drum voice mix \u2014 vol, 3-band EQ, pan, mute, punch",
+    "notes": "AUTOMATICS: Polish Door \u2014 Auto Song + polish presets + WAV/MP3 bounce",
     "path": ""
   },
   "builds": [
+    {
+      "id": "20261006-2141-29428fe",
+      "commit": "29428fe",
+      "iso": "2026-10-06T21:40:16-04:00",
+      "version": "v1.3.0+20261006",
+      "notes": "Auto-snapshot before deploy",
+      "path": "snapshots/20261006-2141-29428fe/"
+    },
     {
       "id": "20261006-2119-52d4838",
       "commit": "52d4838",

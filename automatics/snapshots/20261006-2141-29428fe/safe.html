@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow,noarchive,nosnippet" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+    />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <title>ZigFlames · Safe Open</title>
+    <meta name="description" content="Open AUTOMATICS safely in a dedicated window or profile." />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #120e0a;
+        --card: #241c14;
+        --ink: #f5efe6;
+        --muted: #b9a994;
+        --accent: #c45a32;
+        --line: rgba(212, 168, 116, 0.35);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        background: linear-gradient(180deg, #1a1510 0%, var(--bg) 100%);
+        color: var(--ink);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      main {
+        width: min(520px, 100%);
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 28px 24px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.25rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      p { margin: 0 0 12px; color: var(--muted); line-height: 1.45; font-size: 0.95rem; }
+      .btn {
+        display: block;
+        width: 100%;
+        min-height: 52px;
+        margin: 18px 0 8px;
+        border: none;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 800;
+        font-size: 1rem;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+      }
+      .btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+      ol { margin: 8px 0 0; padding-left: 1.2rem; color: var(--ink); }
+      li { margin: 0 0 10px; line-height: 1.4; }
+      li strong { color: #fff; }
+      .note {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        font-size: 0.85rem;
+      }
+      a { color: #ffb089; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Safe Open</h1>
+      <p>
+        Open AUTOMATICS in a dedicated window so a leftover unlocked tab or Google search
+        history from your main browser profile is less likely to expose the machine.
+      </p>
+      <button type="button" class="btn" id="open-safe" data-testid="open-automatics-safe">
+        Open AUTOMATICS Safe
+      </button>
+      <p class="note"><strong>Recommended setup</strong></p>
+      <ol>
+        <li>
+          <strong>Install as app (PWA)</strong> — in Chrome/Edge open AUTOMATICS, then
+          Install / “Cast …” / app menu → <em>Install ZigFlames · AUTOMATICS</em>.
+          Launch from that app icon only.
+        </li>
+        <li>
+          <strong>Dedicated profile</strong> — create a Chrome/Edge profile used only for
+          Zig Studio (no personal Google search, no random extensions). Sign into that
+          profile only when you work.
+        </li>
+        <li>
+          <strong>Lock when you step away</strong> — use <em>LOCK NOW</em> or Session-only unlock
+          so closing the window clears access.
+        </li>
+      </ol>
+      <p class="note">
+        Direct URL (same origin): <a href="./">/automatics/</a> · this page stays private
+        (<code>noindex</code>).
+      </p>
+    </main>
+    <script>
+      (function () {
+        var btn = document.getElementById('open-safe');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var features =
+            'noopener,noreferrer,popup=yes,width=1280,height=860,menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes';
+          var w = window.open('./', 'automatics-safe', features);
+          if (w) {
+            try { w.opener = null; } catch (e) {}
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
