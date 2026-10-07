@@ -1,7 +1,7 @@
 {
   "current": {
-    "id": "20261006-2119-pending",
-    "commit": "pending",
+    "id": "20261006-2119-52d4838",
+    "commit": "52d4838",
     "iso": "2026-10-06T21:19:18-04:00",
     "version": "v1.3.0+20261006",
     "notes": "AUTOMATICS security: noindex/robots, LOCK NOW + idle/visibility auto-lock, session unlock, Safe Open",
