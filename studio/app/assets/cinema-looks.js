@@ -7,7 +7,7 @@
  */
 (function () {
   "use strict";
-  var V = "20260927d";
+  var V = "20261010a";
   var STORE = "pm.cinema.v1", MINE_STORE = "pm.cinema.mine.v1";
   var X = null; // PMLooks.shared
 
@@ -229,7 +229,7 @@
     return { text: finish(lead + segs.join(" ") + " " + p.text), params: p };
   }
   function sentence(label, body) { body = scrubBody(body, /adult 21\+/i); return body ? label + ": " + body + "." : ""; }
-  function assembleVideo(list, idea, sc, cast, roll) {
+  function assembleVideo(list, idea, sc, cast, roll, seed) {
     var a = list[0], people = cast.mode !== "none";
     var cl = camLine(a, "video"), mv = camScrub(a.move);
     var out = [];
@@ -252,7 +252,10 @@
     out.push(sentence("Era", val(a.era)));
     out.push("Clip 8-10 s, aspect " + a.aspect + ", one continuous shot." + (!people && PERSON_RE.test(idea) ? " adult 21+." : "") + " No on-screen text, logos or watermarks.");
     var t = finish(out.filter(Boolean).join(" "));
-    return { text: t, params: null };
+    // Midjourney params go on video prompts too (params last; --motion before --no so the --no list stays last).
+    var p = paramsFor(list, seed, cast), mo = /\b(fast|whip|run\w*|chase|danc\w*|action|handheld)\b/i.test(String(idea) + " " + String(a.move || "")) ? "high" : "low";
+    var pt = p.text.replace(/(^|\s)--no\s/, " --motion " + mo + " --no ").replace(/\s{2,}/g, " ").trim();
+    return { text: t + " " + pt, params: p };
   }
 
   // ---- Remix ----------------------------------------------------------------------------
@@ -275,8 +278,8 @@
     var sc = opt.scene || rollScene(a, cast);
     var roll = cast.mode === "none" ? null : { lead: rollPerson(cast.mode) };
     var seed = X.seed32();
-    var r = S.tab === "video" ? assembleVideo(list, idea, sc, cast, roll) : assembleMJ(list, idea, sc, cast, roll, seed);
-    return { text: r.text, params: r.params, cast: cast, scene: sc, roll: roll, seed: S.tab === "video" ? null : seed };
+    var r = S.tab === "video" ? assembleVideo(list, idea, sc, cast, roll, seed) : assembleMJ(list, idea, sc, cast, roll, seed);
+    return { text: r.text, params: r.params, cast: cast, scene: sc, roll: roll, seed: seed };
   }
   function doRemix(keepScene) {
     var list = activeList();

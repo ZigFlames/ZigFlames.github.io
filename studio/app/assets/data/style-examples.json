@@ -1,0 +1,12 @@
+{
+  "_howto": "Paste prompts Zig likes into 'examples'. Fields: look = look id from looks.json (or '*' for any), group = optional look group (e.g. 'Studio'), idea = optional word the idea must contain (e.g. 'twerk'), phrases = short pieces to borrow (one is added to the prompt per Remix), tags = hashtags to put first, prompt = the full liked prompt (reference only, not inserted). Adults 21+ only: phrases/tags with youth, family or non-consent words are dropped automatically.",
+  "examples": [
+    {
+      "look": "*",
+      "idea": "twerk",
+      "phrases": [],
+      "tags": [],
+      "prompt": "(placeholder: paste one of Zig's liked twerk prompts here)"
+    }
+  ]
+}
