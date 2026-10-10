@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261010a";
+  var V = "20261010b";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -123,6 +123,55 @@
     if (!on) return String(text || "");
     var t = String(text || "").replace(/\bunretouched skin with pores\b/gi, "unretouched natural skin texture").replace(/\b(real|visible) pores\b/gi, "natural skin texture");
     return t.split(/,\s*/).filter(function (f) { return f && (/natural skin texture/i.test(f) || !SKIN_MARK_RE.test(f)); }).join(", ");
+  }
+
+  // ---- Beauty (default OFF): bias the randomizer toward glamorous, attractive adult women (21+) ------------
+  // Diversity stays (all skin tones / heritages); only unflattering picks are swapped for glam ones.
+  var GLAM = {
+    faceShape: ["oval face", "heart-shaped face", "diamond face", "V-line face", "softly symmetrical face", "high-cheekboned oval face"],
+    eyes: ["captivating almond eyes with long lashes", "sultry hooded hazel eyes", "big bright doe eyes", "green cat eyes", "smoldering dark brown eyes", "amber fox eyes", "bright blue eyes with lush lashes", "monolid eyes with sharp winged liner", "deep brown bedroom eyes", "grey-green almond eyes"],
+    brows: ["sleek arched brows", "brushed-up full brows", "sculpted brows", "laminated fluffy brows", "softly arched defined brows"],
+    nose: ["delicate straight nose", "small refined nose", "softly upturned nose", "elegant narrow nose", "cute button nose", "elegant broad nose with a soft rounded tip"],
+    lips: ["full plump lips", "glossy pouty lips", "heart-shaped lips", "defined cupid's bow", "full lower lip", "full lips with a dimpled smile"],
+    jawCheekbones: ["high sharp cheekbones", "sculpted cheekbones and a tapered chin", "defined jawline", "V-shaped jaw and lifted cheekbones", "chiseled cheekbones"],
+    complexionDetail: ["radiant glowing skin", "dewy luminous skin", "sun-kissed glow", "satin-smooth skin with a soft highlight", "natural skin texture with a healthy glow"],
+    distinctiveFeature: ["tiny beauty mark above the lip", "deep dimples", "elegant collarbones", "striking smile", "long fluttery lashes", "hourglass waist", "toned midriff", "flirty knowing smile"],
+    build: ["curvy hourglass figure", "slim toned figure", "athletic toned body", "thick thighs and a snatched waist", "slim-thick figure", "voluptuous hourglass curves", "long-legged slender figure", "fit body with toned abs", "busty hourglass figure", "sculpted fitness-model body"],
+    heightFeel: ["tall", "long-legged", "statuesque", "model height", "towering in heels", "petite and perfectly proportioned"],
+    makeupLevel: ["natural glam", "smoky eye", "bold red lip", "sharp winged liner", "glossy lip and highlighter", "full beat glam", "soft bronzed glam", "sultry smoky eye and nude gloss", "lash-heavy glam with glossy lips"],
+    nails: ["long glossy almond nails", "red stiletto nails", "French-tip coffin nails", "nude glossy nails", "chrome nails", "black almond nails"],
+    hairExtra: ["bombshell curls", "Hollywood waves", "voluminous blowout", "knotless braids", "sleek wet look", "long glossy waves", "high snatched ponytail", "waist-length straight hair"],
+    wardrobe: ["bodycon mini dress", "satin slip dress", "corset top and leather mini skirt", "cut-out bodycon dress", "crop top and low-rise micro skirt", "plunging neckline satin dress", "lace bodysuit and high-waisted jeans", "thigh-slit gown", "bikini top and sarong", "sheer blouse over a lace bralette"]
+  };
+  var GLAM_DROP = {
+    skinTone: /vitiligo|ruddy|weathered|patch/i,
+    hairColor: /gray|grey|silver|salt|roots/i,
+    hairStyle: /buzz|messy bun|wolf cut|shag/i,
+    hairTexture: /frizz|wiry|gray|coarse|^fine$/i,
+    tattoosPiercings: /faded|old|eyebrow|lip ring/i
+  };
+  var DRAB_WARDROBE_RE = /\b(scrubs|tracksuit|velour|pajamas?|sweat\w*|hoodies?|band tee|tee dress|cardigan|overalls|uniforms?|baggy|oversized|parka|fleece)\b/i;
+  var BEAUTY_LINE = ["stunningly beautiful, gorgeous, model-level attractive, magnetic sex appeal", "breathtakingly beautiful, glamorous, smoldering sex appeal, camera-ready", "drop-dead gorgeous, sultry and confident, bombshell energy", "strikingly beautiful bombshell, alluring gaze, irresistible sex appeal"];
+  var BEAUTY_REAL = "flattering light on her face, camera-ready glow, gorgeous and photogenic";
+  var BEAUTY_NO = "unattractive, plain, homely, aged, tired, frumpy, double chin, bad teeth";
+  var MATURE_LOOKS = { mylf: 1, milfed: 1 };   // themed looks keep 33-50 bands
+  function beautyOn() { return S.beauty === true; }
+  function glamPool(arr, k) {
+    if (!beautyOn()) return arr;
+    if (GLAM[k]) return GLAM[k];
+    if (k === "hairStyle") return (arr || []).filter(function (x) { return !GLAM_DROP.hairStyle.test(x); }).concat(GLAM.hairExtra);
+    if (GLAM_DROP[k]) { var o = (arr || []).filter(function (x) { return !GLAM_DROP[k].test(x); }); return o.length ? o : arr; }
+    return arr;
+  }
+  function beautySoften(text) {
+    if (!beautyOn()) return text;
+    var out = String(text || "").split(/,\s*/).filter(function (f) { return f && !/peach fuzz|uneven tone|real body weight|not beauty lighting|amateur framing|imperfect exposure|dirty sensor spots|slight motion blur|ordinary mixed available light/i.test(f); });
+    out.push(BEAUTY_REAL);
+    return out.join(", ");
+  }
+  function addBeautyNo(no) {
+    if (!beautyOn()) return no;
+    return no ? no.replace(/[,\s]+$/, "") + ", " + BEAUTY_NO : "--no " + BEAUTY_NO;
   }
 
   // ---- Heat levels (18+ mode only; default Tease) -------------------------------------------
@@ -280,14 +329,14 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -312,15 +361,19 @@
     var P = S.variety.pools, L = HIST, r = {};
     var ok = function (x) { return x && !FRAMING_RE.test(x) && !hasBlocked(x); };
     var lv = (look.venues || []).filter(ok), lw = (look.wardrobeHints || []).filter(ok);
+    var glam = beautyOn();
+    if (glam) lw = lw.filter(function (x) { return !DRAB_WARDROBE_RE.test(x); });
     r.venue = (lv.length && rnd() >= FALLBACK_P) ? pick(lv, L.venue) : pick((P.venueEvent || []).filter(ok), L.venue);
-    r.wardrobe = (lw.length && rnd() >= FALLBACK_P) ? pick(lw, L.wardrobe) : pick((P.wardrobe || []).filter(ok), L.wardrobe);
+    r.wardrobe = (lw.length && rnd() >= FALLBACK_P) ? pick(lw, L.wardrobe) : pick(glam ? GLAM.wardrobe : (P.wardrobe || []).filter(ok), L.wardrobe);
     r.spicyWardrobe = pick(SPICY_WARDROBE, L.spicyWardrobe);
     r.xxxWardrobe = pick(XXX_WARDROBE, L.xxxWardrobe);
     ["skinTone", "heritageRegion", "faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "complexionDetail", "distinctiveFeature",
-      "hairColor", "hairStyle", "hairTexture", "build", "heightFeel", "makeupLevel", "nails", "tattoosPiercings"].forEach(function (k) { r[k] = pick(cleanPool(P[k], k), L[k]); });
+      "hairColor", "hairStyle", "hairTexture", "build", "heightFeel", "makeupLevel", "nails", "tattoosPiercings"].forEach(function (k) { r[k] = pick(cleanPool(glamPool(P[k], k), k), L[k]); });
     // ageBand: adult bands only (all 21+); refuse anything that isn't.
     var bands = (P.ageBand || []).filter(function (b) { var n = parseInt(b, 10); return n >= 21; });
+    if (glam) bands = MATURE_LOOKS[look.id] ? ["33-40", "41-50"] : ["21-25", "21-25", "26-32", "26-32", "33-40"];  // all 21+
     r.ageBand = pick(bands.length ? bands : ["26-32"], L.ageBand);
+    if (glam) r.beauty = pick(BEAUTY_LINE);
     Object.keys(r).forEach(function (k) { remember(k, r[k]); });
     if (r.tattoosPiercings === "none") r.tattoosPiercings = "no tattoos or piercings";
     S.last = r;
@@ -337,7 +390,7 @@
       b = b.replace(/one (woman|character|person) per frame unless the group toggle is on/gi, "one $1 per frame");
       if (!/one (woman|character|person) per frame/i.test(b)) b += ", one woman per frame";
     }
-    return cleanSkinText(b.replace(/\s*unless the group toggle is on/gi, ""));
+    return beautySoften(cleanSkinText(b.replace(/\s*unless the group toggle is on/gi, "")));
   }
   function suffixOf(look, seed) {
     var suf = String((look.mj && look.mj.suffix) || "").trim();
@@ -347,6 +400,7 @@
     suf = suf.replace(/--stylize\s+\d+/i, "--stylize " + stylizeOf(look));
     if (/--v\s+6/.test(suf) && !/--style raw/.test(suf)) suf = suf.replace(/(--v\s+[\d.]+)/, "$1 --style raw");
     suf = addCleanNo(suf);
+    if (beautyOn()) suf = /--no\s+/i.test(suf) ? suf.replace(/--no\s+(.*)$/i, function (_, l) { return addBeautyNo("--no " + l); }) : suf + " " + addBeautyNo("");
     return suf + " --seed " + seed;
   }
   function addCleanNo(suf) { return addCleanNoOn(suf, cleanOn()); }
@@ -397,6 +451,10 @@
     for (var i = 0; i < n; i++) {
       var r = roll(look), man = S.castMix === "mixed" && i % 2 === 1;
       if (man) { r.man = true; r.mHair = pick(MALE.hair, HIST.mHair); r.mFace = pick(MALE.face, HIST.mFace); r.mBuild = pick(MALE.build, HIST.mBuild);
+        if (r.beauty) { r.mFace = "handsome chiseled face, " + r.mFace; r.mBuild = r.mBuild.replace(/^(\w)/, "ripped $1"); r.beauty = "";
+          r.faceShape = pick(["square-jawed face", "strong angular face", "chiseled oval face"]); r.eyes = pick(["intense dark eyes", "piercing hazel eyes", "deep brown eyes", "steel-blue eyes"]);
+          r.brows = "thick straight brows"; r.nose = pick(["strong straight nose", "classic straight nose", "broad strong nose"]); r.lips = "full defined lips";
+          r.jawCheekbones = "sharp jawline"; r.complexionDetail = "healthy glowing skin"; r.distinctiveFeature = "confident smile"; r.heightFeel = pick(["tall", "6'2\" tall", "tall and broad"]); }
         ["mHair", "mFace", "mBuild"].forEach(function (k) { remember(k, r[k]); }); }
       cast.push(r);
     }
@@ -411,8 +469,9 @@
     var face = fill(V2.heritageFace, r);
     if (r.man) return face + ", " + r.mFace + "; " + r.hairColor + " hair, " + r.mHair + ", " + r.mBuild + ", " + r.heightFeel + ", adult man aged " + r.ageBand + "; wearing " + personWardrobe(idea, heat, r, i);
     var st = [personWardrobe(idea, heat, r, i), r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
-    return face + (prose ? "; " : ", ") + fill(V2.body, r) + (prose ? "; styling: " : ", ") + st;
+    return face + (prose ? "; " : ", ") + bodyOf(V2, r) + (prose ? "; styling: " : ", ") + st;
   }
+  function bodyOf(V2, r) { return (r.beauty ? r.beauty + ", " : "") + fill(V2.body, r); }
   function castLabel(r, i, n) { return n === 1 ? "" : ORD[i + 1] + " " + (r.man ? "man" : "woman"); }
   // Beats: idea beats first; the look's generic setup / dialogue beats are dropped when an idea is typed; shuffled for variety.
   function beatsFor(look, idea, n) {
@@ -436,7 +495,7 @@
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
     var w = wardrobeFor(idea, heat, r);
-    var heritage = fill(V2.heritageFace, r), bodyTxt = fill(V2.body, r);
+    var heritage = fill(V2.heritageFace, r), bodyTxt = bodyOf(V2, r);
     var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
     if (cast.length > 1) {
       heritage = cast.map(function (p, i) { return castLabel(p, i, cast.length) + ": " + personText(V2, p, heat, idea, i, false).replace(/,\s*/g, " / "); }).join(", ");
@@ -507,7 +566,7 @@
       lead = "Cast (" + cast.length + " distinct adults 21+, each with a unique face): " + cast.map(function (p, i) { return castLabel(p, i, cast.length).replace(/^./, function (c) { return c.toUpperCase(); }) + " \u2014 " + personText(V2, p, heat, idea, i, true); }).join(". ") + ".";
       stylingTxt = cleanOn() ? " Skin: " + CLEAN_TOKEN + "." : "";
     } else {
-      lead = (S.groupScene ? "Group scene; lead woman: " : "One woman per frame: ") + fill(V2.heritageFace, r) + "; " + fill(V2.body, r) + ".";
+      lead = (S.groupScene ? "Group scene; lead woman: " : "One woman per frame: ") + fill(V2.heritageFace, r) + "; " + bodyOf(V2, r) + ".";
       stylingTxt = " Styling: " + styling + ".";
     }
     var ex = examplePhrase(look, idea);
@@ -521,6 +580,7 @@
     var mj = look.mj || {}, no = "";
     var m = String(mj.suffix || "").match(/--no\s+(.*)$/i); if (m) no = "--no " + scrubList(m[1]);
     if (cleanOn()) no = no ? no.replace(/[,\s]+$/, "") + ", " + CLEAN_SKIN_NO : "--no " + CLEAN_SKIN_NO;
+    no = addBeautyNo(no);
     var ch = mj.chaos != null ? Number(mj.chaos) : null;
     if (ch != null && heat && heat !== "tease") ch = Math.min(40, ch + 10);   // a little more variety on Spicy / XXX
     if (ch != null && S.people > 1) ch = Math.min(45, ch + 5);
@@ -773,6 +833,13 @@
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: cleanOn() ? "no skin marks \u00b7 even tone" : "random skin details" })]);
     if (S.result && (S.result.clean !== false) !== cleanOn()) sk.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(sk);
+    var bt = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-beauty" }, [h("span", { cls: "pml-k", text: "Beauty" }),
+      h("button", { cls: "pml-toggle pml-skin" + (beautyOn() ? " on" : ""), type: "button", "data-pm": "look-beauty-toggle", "aria-pressed": beautyOn() ? "true" : "false",
+        title: "Biases faces, bodies and outfits toward glamorous, gorgeous adult women (21+). Off = the original random mix",
+        on: { click: function () { S.beauty = !beautyOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Beauty"]),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: beautyOn() ? "glam faces \u00b7 hot bodies \u00b7 sexy outfits" : "original random mix" })]);
+    if (S.result && (S.result.beauty === true) !== beautyOn()) bt.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(bt);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
     P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
     R.note = h("div", { cls: "pml-note", "data-pm": "look-notice", style: S.notice ? "" : "display:none", text: S.notice });
@@ -821,7 +888,7 @@
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
     var tags = tagsFor(l, heat, idea, r, cast.length);
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), seed: seed, roll: r, people: cast.length, tags: tags };
     S.result.text = compose(S.result);
     save();
     try { S.api.current.setPrompt(S.result.text); } catch (e) {}
@@ -869,14 +936,14 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean;
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty;
       S.people = o.people || (o.group ? 2 : 1); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags };
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6];
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7];
       return o.full ? { text: out, tags: res.tags, params: res.params } : out;
     }
   };
