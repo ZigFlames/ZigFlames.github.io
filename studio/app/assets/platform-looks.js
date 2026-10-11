@@ -311,26 +311,74 @@
   }
   // ---- Look stamp (Scoreline Pickup): the picked look's signature aesthetics stamped ON TOP of his DNA every Remix.
   // Never replaces cast, faces, Fresh, Style, Beauty, Crowd, eye color or skin — it only adds look / grit / camera / anti-AI-polish lines.
-  var LOOK_STAMP = {
+  // Hand-tuned signature stamps; every other look builds its stamp from its own look data (styleName, lighting, grade, camera, lens, framing, MJ keywords).
+  var STAMP_OVERRIDE = {
     "scoreland-busty-pinup": {
       name: "Scoreline",
-      chip: ["Scoreline stamp: flash pinup", "poster-pop color", "real grain", "not AI polish"],
-      mj: "90s-2000s big-bust magazine pinup look, bright on-camera flash with crisp catchlights, saturated poster-pop color, centered bust-level pinup framing, retro pinup styling touches, real-camera grit: fine film grain, flash falloff, slight vignetting, print-scan texture, not AI polish",
-      video: "90s-2000s big-bust magazine pinup look; bright on-camera flash with crisp catchlights, saturated poster-pop color, centered bust-level pinup framing with slow photographic tilts, retro pinup styling touches; real-camera grit: fine film grain, flash falloff, slight vignetting; not AI polish",
-      no: ["AI polish", "CGI sheen", "over-smoothed render", "HDR glow", "muted washed-out color"]
+      chip: ["1992 big-busty pinup magazine polish", "flash pinup", "poster-pop color", "not AI polish"],
+      mj: "1992 big-busty pinup magazine polish, classic big-bust pictorial glamour, bright on-camera flash with crisp catchlights, saturated poster-pop color, centered bust-level pinup framing, retro pinup styling touches, glossy magazine-page finish on real skin, real-camera grit: fine film grain, flash falloff, slight vignetting, print-scan texture, not AI polish",
+      video: "1992 big-busty pinup magazine polish, classic big-bust pictorial glamour; bright on-camera flash with crisp catchlights, saturated poster-pop color, centered bust-level pinup framing with slow photographic tilts, retro pinup styling touches, glossy magazine-page finish on real skin; real-camera grit: fine film grain, flash falloff, slight vignetting; not AI polish"
+    },
+    "worldstar-viral": {
+      name: "WorldStar",
+      chip: ["WorldStar viral phone clip", "shaky from the crowd", "crushed noisy color", "not AI polish"],
+      mj: "raw hood-viral phone clip, shot on a phone from the crowd, shaky handheld, digital zoom punch-ins with zoom noise, phone flash burst, club strobes and streetlight spill, crushed noisy oversaturated phone color, off-center vertical framing with bodies blocking frame, motion blur, compression artifacts, not AI polish",
+      video: "raw hood-viral phone clip; shaky handheld from the crowd, sudden digital zoom punch-ins, phone flash bursts, club strobes and streetlight spill; crushed, noisy, oversaturated phone color, vertical off-center framing with bodies blocking frame, motion blur and compression artifacts; not AI polish"
+    },
+    "hiphop-music-video": {
+      name: "Hip-hop video",
+      chip: ["90s-2000s rap video", "fisheye low-angle hero", "saturated neon primaries", "not AI polish"],
+      mj: "big-budget 90s-2000s rap video look, fisheye and ultra-wide low-angle hero shot, anamorphic letterbox, bold hard light with colored backlight and glossy highlights, saturated neon primaries, stark contrast, light pulsing to the beat, real film-camera texture, not AI polish",
+      video: "big-budget 90s-2000s rap video look; fisheye and ultra-wide low-angle hero moves, dolly and crane, anamorphic letterbox; bold hard light, colored backlight, glossy highlights pulsing to the beat; saturated neon primaries, stark contrast; real film-camera texture; not AI polish"
+    },
+    "bet-uncut-video": {
+      name: "BET Uncut",
+      chip: ["early-2000s uncut rap video", "SD video bleed", "red and blue gels", "not AI polish"],
+      mj: "early-2000s after-hours uncut rap video look, standard-definition camcorder video with SD color bleed and interlace softness, fisheye wide, club strobes, saturated red and blue gels, cheap gloss, contrasty, dancers in the foreground, money-in-the-air slow motion, real tape texture, not AI polish",
+      video: "early-2000s after-hours uncut rap video look; SD camcorder video with color bleed and interlace softness, handheld and jib, fisheye wide performer-to-lens; club strobes, saturated red and blue gels, cheap gloss, contrasty; dancers in the foreground; real tape texture; not AI polish"
     }
   };
-  function stampOf(look) { return look && LOOK_STAMP[look.id] && gearOf(look).kind !== "virtual" ? LOOK_STAMP[look.id] : null; }
+  var STAMP_NO = ["AI polish", "CGI sheen", "over-smoothed render", "HDR glow"];
+  // look text that would fight his DNA rules (his negatives / real-skin lines) never goes into a stamp
+  var STAMP_CLASH = /softbox|filter|retouch|airbrush|beauty[- ]filter|plastic|porcelain|flawless skin|\bcgi\b|3d render|watermark|logo|text overlay|caption|masthead|real performer/i;
+  var STAMP_CACHE = {};
+  // keep descriptive pieces only: no lone one-word adjectives ("bright", "casual", "smooth") and nothing that fights real skin
+  function stampBits(str, n) { return String(str || "").split(/\s*[,;]\s*/).map(function (x) { return x.trim(); }).filter(function (x) { return x && !STAMP_CLASH.test(x) && !/^(smooth|polished|flawless|glossy|clean|bright|casual|flattering)$/i.test(x) && (/\s/.test(x) || /\d/.test(x) || x.length >= 9); }).slice(0, n || 2); }
+  function buildStamp(look) {
+    var o = STAMP_OVERRIDE[look.id];
+    var label = String(look.label || look.id).replace(/\s+(Look|Style|Aesthetic)$/i, "");
+    if (o) return { name: o.name, chip: o.chip, mj: o.mj, video: o.video, no: STAMP_NO.concat(o.no || []) };
+    var candid = look.realismTier === "candid", kind = gearOf(look).kind;
+    var grit = candid || kind === "phone" || kind === "webcam" || kind === "camcorder" || kind === "action"
+      ? "real " + (kind === "phone" ? "phone" : kind === "webcam" ? "webcam" : kind === "camcorder" ? "tape" : "camera") + " grit, sensor noise, not AI polish"
+      : "real-camera texture on real skin, not AI polish";
+    var name = stampBits(look.styleName, 1)[0] || label;
+    var light = stampBits(look.lighting, 2), grade = stampBits(look.colorGrade, 2), cam = stampBits(look.camera, 1), lens = stampBits(look.lens, 1), frame = stampBits(look.framing, 2);
+    var have = [name].concat(light, grade, cam, lens, frame).join(" ").toLowerCase();
+    var kw = ((look.mj && look.mj.mjKeywords) || []).filter(function (k) { return !STAMP_CLASH.test(k) && have.indexOf(k.toLowerCase()) < 0; }).slice(0, 3);
+    var nm = /\b(look|clip|aesthetic|style)$/i.test(name) ? name : name + " look";
+    var mj = uniqList([nm].concat(light, grade, cam, lens, frame, kw, [grit])).join(", ");
+    var video = nm + "; " + uniqList(cam.concat(lens)).join(", ") + "; " + uniqList(light.concat(grade)).join(", ") + "; " + uniqList(frame.concat(kw.slice(0, 2))).join(", ") + (look.pacing ? "; pacing " + stampBits(look.pacing, 1)[0] : "") + "; " + grit;
+    return { name: label, chip: [name, (grade[0] || light[0] || ""), (light[0] && grade[0] ? light[0] : cam[0] || ""), "not AI polish"].filter(Boolean), mj: mj, video: video, no: STAMP_NO };
+  }
+  function uniqList(a) { var seen = {}; return a.filter(function (x) { var k = String(x || "").toLowerCase(); if (!k || seen[k]) return false; seen[k] = 1; return true; }); }
+  // virtual (AI / anime) looks are never DNA-led, so their full look text already shows every Remix
+  function stampOf(look) { if (!look || gearOf(look).kind === "virtual") return null; return STAMP_CACHE[look.id] || (STAMP_CACHE[look.id] = buildStamp(look)); }
+  // drop stamp pieces the prompt already says (e.g. Beauty / platform-camera mode keeps some look text)
+  function stampFresh(stamp, text, sep) {
+    var low = String(text).toLowerCase();
+    return stamp.split(sep).filter(function (x) { var t = x.trim().toLowerCase(); return t && (t.indexOf("not ai polish") >= 0 || t.indexOf(" look") >= 0 || low.indexOf(t) < 0); }).join(sep);
+  }
   function stampMJ(text, look) {
     var st = stampOf(look); if (!st) return text;
     // own segment right after his DNA chip, weighted under it (::1.5 < ::2) so his DNA still leads
     var k1 = text.indexOf("::2 "), k2 = k1 >= 0 ? text.indexOf("::2 ", k1 + 4) : -1, at = k2 >= 0 && k2 < 600 ? k2 + 4 : (k1 >= 0 ? k1 + 4 : 0);
-    var out = text.slice(0, at) + st.mj + "::1.5 " + text.slice(at);
+    var out = text.slice(0, at) + stampFresh(st.mj, text, ", ") + "::1.5 " + text.slice(at);
     return out;
   }
   function stampVideo(text, look) {
     var st = stampOf(look); if (!st) return text;
-    var w = "Look stamp (on top of the DNA above, never replaces cast, faces or style): " + st.video + ".";
+    var w = "Look stamp (on top of the DNA above, never replaces cast, faces or style): " + stampFresh(st.video, text, "; ") + ".";
     var m = text.match(/^Main action \(priority\):[^.]*\.\s*(Core DNA \(priority\):[^.]*\.\s*)?/);
     var out = m ? m[0] + w + " " + text.slice(m[0].length) : w + " " + text;
     return out;
@@ -1191,7 +1239,7 @@
     if (twerkOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + TWERK.no : "--no " + TWERK.no;
     if (!crowdOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + NO_CROWD_NO : "--no " + NO_CROWD_NO;
     var stN = stampOf(look);
-    if (stN) { var hv = String(bk.no || "").toLowerCase(), ad = stN.no.filter(function (x) { return hv.indexOf(x.toLowerCase()) < 0; }).join(", "); if (ad) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + ad : "--no " + ad; }
+    if (stN) { var hv = String(bk.no || "").toLowerCase(), ad = uniqList(stN.no).filter(function (x) { return hv.indexOf(x.toLowerCase()) < 0; }).join(", "); if (ad) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + ad : "--no " + ad; }
     if (freshOn()) {
       var have = String(bk.no || "").toLowerCase(), add = FRESH_NO.split(/,\s*/).filter(function (x) { return have.indexOf(x.toLowerCase()) < 0; }).join(", ");
       if (add) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + add : "--no " + add;
@@ -1524,7 +1572,7 @@
         title: "Each Remix randomly blends 2-3 of Zig's style DNAs (one sets the cast and params, the others add flavor). Adults 21+ only",
         on: { click: function () { S.mash = !S.mash; save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Mash-up"]),
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", "data-pm": "look-mash-note", text: S.mash ? (S.result && S.result.mashMix ? "last: " + S.result.mashMix : "random blend each Remix") : "off" })]);
-    var stL = stampOf(lookById(S.sel)); if (stL) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", "data-pm": "look-stamp", text: stL.name + " stamp \u00b7 always on top of your DNA" }));
+    var stL = stampOf(lookById(S.sel)); if (stL) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", "data-pm": "look-stamp", text: stL.name + " look stamp \u00b7 on top of your DNA every Remix" }));
     if (S.result && ((S.result.twerk === true) !== twerkOn() || (S.result.mash === true) !== (S.mash === true))) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(tw);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
