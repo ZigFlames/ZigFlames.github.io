@@ -309,6 +309,32 @@
     var w = "Core DNA (priority): " + chip.join(", ") + ".", m = text.match(/^Main action \(priority\):[^.]*\.\s*/);
     return m ? m[0] + w + " " + text.slice(m[0].length) : w + " " + text;
   }
+  // ---- Look stamp (Scoreline Pickup): the picked look's signature aesthetics stamped ON TOP of his DNA every Remix.
+  // Never replaces cast, faces, Fresh, Style, Beauty, Crowd, eye color or skin — it only adds look / grit / camera / anti-AI-polish lines.
+  var LOOK_STAMP = {
+    "scoreland-busty-pinup": {
+      name: "Scoreline",
+      chip: ["Scoreline stamp: flash pinup", "poster-pop color", "real grain", "not AI polish"],
+      mj: "90s-2000s big-bust magazine pinup look, bright on-camera flash with crisp catchlights, saturated poster-pop color, centered bust-level pinup framing, retro pinup styling touches, real-camera grit: fine film grain, flash falloff, slight vignetting, print-scan texture, not AI polish",
+      video: "90s-2000s big-bust magazine pinup look; bright on-camera flash with crisp catchlights, saturated poster-pop color, centered bust-level pinup framing with slow photographic tilts, retro pinup styling touches; real-camera grit: fine film grain, flash falloff, slight vignetting; not AI polish",
+      no: ["AI polish", "CGI sheen", "over-smoothed render", "HDR glow", "muted washed-out color"]
+    }
+  };
+  function stampOf(look) { return look && LOOK_STAMP[look.id] && gearOf(look).kind !== "virtual" ? LOOK_STAMP[look.id] : null; }
+  function stampMJ(text, look) {
+    var st = stampOf(look); if (!st) return text;
+    // own segment right after his DNA chip, weighted under it (::1.5 < ::2) so his DNA still leads
+    var k1 = text.indexOf("::2 "), k2 = k1 >= 0 ? text.indexOf("::2 ", k1 + 4) : -1, at = k2 >= 0 && k2 < 600 ? k2 + 4 : (k1 >= 0 ? k1 + 4 : 0);
+    var out = text.slice(0, at) + st.mj + "::1.5 " + text.slice(at);
+    return out;
+  }
+  function stampVideo(text, look) {
+    var st = stampOf(look); if (!st) return text;
+    var w = "Look stamp (on top of the DNA above, never replaces cast, faces or style): " + st.video + ".";
+    var m = text.match(/^Main action \(priority\):[^.]*\.\s*(Core DNA \(priority\):[^.]*\.\s*)?/);
+    var out = m ? m[0] + w + " " + text.slice(m[0].length) : w + " " + text;
+    return out;
+  }
   function castNoun(cast) { return cast.some(function (r) { return r.man; }) ? "adults" : "women"; }
   function castTag(i, n, noun) { return ORD[i + 1] + " of the " + n + " " + noun; }
   // Last pass for 2+ people: the cast is always plural (they / them / women), never "she" or one "woman".
@@ -1052,7 +1078,7 @@
     var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
     var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
     if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
-    return chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]);
+    return stampMJ(chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look);
   }
   function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1099,7 +1125,7 @@
   function assembleVideo(look, idea, r, heat) {
     var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
     var extra = (twerkOn() ? " " + TWERK.video.replace("{crowd}", crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera") : "") + (crowdOn() && styleOf(look) !== "club" ? " Crowd: " + CROWD_LINE + "." : "") + mashLine("video") + (freshOn() ? " Faces: every woman has " + FRESH_FACE + ". Skin: " + FRESH_SKIN + "." : "");
-    return chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]);
+    return stampVideo(chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look);
   }
   function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1164,6 +1190,8 @@
     var bk = bankFor0(look, seed, heat, tab, motion);
     if (twerkOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + TWERK.no : "--no " + TWERK.no;
     if (!crowdOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + NO_CROWD_NO : "--no " + NO_CROWD_NO;
+    var stN = stampOf(look);
+    if (stN) { var hv = String(bk.no || "").toLowerCase(), ad = stN.no.filter(function (x) { return hv.indexOf(x.toLowerCase()) < 0; }).join(", "); if (ad) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + ad : "--no " + ad; }
     if (freshOn()) {
       var have = String(bk.no || "").toLowerCase(), add = FRESH_NO.split(/,\s*/).filter(function (x) { return have.indexOf(x.toLowerCase()) < 0; }).join(", ");
       if (add) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + add : "--no " + add;
@@ -1496,6 +1524,7 @@
         title: "Each Remix randomly blends 2-3 of Zig's style DNAs (one sets the cast and params, the others add flavor). Adults 21+ only",
         on: { click: function () { S.mash = !S.mash; save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Mash-up"]),
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", "data-pm": "look-mash-note", text: S.mash ? (S.result && S.result.mashMix ? "last: " + S.result.mashMix : "random blend each Remix") : "off" })]);
+    var stL = stampOf(lookById(S.sel)); if (stL) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", "data-pm": "look-stamp", text: stL.name + " stamp \u00b7 always on top of your DNA" }));
     if (S.result && ((S.result.twerk === true) !== twerkOn() || (S.result.mash === true) !== (S.mash === true))) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(tw);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
@@ -1537,6 +1566,7 @@
     if (!chips.length) chips = ["rendered look", "adult 21+"];
     el.innerHTML = "";
     el.appendChild(h("span", { cls: "pml-k", style: "flex-basis:100%;margin-bottom:2px;color:#fde68a", text: "Focus \u00b7 " + ((STYLES.filter(function (c) { return c[0] === (S.style || "club"); })[0] || ["", "Club candid"])[1]) + (S.mash ? " \u00b7 mash-up" : "") }));
+    var stc = stampOf(l); if (stc) chips = chips.concat(stc.chip);
     chips.forEach(function (c, i) { el.appendChild(h("span", { cls: "pml-focus-chip", style: "animation-delay:" + (i * 0.08) + "s", text: c })); });
     el.style.display = ""; el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
     clearTimeout(S._focusT); S._focusT = setTimeout(function () { if (R.focus) R.focus.style.display = "none"; }, 6000);
