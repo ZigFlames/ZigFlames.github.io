@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261011b";
+  var V = "20261011d";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -118,7 +118,7 @@
     return out.length ? out : arr;
   }
   // Realism text: keep real texture, drop pores / uneven tone wording (reads as blotches).
-  function cleanSkinText(text) { return cleanSkinTextOn(text, cleanOn()); }
+  function cleanSkinText(text) { return cleanSkinTextOn(text, cleanOn() && !freshOn()); }
   function cleanSkinTextOn(text, on) {
     if (!on) return String(text || "");
     var t = String(text || "").replace(/\bunretouched skin with pores\b/gi, "unretouched natural skin texture").replace(/\b(real|visible) pores\b/gi, "natural skin texture");
@@ -164,7 +164,7 @@
     return arr;
   }
   function beautySoften(text) {
-    if (!beautyOn()) return text;
+    if (!beautyOn() || freshOn()) return beautyOn() ? String(text || "") + ", " + BEAUTY_REAL : text;
     var out = String(text || "").split(/,\s*/).filter(function (f) { return f && !/peach fuzz|uneven tone|real body weight|not beauty lighting|amateur framing|imperfect exposure|dirty sensor spots|slight motion blur|ordinary mixed available light/i.test(f); });
     out.push(BEAUTY_REAL);
     return out.join(", ");
@@ -179,6 +179,8 @@
   var DNA = {
     real: "candid iPhone photo, slight motion blur, dirty sensor spots, ordinary mixed indoor lighting, not studio, not beauty lighting, unretouched skin with pores, peach fuzz, uneven tone, sweat sheen only where bodies heat, flyaway hairs, real body weight in motion",
     crowd: "packed indoor venue, spectators and phones in soft background bokeh",
+    solo: "empty indoor venue, no spectators, no phones, no crowd, just her",
+    soloVenues: ["empty nightclub floor after hours", "empty backstage hallway", "empty indoor pool at night", "empty hotel ballroom after the party", "empty bikini contest stage, house lights on", "empty house-party living room the morning after", "empty strip-club main floor before opening", "empty dance hall, chairs stacked"],
     tail: "unique face, natural proportions pushed but plausible, photoreal, documentary fashion snapshot, amateur framing, imperfect exposure",
     body: "UAE women IG model style body: busty, big tits, wide hips, thicc, curvy, thick ass, bubble butt, fake tits, narrow waist",
     heatBody: {
@@ -213,7 +215,27 @@
       return kept ? lab + kept + end : "";
     }).filter(Boolean).join(" ");
   }
-  function dnaVenue(idea, r) { return /\bback ?stage\b/i.test(String(idea || "")) ? "crowded backstage hallway at an indoor event" : r.venue; }
+  function dnaVenue(idea, r) { return /\bback ?stage\b/i.test(String(idea || "")) ? (crowdOn() ? "crowded backstage hallway at an indoor event" : "empty backstage hallway") : r.venue; }
+  // ---- Crowd switch (default OFF = No crowd): empty / solo venue unless Zig turns Crowd on. ---------------------------
+  var CROWD_RE = /\b(crowd\w*|packed|spectators?|audience|onlookers|bystanders|phones raised|cheering|hyping|busy|strangers)\b/i;
+  var CROWD_LINE = "packed spectators with phones raised in soft background bokeh";
+  var NO_CROWD_NO = "crowd, spectators, audience, onlookers, people in the background";
+  function crowdOn() { return S.crowd === true; }
+  // ---- DNA leads: when his DNA is in charge (candid DNA, Fresh faces, Crowd, Twerk show, Mash-up, any Style),
+  // the platform look's own generic camera / lighting / set / framing / pacing / beats text is stripped so it can't overlay his stems.
+  function leanOn(look) { return !!look && gearOf(look).kind !== "virtual" && (dnaOn(look) || freshOn() || crowdOn() || twerkOn() || S.mash === true || styleOf(look) !== "club"); }
+  var LEAN_KEEP_RE = /^(Main action \(priority\)|Beats|Mood|Look):/;
+  function noCrowdList(text) { return crowdOn() ? String(text || "") : String(text || "").split(/,\s*/).filter(function (f) { return f && (/adults? 21\+|::2|^\s*no\s/i.test(f) || !CROWD_RE.test(f)); }).join(", "); }
+  function noCrowdProse(text) {
+    if (crowdOn()) return String(text || "");
+    return String(text || "").split(/(?<=\.)\s+/).map(function (sen) {
+      if (/^Main action \(priority\):/.test(sen)) return sen;
+      var m = sen.match(/^([A-Z][A-Za-z ]{0,20}:\s*)/), lab = m ? m[1] : "", body = m ? sen.slice(lab.length) : sen;
+      var end = /\.\s*$/.test(body) ? "." : ""; body = body.replace(/\.\s*$/, "");
+      var kept = body.split(/;\s*/).map(noCrowdList).filter(Boolean).join("; ");
+      return kept ? lab + kept + end : "";
+    }).filter(Boolean).join(" ");
+  }
 
   // ---- Style presets (Remix matches Zig's examples). Adults 21+ only, every style, every heat. --------------
   // club = candid club DNA (above); contest = Nigerian twerk-contest audition; sync = five South Indian women in sync.
@@ -225,7 +247,7 @@
   }
   // ---- Mash-up: each Remix picks one DNA as the base (cast, setting, params) and blends in 1-2 more as flavor lines.
   var MASH_FLAVOR = {
-    club: "candid iPhone club snapshot feel, packed indoor venue, spectators and phones in soft background bokeh, slight motion blur",
+    club: "candid iPhone club snapshot feel, slight motion blur",
     contest: "twerking-contest audition energy for the judges, head-shot then full body, home amateur quality",
     carib: "bent over a chair in a deep twerk, heavy ass bouncing to contest music, looking back",
     sync: "shaky-cam dance-studio twerk workout energy, mirror wall, sweat, oil and sand on skin",
@@ -399,9 +421,9 @@
   }
   function faceShort(r) {
     return [r.skinTone + " " + r.heritageRegion + " unique face", r.faceShape, r.eyes, r.brows, r.nose, r.lips, r.jawCheekbones,
-      (r.hairColor ? r.hairColor + " " : "") + (r.hairTexture ? r.hairTexture + " " : "") + "hair in " + r.hairStyle, r.beauty || "", "adult woman aged " + r.ageBand].filter(Boolean).join(", ");
+      (r.hairColor ? r.hairColor + " " : "") + (r.hairTexture ? r.hairTexture + " " : "") + "hair in " + r.hairStyle, r.micro || "", r.beauty || "", "adult woman aged " + r.ageBand].filter(Boolean).join(", ");
   }
-  function duoFace(r) { return [r.skinTone + " " + r.heritageRegion + " unique face", r.faceShape, r.eyes, r.nose, r.lips, r.jawCheekbones, r.hairStyle, "adult woman aged " + r.ageBand].join(", "); }
+  function duoFace(r) { return [r.skinTone + " " + r.heritageRegion + " unique face", r.faceShape, r.eyes, r.nose, r.lips, r.jawCheekbones, r.hairStyle, r.micro || "", "adult woman aged " + r.ageBand].filter(Boolean).join(", "); }
   function assembleStyle(look, idea, cast, heat, tab) {
     var st = styleOf(look), r = cast[0], out;
     if (st === "tryouts") {
@@ -483,12 +505,63 @@
 
   // ---- Twerk show (one tap): forces twerk-show DNA on every look and style. Adults 21+ only. ---------------
   var TWERK = {
-    mj: "twerk show, candid amateur energy, fast hip and glute motion, ass to camera, extreme jiggle physics, real body weight bouncing, crowd or judges hyping her up, punchy contrast, vivid saturated colors",
-    video: "Twerk show: candid amateur energy, fast hip and glute motion, ass to camera, extreme jiggle physics, real body weight bouncing, crowd or judges hyping her up, punchy contrast, vivid saturated colors.",
+    mj: "twerk show, candid amateur energy, fast hip and glute motion, ass to camera, extreme jiggle physics, real body weight bouncing, {crowd}, punchy contrast, vivid saturated colors",
+    video: "Twerk show: candid amateur energy, fast hip and glute motion, ass to camera, extreme jiggle physics, real body weight bouncing, {crowd}, punchy contrast, vivid saturated colors.",
     no: "low contrast, washed out colors, boring palette"
   };
   function twerkOn() { return S.twerk === true; }
   function twerkIdea(idea) { idea = String(idea || ""); return /\btwerk/i.test(idea) ? idea : (idea ? idea + ", twerk show" : "twerk show"); }
+
+  // ---- Fresh faces (default OFF): a brand-new face every Remix + real skin, never plastic. Adults 21+ only. -------------
+  // Each face gets a signature (face shape, eyes, brows, nose, lips, jaw, hair, skin tone, heritage). Signatures are kept in
+  // localStorage (last 400); a new face must differ from every stored one in at least FRESH_MIN features, and from the rest of the cast.
+  var FRESH_KEY = "pm.faces.v1", FRESH_MAX = 400, FRESH_MIN = 5;
+  var FRESH_SIG = ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "skinTone", "heritageRegion"];
+  // Small structural traits (no skin marks) that make each face one-off; 2 per face.
+  var FRESH_MICRO = ["slightly asymmetric smile", "wide-set eyes", "close-set eyes", "low nose bridge", "high nose bridge", "faint chin cleft", "single dimple on the left cheek",
+    "pronounced philtrum", "upturned outer eye corners", "downturned outer eye corners", "heavier upper eyelids", "slight overbite", "small gap between front teeth", "strong brow ridge",
+    "soft rounded chin", "pointed chin", "broad forehead", "short forehead", "slightly uneven eyebrows", "one eyebrow a little higher", "full cheeks", "sharp cupid's bow",
+    "wide nostrils", "narrow nostrils", "long philtrum", "short upper lip", "fuller upper lip", "prominent cheekbones on one side", "small ears close to the head", "visible smile lines",
+    "deep-set eyes", "slightly crooked smile", "rounded nose tip", "subtle bump on the nose bridge", "square jaw corners", "soft jaw corners", "long neck", "wide mouth"];
+  var FRESH_SKIN = "real human skin: visible pores, peach fuzz, uneven tone, natural sweat sheen, fine texture and tiny natural imperfections, never plastic, never waxy, never airbrushed, no beauty filter";
+  var FRESH_FACE = "a brand-new one-off face never seen before, not a stock model face, not a generic AI face";
+  var FRESH_NO = "plastic skin, waxy skin, airbrushed skin, beauty filter, porcelain doll skin, smooth CGI skin, overly retouched skin, generic model face, same face, doll face";
+  function freshOn() { return S.fresh === true; }
+  function freshStore() { try { return JSON.parse(localStorage.getItem(FRESH_KEY) || "[]"); } catch (e) { return []; } }
+  function freshSave(a) { try { localStorage.setItem(FRESH_KEY, JSON.stringify(a.slice(-FRESH_MAX))); } catch (e) {} }
+  function sigOf(r) { return FRESH_SIG.map(function (k) { return String(r[k] || ""); }); }
+  // too close = fewer than FRESH_MIN of the 10 features differ, OR 4+ of the 6 core face features (shape, eyes, brows, nose, lips, jaw) match
+  function sigSame(a, b, n) { var same = 0; for (var i = 0; i < n; i++) if (a[i] && a[i] === b[i]) same++; return same; }
+  function sigClose(a, b) { return a.length - sigSame(a, b, a.length) < FRESH_MIN || sigSame(a, b, 6) >= 4; }
+  function sigScore(sg, list) { var worst = 0; list.forEach(function (o) { worst = Math.max(worst, sigSame(sg, o, 6) * 2 + sigSame(sg, o, sg.length)); }); return worst; }
+  function freshCast(look, cast) {
+    if (!freshOn()) return cast;
+    var P = S.variety.pools, seen = freshStore(), mine = [], st = styleOf(look);
+    var fixed = { skinTone: st !== "club", heritageRegion: st !== "club", hairStyle: st === "duo" || st === "rural", hairColor: st === "duo" };   // style-owned fields stay
+    cast.forEach(function (r) {
+      if (st !== "rural") {
+        var keys = FRESH_SIG.filter(function (k) { return !fixed[k] && P[k]; }), all = seen.concat(mine), best = null, bestScore = 1e9;
+        for (var t = 0; t < 120; t++) {
+          var sg = sigOf(r), clash = all.some(function (o) { return sigClose(sg, o); });
+          if (!clash) { best = null; break; }
+          var sc = sigScore(sg, all); if (sc < bestScore) { bestScore = sc; best = {}; FRESH_SIG.forEach(function (k) { best[k] = r[k]; }); }
+          // re-roll the core face features first, then a random extra (clean-skin + glam/style filters still apply)
+          var core = keys.filter(function (k) { return FRESH_SIG.indexOf(k) < 6; }).sort(function () { return rnd() - 0.5; }).slice(0, 3);
+          core.concat(keys.slice().sort(function () { return rnd() - 0.5; }).slice(0, 1)).forEach(function (k) {
+            var pool = cleanPool(glamPool(P[k], k), k) || []; if (STYLE_SOFT[k] && st !== "club") pool = pool.filter(function (x) { return !STYLE_SOFT[k].test(x); });
+            if (pool.length) r[k] = pick(pool);
+          });
+        }
+        if (best && all.some(function (o) { return sigClose(sigOf(r), o); }) && sigScore(sigOf(r), all) > bestScore) Object.keys(best).forEach(function (k) { r[k] = best[k]; });
+      }
+      var m = FRESH_MICRO.slice(), a = m.splice(Math.floor(rnd() * m.length), 1)[0], b = m.splice(Math.floor(rnd() * m.length), 1)[0];
+      r.micro = a + ", " + b;
+      r.distinctiveFeature = [r.distinctiveFeature, r.micro].filter(Boolean).join(", ");
+      mine.push(sigOf(r));
+    });
+    freshSave(seen.concat(mine));
+    return cast;
+  }
 
   // ---- Heat levels (18+ mode only; default Tease) -------------------------------------------
   var HEATS = ["tease", "spicy", "xxx"];
@@ -653,14 +726,14 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, fresh: false, crowd: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -701,7 +774,8 @@
     if (dnaOn(look)) {
       Object.keys(DNA.poolDrop).forEach(function (k) { if (DNA.poolDrop[k].test(r[k] || "")) { var o = cleanPool(P[k], k).filter(function (x) { return !DNA.poolDrop[k].test(x); }); if (o.length) r[k] = pick(o); } });
       r.dna = true; r.build = pick(DNA.builds, L.dnaBuild); remember("dnaBuild", r.build);
-      if (rnd() < 0.6) r.venue = pick(DNA.venues, L.dnaVenue); remember("dnaVenue", r.venue);
+      if (leanOn(look) || rnd() < 0.6) r.venue = pick(crowdOn() ? DNA.venues : DNA.soloVenues, L.dnaVenue); remember("dnaVenue", r.venue);
+      if (!crowdOn() && CROWD_RE.test(r.venue)) r.venue = pick(DNA.soloVenues);
       if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "26-32", "26-32", "33-40"]);   // all 21+
       r.dnaWardrobe = { tease: pick(DNA.wardrobe.tease), spicy: pick(DNA.wardrobe.spicy) };
     }
@@ -796,6 +870,7 @@
       cast.push(r);
     }
     styleCast(look, cast);
+    freshCast(look, cast);
     S.last = cast[0];
     return cast;
   }
@@ -813,9 +888,10 @@
   function castLabel(r, i, n) { return n === 1 ? "" : ORD[i + 1] + " " + (r.man ? "man" : "woman"); }
   // Beats: idea beats first; the look's generic setup / dialogue beats are dropped when an idea is typed; shuffled for variety.
   function beatsFor(look, idea, n) {
-    var ctx = ideaCtx(idea), ib = [];
+    var ctx = ideaCtx(idea), ib = [], lean = leanOn(look);
     ctx.forEach(function (c) { ib = ib.concat(c.beats); });
-    var lb = (look.shotList || []).filter(function (b) { return b && !FRAMING_RE.test(b) && !hasBlocked(b) && !(idea && SETUP_RE.test(b)); });
+    if (!crowdOn()) ib = ib.filter(function (b) { return !CROWD_RE.test(b); });
+    var lb = lean ? [] : (look.shotList || []).filter(function (b) { return b && !FRAMING_RE.test(b) && !hasBlocked(b) && !(idea && SETUP_RE.test(b)) && (crowdOn() || !CROWD_RE.test(b)); });
     var out = [], a = ib.slice(), b = lb.slice();
     while (out.length < n && (a.length || b.length)) {
       var src = a.length && (out.length < 2 || !b.length) ? a : b;
@@ -831,8 +907,10 @@
   }
 
   function assembleMJ(look, idea, r, seed, heat) {
-    var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj : assembleMJ0(look, idea, r, seed, heat);
-    return o + mashLine("mj");
+    var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
+    var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
+    if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
+    return noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : "");
   }
   function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -851,15 +929,16 @@
     var head = headOf(look, w.fromIdea || heat !== "tease", heat), real = realism(look, heat);
     head = camScrubList(head, look, "mj"); real = dna ? real : camScrubList(real, look, "mj");
     if (dna) head = dnaList(head);  // only one camera in the prompt
+    var lean = leanOn(look); if (lean) head = "";   // his DNA leads: no generic look camera / set / lighting / framing text
     var parts = [
       cast.length > 1 ? cast.length + " distinct adults 21+ together in one frame" : "",
       beat,                                   // one idea-matched beat (generic setup beats dropped)
       ex,                                     // a phrase from Zig's liked examples, if any
       pick(HEAT_LEADS[heat] || [HEAT[heat].lead]),  // heat wording (Tease / Spicy / XXX), varied per roll
-      camLine(look, "mj"),                    // camera: platform gear or iPhone
+      lean && dna ? "" : camLine(look, "mj"), // camera: platform gear or iPhone (DNA already says candid iPhone)
       head,                                   // mjPrompt without {idea}
-      fill(V2.venue, r),                      // venue
-      dna ? DNA.crowd : "",                   // candid DNA: packed indoor venue
+      lean && !dna && !crowdOn() && CROWD_RE.test(r.venue || "") ? "" : fill(V2.venue, r),   // venue
+      dna ? (crowdOn() ? DNA.crowd : DNA.solo) : "",   // candid DNA: packed venue (Crowd on) or empty venue
       heritage,                               // heritage/skin + unique face + face picks
       bodyTxt,                                // hair + build + heightFeel + ageBand (single person)
       styling,                                // wardrobe (idea first) + makeup + nails + tattoos
@@ -869,7 +948,7 @@
     ];
     var body = dedupe(scrubFraming(scrubList(parts.filter(Boolean).join(", ").replace(/\s+/g, " ").replace(/,\s*,/g, ","))));
     if (cast.length > 1) body = body.replace(/ \/ /g, ", ");
-    body = body.split(CLEAN_TOKEN).join(CLEAN_SKIN_STYLE);
+    body = body.split(CLEAN_TOKEN).join(freshOn() ? "no skin patches" : CLEAN_SKIN_STYLE);
     if (!/adult 21\+/.test(body)) body += ", adult 21+";
     // Idea first and weighted (MJ multi-prompt ::2), then the rest of the prompt.
     var lead = idea ? idea + "::2 " : "";
@@ -877,8 +956,8 @@
   }
   function assembleVideo(look, idea, r, heat) {
     var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
-    var extra = (twerkOn() ? " " + TWERK.video : "") + mashLine("video");
-    return extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o;
+    var extra = (twerkOn() ? " " + TWERK.video.replace("{crowd}", crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera") : "") + (crowdOn() && styleOf(look) !== "club" ? " Crowd: " + CROWD_LINE + "." : "") + mashLine("video") + (freshOn() ? " Faces: every woman has " + FRESH_FACE + ". Skin: " + FRESH_SKIN + "." : "");
+    return noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o);
   }
   function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -893,6 +972,7 @@
     first = camScrubProse(first + ".", look).replace(/\.\s*$/, "");
     if (FRAMING_RE.test(first) || (heat !== "tease" && CLEAN_RE.test(first))) first = "";
     if (idea) first = first.replace(/\bscripted\s+/gi, "");
+    if (leanOn(look)) first = "";   // no generic look tagline after his idea
     after = camScrubProse(after, look);
     var t = [(idea ? "Main action (priority): " + idea + (first ? " \u2014 " + first : "") : first), after].filter(Boolean).join(". ").replace(/\.\.\s/g, ". ");
     if (w.fromIdea || heat !== "tease") t = t.replace(/Wardrobe:[^.]*\./i, "Wardrobe: " + w.text + ".");
@@ -911,12 +991,15 @@
       }).filter(function (c) { if (!c) return false; if (/adults 21\+/i.test(c)) return true; return !FRAMING_RE.test(c) && !(heat !== "tease" && CLEAN_RE.test(c)); }).join("; ");
       return kept ? lab + kept + end : "";
     }).filter(Boolean).join(" ");
+    if (leanOn(look)) {
+      t = t.split(/(?<=\.)\s+/).filter(function (sen) { return LEAN_KEEP_RE.test(sen) && !/^Wardrobe:/.test(sen) && (bts.length || !/^Beats:/.test(sen)); }).join(" ");   // wardrobe lives in Styling
+    }
     if (dna) {
       t = dnaProse(t).replace(/\s*Set:[^.]*\./i, "").replace(/\b(16:9|9:16|4:5)\b/g, "2:3").replace(/Mood:[^.]*\./i, "Mood: " + DNA.mood + ".");
       t += " Look: " + realism(look, heat) + ".";
     }
     var i = t.indexOf(". ");
-    var cl = camLine(look, "video"), art = dna ? DNA.artifacts : (ARTIFACTS[camKind(look)] || "");
+    var cl = leanOn(look) && dna ? "candid iPhone, handheld" : camLine(look, "video"), art = dna ? DNA.artifacts : (ARTIFACTS[camKind(look)] || "");
     var heatLine = pick(HEAT_VIDEO[heat] || [HEAT[heat].video]) + (cl ? " Camera: " + cl + (art ? "; " + art : "") + "." : "");
     t = i > 0 ? t.slice(0, i + 1) + " " + heatLine + t.slice(i + 1) : heatLine + " " + t;
     var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() && !dna ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
@@ -929,15 +1012,21 @@
       stylingTxt = " Styling: " + styling + ".";
     }
     var ex = examplePhrase(look, idea);
-    var out = t + (ex ? " Style note: " + ex + "." : "") + " Setting: " + fill(V2.venue, r) + (dna ? ", " + DNA.crowd : "") + ". " + lead + stylingTxt + " " +
-      "Aspect " + (dna ? "2:3" : look.aspect) + ", clip length " + look.clipLength + ", motion " + motionFor(look, idea) + ". adult 21+.";
-    out = scrubProse(out).split(CLEAN_TOKEN).join(CLEAN_SKIN_STYLE);
+    var out = t + (ex ? " Style note: " + ex + "." : "") + " Setting: " + fill(V2.venue, r) + (dna ? ", " + (crowdOn() ? DNA.crowd : DNA.solo) : "") + ". " + lead + stylingTxt + " " +
+      "Aspect " + (dna ? "2:3" : look.aspect) + ", clip length " + (leanOn(look) && dna ? "10-20 s" : look.clipLength) + ", motion " + motionFor(look, idea) + ". adult 21+.";
+    out = scrubProse(out).split(CLEAN_TOKEN).join(freshOn() ? "no skin patches" : CLEAN_SKIN_STYLE);
     if (!/adult 21\+/.test(out)) out += " adult 21+.";
     return out;
   }
   function bankFor(look, seed, heat, tab, motion) {
     var bk = bankFor0(look, seed, heat, tab, motion);
     if (twerkOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + TWERK.no : "--no " + TWERK.no;
+    if (!crowdOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + NO_CROWD_NO : "--no " + NO_CROWD_NO;
+    if (freshOn()) {
+      var have = String(bk.no || "").toLowerCase(), add = FRESH_NO.split(/,\s*/).filter(function (x) { return have.indexOf(x.toLowerCase()) < 0; }).join(", ");
+      if (add) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + add : "--no " + add;
+      if (!bk.style && /^--v\s*6/.test(bk.v || "")) bk.style = "--style raw";   // raw = less plastic in MJ v6
+    }
     return bk;
   }
   function bankFor0(look, seed, heat, tab, motion) {
@@ -1211,13 +1300,27 @@
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: beautyOn() ? "glam faces \u00b7 hot bodies \u00b7 sexy outfits" : "original random mix" })]);
     if (S.result && (S.result.beauty === true) !== beautyOn()) bt.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(bt);
+    var fr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-fresh" }, [h("span", { cls: "pml-k", text: "Faces" }),
+      h("button", { cls: "pml-toggle pml-skin" + (freshOn() ? " on" : ""), type: "button", "data-pm": "look-fresh-toggle", "aria-pressed": freshOn() ? "true" : "false",
+        title: "Brand-new unique faces every Remix (never repeats one it already made on this device) + real skin with pores, peach fuzz, uneven tone and sweat. Never plastic, waxy or airbrushed. Adults 21+ only",
+        on: { click: function () { S.fresh = !freshOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Fresh faces"]),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: freshOn() ? "new face every remix \u00b7 real pores \u00b7 no plastic" : "off" })]);
+    if (S.result && (S.result.fresh === true) !== freshOn()) fr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(fr);
+    var cw = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-crowd" }, [h("span", { cls: "pml-k", text: "Venue" }),
+      h("button", { cls: "pml-toggle pml-skin" + (crowdOn() ? " on" : ""), type: "button", "data-pm": "look-crowd-toggle", "aria-pressed": crowdOn() ? "true" : "false",
+        title: "On: packed spectators with phones in soft background bokeh. Off (default): empty / solo venue, no spectators, no phones, no crowd",
+        on: { click: function () { S.crowd = !crowdOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Crowd"]),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: crowdOn() ? "packed spectators \u00b7 phones \u00b7 bokeh" : "no crowd \u00b7 empty venue" })]);
+    if (S.result && (S.result.crowd === true) !== crowdOn()) cw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(cw);
     var sr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-style", role: "radiogroup", "aria-label": "Style" }, [h("span", { cls: "pml-k", text: "Style" })]);
     STYLES.forEach(function (c) {
       var on = (S.style || "club") === c[0];
       sr.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-style": c[0], text: c[1],
         on: { click: function () { S.style = c[0]; save(); renderPanel(); } } }));
     });
-    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "tryouts" ? "women only, People 1-4, slingshot walk + strip" : S.style === "carib" ? "1 Haitian / Jamaican / Dominican woman, chair twerk" : S.style === "rural" ? "1 locked character, random camera" : S.style === "duo" ? "2 women, cinematic noir, clothes falling off" : S.style === "ny" ? "5 NY women, loose sync, stylize 500" : S.style === "sync" ? "5 women, people locked to 5" : S.style === "contest" ? "1 woman, head-shot + full body" : "packed venue \u00b7 candid iPhone" }));
+    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : S.style === "tryouts" ? "women only, People 1-4, slingshot walk + strip" : S.style === "carib" ? "1 Haitian / Jamaican / Dominican woman, chair twerk" : S.style === "rural" ? "1 locked character, random camera" : S.style === "duo" ? "2 women, cinematic noir, clothes falling off" : S.style === "ny" ? "5 NY women, loose sync, stylize 500" : S.style === "sync" ? "5 women, people locked to 5" : S.style === "contest" ? "1 woman, head-shot + full body" : "packed venue \u00b7 candid iPhone" }));
     if (S.result && (S.result.style || "club") !== (S.style || "club")) sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(sr);
     var tw = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-twerk" }, [h("span", { cls: "pml-k", text: "Show" }),
@@ -1280,7 +1383,7 @@
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
     var tags = tagsFor(l, heat, idea, r, cast.length);
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
     S.result.text = compose(S.result);
     save();
     try { S.api.current.setPrompt(S.result.text); } catch (e) {}
@@ -1328,14 +1431,14 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; mashRoll();
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; mashRoll();
       S.people = o.people || (o.group ? 2 : 1); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags };
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S._mashPrimary = null;
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S._mashPrimary = null;
       return o.full ? { text: out, tags: res.tags, params: res.params, mash: mixL } : out;
     }
   };
