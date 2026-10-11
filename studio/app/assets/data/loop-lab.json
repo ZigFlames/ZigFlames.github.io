@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-11h",
+  "version": "20261011i",
   "notes": "Loop Lab data. Edit wording, order and presets here; the app reads this file (no code changes needed). 'words' = wording variants (Remix rolls between them; the first one is the default). No artist names anywhere: describe the sound.",
   "targets": {
     "grok": {
@@ -10,7 +10,7 @@
       "negativeField": false,
       "negativePrefix": "Avoid: ",
       "template": "Visual: {visual}. AUDIO: music only, speech: none, sound effects: none. Music: {positive}.",
-      "visual": "locked-off close-up of an Akai MPC with glowing pads beside a turntable and crates of dusty records in a 90s hip-hop beat studio, no people",
+      "visual": "locked-off close-up of an Akai MPC with glowing pads beside a turntable and crates of dusty records in a 90s beat studio, no people",
       "maxClipSeconds": 15,
       "hint": "Grok has no standalone music model: music comes from Grok Imagine video audio (clips up to ~15 s). Paste the prompt into grok.com/imagine, add the Avoid line at the end (Grok follows 'avoid' wording loosely), then rip the audio from the clip.",
       "sketchHint": "Grok Imagine can't take your sketch audio as input. Describe the sketch in the Idea box, or use the Suno target (Upload → Cover / Extend) to finish a real sketch."
@@ -42,34 +42,40 @@
       "idea",
       "loopType",
       "genre",
-      "hiphop",
       "tempoKey",
       "instruments",
       "drums",
+      "hiphop",
       "mood",
+      "guards",
+      "gear",
       "texture",
       "mix",
+      "spine",
       "loopRules"
     ],
     "sketch": [
       "idea",
       "sketch",
       "genre",
-      "hiphop",
       "tempoKey",
       "instruments",
       "drums",
+      "hiphop",
       "mood",
+      "guards",
+      "gear",
       "texture",
       "arrangement",
       "mix",
+      "spine",
       "sketchRules"
     ]
   },
   "loopRules": [
-    "seamless {bars}-bar loop",
-    "loop point lands exactly on the downbeat",
-    "constant tempo",
+    "seamless {bars}-bar {loop}",
+    "loop point on the downbeat",
+    "consistent tempo",
     "starts and ends on beat one",
     "instrumental"
   ],
@@ -126,9 +132,9 @@
       "id": "cinematic-hiphop",
       "label": "Cinematic hip-hop",
       "words": [
-        "cinematic hip-hop",
-        "cinematic hip-hop instrumental",
-        "epic cinematic rap beat"
+        "cinematic boom bap",
+        "cinematic street boom bap",
+        "cinematic street beat"
       ],
       "bpm": 88,
       "drums": "hard boom-bap drums with deep kick",
@@ -164,7 +170,7 @@
         "hard trap"
       ],
       "bpm": 140,
-      "drums": "trap drums with rolling hi-hats",
+      "drums": "trap drums with hi-hat rolls",
       "colors": [
         "808",
         "synth-pad",
@@ -191,7 +197,7 @@
       "id": "lofi",
       "label": "Lo-fi hip-hop",
       "words": [
-        "lo-fi hip-hop",
+        "lo-fi boom bap",
         "chill lo-fi beat",
         "lo-fi study beat"
       ],
@@ -304,8 +310,8 @@
       "label": "Jazz rap",
       "words": [
         "jazz rap",
-        "jazzy hip-hop",
-        "smoky jazz hip-hop"
+        "jazzy boom bap",
+        "smoky jazz boom bap"
       ],
       "bpm": 88,
       "drums": "swung jazzy drums with ride cymbal",
@@ -1275,8 +1281,10 @@
         ],
         "mix": [
           "unmastered",
-          "sample-ready"
-        ]
+          "sample-ready",
+          "mono-low"
+        ],
+        "descriptor": "dusty New York basement"
       }
     },
     {
@@ -1304,8 +1312,10 @@
         ],
         "mix": [
           "unmastered",
-          "sample-ready"
-        ]
+          "sample-ready",
+          "mono-low"
+        ],
+        "descriptor": "chopped 70s soul"
       }
     },
     {
@@ -1329,8 +1339,10 @@
         ],
         "mix": [
           "mono-low",
-          "sample-ready"
-        ]
+          "sample-ready",
+          "unmastered"
+        ],
+        "descriptor": "raw 12-bit"
       }
     },
     {
@@ -1357,8 +1369,10 @@
         ],
         "mix": [
           "unmastered",
-          "sample-ready"
-        ]
+          "sample-ready",
+          "mono-low"
+        ],
+        "descriptor": "after-hours Queens"
       }
     },
     {
@@ -1387,7 +1401,8 @@
         "mix": [
           "unmastered",
           "mono-low"
-        ]
+        ],
+        "descriptor": "sun-baked West Coast lowrider"
       }
     },
     {
@@ -1406,13 +1421,42 @@
           "horns"
         ],
         "moods": [
-          "dark",
+          "menacing",
           "gritty"
         ],
         "textures": [
           "90s",
           "dusty-vinyl"
         ],
+        "mix": [
+          "unmastered",
+          "mono-low"
+        ],
+        "descriptor": "dark Brooklyn street"
+      }
+    },
+    {
+      "id": "ny-street-trap",
+      "label": "Dark NY Street Trap",
+      "picks": {
+        "genre": "trap",
+        "descriptor": "dark New York street",
+        "bpm": 142,
+        "key": "G",
+        "scale": "minor",
+        "loopType": "full",
+        "bars": 8,
+        "instruments": [
+          "brass",
+          "piano",
+          "808"
+        ],
+        "moods": [
+          "menacing",
+          "triumphant",
+          "confident"
+        ],
+        "textures": [],
         "mix": [
           "unmastered",
           "mono-low"
@@ -1434,16 +1478,16 @@
     "pete rock": "warm filtered soul-sample boom bap",
     "rza": "gritty kung-fu soul samples",
     "madlib": "dusty psychedelic sample collage",
-    "nujabes": "jazzy lo-fi piano hip-hop",
-    "dr dre": "West Coast piano-driven hip-hop",
-    "dr. dre": "West Coast piano-driven hip-hop",
+    "nujabes": "jazzy lo-fi piano beat",
+    "dr dre": "West Coast piano-driven beat",
+    "dr. dre": "West Coast piano-driven beat",
     "metro boomin": "dark cinematic trap",
-    "kanye": "chipmunk soul sample hip-hop",
-    "kanye west": "chipmunk soul sample hip-hop",
+    "kanye": "chipmunk soul sample beat",
+    "kanye west": "chipmunk soul sample beat",
     "the alchemist": "moody dusty soul loops",
     "alchemist": "moody dusty soul loops",
     "9th wonder": "soulful chopped R&B samples",
-    "timbaland": "syncopated futuristic hip-hop percussion",
+    "timbaland": "syncopated futuristic percussion",
     "pharrell": "minimal funky drum programming",
     "the neptunes": "minimal funky drum programming",
     "mike dean": "huge analog synth solos",
@@ -1463,7 +1507,7 @@
     "nas": "90s East Coast jazz-sample boom bap",
     "jay-z": "soul-sample luxury rap",
     "jay z": "soul-sample luxury rap",
-    "eminem": "aggressive cinematic hip-hop",
+    "eminem": "aggressive cinematic beat",
     "kendrick lamar": "jazzy experimental West Coast",
     "kendrick": "jazzy experimental West Coast",
     "travis scott": "psychedelic dark trap",
@@ -1481,31 +1525,79 @@
     "_note": "Equipment switch (default Modern hip-hop): era-correct gear words injected into every positive prompt, right after the genre. Anything but Country also auto-adds the 'Old country gear' negative. No brand-new artist names; gear names only.",
     "default": "modern",
     "options": [
-      { "id": "modern", "label": "Modern hip-hop", "words": ["modern hip-hop production on an Akai MPC Live II and a Roland SP-404 MKII, crisp punchy mix", "made on an Akai MPC X and an SP-404 MKII, clean hard-hitting modern hip-hop sound", "modern hip-hop studio: Akai MPC One chops, SP-404 MKII resampling"] },
-      { "id": "akai", "label": "Akai", "words": ["chopped and sequenced on an Akai MPC 3000, 12-bit Akai S950 sampler grit, pad-banged drums with MPC swing", "Akai MPC 2000XL chops, Akai S950 filtered samples, finger-drummed MPC swing", "classic Akai MPC60 sequencing, Akai sampler crunch, swung pad-tapped drums"] },
-      { "id": "80s", "label": "80s", "words": ["80s studio gear: Roland TR-808 and LinnDrum machines, Yamaha DX7 keys, Juno-60 synths, gated reverb", "Oberheim DMX and TR-808 drums, Yamaha DX7 and Roland Jupiter-8 synths, 80s analog console", "LinnDrum LM-1 beats, Juno-106 pads, DX7 electric piano, 80s gated-reverb snare"] },
-      { "id": "90s", "label": "90s", "words": ["90s hip-hop gear: E-mu SP-1200 and Akai MPC60 grit, Ensoniq ASR-10 sampler, Roland JV-1080 keys", "SP-1200 12-bit drums, Akai S950 filtered loops, Ensoniq ASR-10 chops, 90s boom bap studio", "Akai MPC 2000 and E-mu SP-1200 crunch, Technics turntable samples, 90s analog desk"] },
-      { "id": "pop", "label": "Pop", "words": ["modern pop production: Ableton Live and Logic Pro, Serum and Omnisphere synths, bright polished radio-pop sound", "radio-ready pop gear: Serum leads, Omnisphere pads, tight programmed drums, glossy modern pop mix", "Logic Pro pop session, Serum plucks, Omnisphere pads, crisp clap and kick, bright modern pop sheen"] },
-      { "id": "country", "label": "Country", "words": ["Nashville session gear: Fender Telecaster twang, pedal steel, banjo, Martin acoustic, fiddle", "country studio band: Telecaster chicken-pickin', pedal steel swells, banjo rolls, acoustic strums", "modern Nashville country gear: Telecaster, pedal steel, Martin D-28 acoustic, fiddle"] }
+      {
+        "id": "modern",
+        "label": "Modern hip-hop",
+        "words": [
+          "produced on an Akai MPC Live II and a Roland SP-404 MKII, crisp punchy mix",
+          "made on an Akai MPC X and an SP-404 MKII, clean hard-hitting modern sound",
+          "modern studio: Akai MPC One chops, SP-404 MKII resampling"
+        ]
+      },
+      {
+        "id": "akai",
+        "label": "Akai",
+        "words": [
+          "chopped and sequenced on an Akai MPC 3000, 12-bit Akai S950 sampler grit, pad-banged drums with MPC swing",
+          "Akai MPC 2000XL chops, Akai S950 filtered samples, finger-drummed MPC swing",
+          "classic Akai MPC60 sequencing, Akai sampler crunch, swung pad-tapped drums"
+        ]
+      },
+      {
+        "id": "80s",
+        "label": "80s",
+        "words": [
+          "80s studio gear: Roland TR-808 and LinnDrum machines, Yamaha DX7 keys, Juno-60 synths, gated reverb",
+          "Oberheim DMX and TR-808 drums, Yamaha DX7 and Roland Jupiter-8 synths, 80s analog console",
+          "LinnDrum LM-1 beats, Juno-106 pads, DX7 electric piano, 80s gated-reverb snare"
+        ]
+      },
+      {
+        "id": "90s",
+        "label": "90s",
+        "words": [
+          "90s gear: E-mu SP-1200 and Akai MPC60 grit, Ensoniq ASR-10 sampler, Roland JV-1080 keys",
+          "SP-1200 12-bit drums, Akai S950 filtered loops, Ensoniq ASR-10 chops, 90s boom bap studio",
+          "Akai MPC 2000 and E-mu SP-1200 crunch, Technics turntable samples, 90s analog desk"
+        ]
+      },
+      {
+        "id": "pop",
+        "label": "Pop",
+        "words": [
+          "modern pop production: Ableton Live and Logic Pro, Serum and Omnisphere synths, bright polished radio-pop sound",
+          "radio-ready pop gear: Serum leads, Omnisphere pads, tight programmed drums, glossy modern pop mix",
+          "Logic Pro pop session, Serum plucks, Omnisphere pads, crisp clap and kick, bright modern pop sheen"
+        ]
+      },
+      {
+        "id": "country",
+        "label": "Country",
+        "words": [
+          "Nashville session gear: Fender Telecaster twang, pedal steel, banjo, Martin acoustic, fiddle",
+          "country studio band: Telecaster chicken-pickin', pedal steel swells, banjo rolls, acoustic strums",
+          "modern Nashville country gear: Telecaster, pedal steel, Martin D-28 acoustic, fiddle"
+        ]
+      }
     ]
   },
   "hiphop": {
     "_note": "Hip-hop anchor (on by default): every Loop Lab prompt carries hip-hop genre words so generators stop drifting into ballad / EDM / pop. Toggle lives next to Genre.",
-    "prefix": "hip-hop",
+    "prefix": "boom bap",
     "fallbackGenre": {
       "label": "Boom bap hip-hop",
       "words": [
-        "boom bap hip-hop",
-        "90s boom bap hip-hop",
-        "dusty East Coast boom bap hip-hop"
+        "boom bap",
+        "90s boom bap",
+        "dusty East Coast boom bap"
       ]
     },
     "melodic": {
       "label": "hip-hop sample flavor",
       "words": [
-        "dusty hip-hop sample made for an MPC chop, head-nod boom bap feel",
-        "crate-digger hip-hop sample, warm vinyl grit, made to be chopped on an MPC",
-        "boom bap sample flavor, dusty and soulful, sits under a hard-hitting hip-hop beat"
+        "dusty sample made for an MPC chop, head-nod pocket",
+        "crate-digger sample, warm vinyl grit, made to be chopped on an MPC",
+        "dusty soulful sample flavor that sits under hard boom bap drums"
       ]
     },
     "drums": {
@@ -1513,7 +1605,7 @@
       "words": [
         "hard-hitting boom bap drums, punchy kick, crisp snare on 2 and 4, swung 16th hi-hats, MPC swing",
         "dusty boom bap drum break, knocking kick, cracking snare, shuffled hats, head-nod pocket",
-        "hip-hop drums with an MPC swing, fat kick, snappy snare, off-beat open hat"
+        "head-nod drums with an MPC swing, fat kick, snappy snare, off-beat open hat"
       ]
     },
     "autoNegatives": [
@@ -1521,5 +1613,149 @@
       "rock"
     ],
     "matchHint": "Genres whose wording already contains hip-hop / boom bap / trap / drill / rap / phonk / G-funk / chillhop are left as-is."
+  },
+  "moodMap": {
+    "_note": "Zig: no bare mood words in prompts. Each mood chip becomes playing directions (play), an energy line, optional instrument rewrites (inst) and a descriptor (adj) used when no preset descriptor is set. First mood that rewrites an instrument wins. A mood that already rewrote an instrument skips its play line (keepPlay overrides). Drum loops keep only rhythm lines; melody/chord loops drop drum lines.",
+    "dark": {
+      "adj": "dark",
+      "play": [
+        "minor-key voicings, low-register parts, sparse top end"
+      ],
+      "inst": {
+        "piano": "grimy minor piano",
+        "strings": "low minor string swells"
+      }
+    },
+    "menacing": {
+      "adj": "dark",
+      "play": [
+        "half-step bass movement, off-beat stabs that leave space"
+      ],
+      "inst": {
+        "brass": "menacing brass stabs",
+        "horns": "menacing horn stabs",
+        "piano": "grimy minor piano",
+        "strings": "low tremolo strings"
+      }
+    },
+    "gritty": {
+      "adj": "grimy",
+      "play": [
+        "slightly overdriven saturated keys"
+      ],
+      "inst": {
+        "piano": "grimy minor piano",
+        "horns": "dirty horn stabs",
+        "rhodes": "overdriven Rhodes"
+      }
+    },
+    "triumphant": {
+      "play": [
+        "stabs land hard on the one, phrases resolve up to the tonic"
+      ],
+      "energy": "cold victory-lap energy",
+      "inst": {
+        "brass": "bold brass stabs on the downbeat",
+        "horns": "bold horn stabs on the downbeat"
+      }
+    },
+    "confident": {
+      "play": [
+        "tight pocket"
+      ],
+      "inst": {
+        "808": "heavy controlled 808s",
+        "bass-guitar": "locked-in bass guitar",
+        "synth-bass": "steady rolling synth bass"
+      },
+      "keepPlay": true
+    },
+    "emotional": {
+      "play": [
+        "suspended chords that resolve slowly, sustained notes"
+      ]
+    },
+    "nostalgic": {
+      "adj": "dusty",
+      "play": [
+        "warbling detuned chords, slight vinyl pitch drift"
+      ]
+    },
+    "romantic": {
+      "play": [
+        "major-seventh chords, soft legato lines"
+      ]
+    },
+    "tense": {
+      "play": [
+        "repeating ostinato, unresolved suspended chords"
+      ]
+    },
+    "hopeful": {
+      "play": [
+        "major-key lift on the last bar, open voicings"
+      ]
+    },
+    "melancholy": {
+      "play": [
+        "minor-ninth chords, slow descending bassline"
+      ]
+    },
+    "dreamy": {
+      "play": [
+        "washed reverb tails on the keys, slow chorus on chords"
+      ]
+    },
+    "epic": {
+      "play": [
+        "wide low brass swells, half-time drums"
+      ]
+    },
+    "lonesome": {
+      "play": [
+        "one sparse lead line with long gaps"
+      ]
+    },
+    "late-night": {
+      "adj": "after-hours",
+      "play": [
+        "muted keys, low-pass filtered top end, slow swing"
+      ]
+    },
+    "playful": {
+      "play": [
+        "bouncy staccato plucks, call-and-response riffs"
+      ]
+    }
+  },
+  "spine": {
+    "_note": "Technical spine (Zig): BPM, key, loop notes, mono low end always on. bareWords never appear in generated wording (Zig's own idea text is left alone).",
+    "production": [
+      "mono low end"
+    ],
+    "guards": [
+      "not cartoony",
+      "no pop gloss",
+      "no EDM builds"
+    ],
+    "bareWords": [
+      "gangster",
+      "gangsta",
+      "hip hop",
+      "hip-hop",
+      "hiphop",
+      "triumphant",
+      "confident",
+      "emotional",
+      "epic",
+      "hopeful",
+      "romantic",
+      "nostalgic",
+      "melancholy",
+      "dreamy",
+      "playful",
+      "lonesome",
+      "tense"
+    ]
   }
 }
