@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261011a";
+  var V = "20261011b";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -202,7 +202,7 @@
     poolDrop: { hairColor: /gray|grey|silver|salt|roots/i, distinctiveFeature: /gold tooth|under-eye|glasses|ears that/i, nails: /bitten|chipped|short bare/i,
       makeupLevel: /sweat-worn|day-old/i, heightFeel: /heavy-set|short-legged/i, hairTexture: /wiry|gray/i }
   };
-  function dnaOn(look) { return !beautyOn() && !(look && gearOf(look).kind === "virtual"); }
+  function dnaOn(look) { return !beautyOn() && styleOf(look) === "club" && !(look && gearOf(look).kind === "virtual"); }
   function dnaList(text) { return String(text || "").split(/,\s*/).filter(function (f) { return f && (/adults? 21\+/i.test(f) || !DNA.dropRe.test(f)); }).join(", "); }
   function dnaProse(text) {
     return String(text || "").split(/(?<=\.)\s+/).map(function (sen) {
@@ -214,6 +214,253 @@
     }).filter(Boolean).join(" ");
   }
   function dnaVenue(idea, r) { return /\bback ?stage\b/i.test(String(idea || "")) ? "crowded backstage hallway at an indoor event" : r.venue; }
+
+  // ---- Style presets (Remix matches Zig's examples). Adults 21+ only, every style, every heat. --------------
+  // club = candid club DNA (above); contest = Nigerian twerk-contest audition; sync = five South Indian women in sync.
+  var STYLES = [["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync \u00b7 5"], ["ny", "NY twerk \u00b7 5"], ["duo", "Noir duo \u00b7 2"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"]];
+  function styleOf(look) { return (look && gearOf(look).kind === "virtual") ? "club" : (/^(contest|carib|sync|ny|duo|rural|tryouts)$/.test(S.style || "") ? S.style : "club"); }
+  var STYLE_NO = "text, watermark, logo, caption, UI, beauty filter, plastic skin, airbrush, identical faces, cloned women, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch";
+  var CONTEST = {
+    regions: ["Yoruba Nigerian", "Igbo Nigerian", "Hausa Nigerian", "Edo Nigerian", "Efik Nigerian", "Ijaw Nigerian", "Urhobo Nigerian", "Tiv Nigerian"],
+    tones: ["deep ebony", "dark brown", "warm mahogany", "rich copper", "cool umber", "golden brown", "dark chocolate", "warm espresso"],
+    venues: ["small living room with a tiled floor and a couch pushed back", "apartment bedroom with the bed pushed to the wall", "narrow hallway of a family-free shared flat, phone propped on a chair", "compound courtyard at dusk, string lights", "plain bedroom wall with a standing fan"],
+    body: "big tits, big ass, hourglass figure",
+    heat: {
+      tease: "wearing a skimpy professional twerking outfit, tiny crop top and booty shorts, dancing wild and confident",
+      spicy: "wearing slutty voluptuous professional twerking-contest clothes, tiny crop top and thong shorts, then a nipple slip while dancing wild, spicy",
+      xxx: "twerking-contest outfit pulled down mid-dance, topless nipple slip while dancing wild, explicit"
+    },
+    beats: ["simple head-shot to camera, then zoom out to full body", "turns and twerks for the judges", "wild spicy dance, looking back at the phone"],
+    bank: { ar: "--ar 3:2", v: "--v 6.1", stylize: "--stylize 40", chaos: "--chaos 8", q: "--q 1", style: "--style raw" },
+    no: STYLE_NO + ", split-screen labels, generic stock video"
+  };
+  // Caribbean contest: sibling of the Nigerian contest; one new Haitian, Jamaican or Dominican woman (21+), chair twerk.
+  var CARIB = {
+    regions: ["Haitian", "Jamaican", "Dominican"],
+    tones: ["deep ebony", "dark brown", "warm mahogany", "rich copper", "caramel", "golden brown", "cool umber", "honey brown"],
+    venues: CONTEST.venues,
+    body: CONTEST.body,
+    pose: "bent over in a deep twerk, hands on a chair, heavy ass bouncing, natural dance twerk movement to the contest music, best realistic twerk dancing",
+    heat: {
+      tease: "wearing a skimpy professional twerking outfit, tiny crop top and booty shorts, bent over in a deep twerk, hands on a chair, heavy ass bouncing, looking back at the camera",
+      spicy: "wearing slutty voluptuous professional twerking-contest clothes, tiny crop top and thong shorts, bent over in a deep twerk, hands on a chair, heavy ass bouncing, then a nipple slip seen from the front as she looks back, dancing wild, spicy",
+      xxx: "twerking-contest clothes pulled down, bent over in a deep twerk, hands on a chair, heavy ass bouncing, exposed breasts swinging with the natural dance movement, nipple slip seen from the front as she looks back, dancing wild"
+    },
+    beats: ["simple head-shot to camera, then zoom out to full body", "bends over the chair into a deep twerk for the judges", "looks back over her shoulder mid-bounce, contest music playing"],
+    finish: "8k finish",
+    bank: CONTEST.bank,
+    no: CONTEST.no
+  };
+  var SYNC = {
+    regions: ["Tamil", "Telugu", "Malayali", "Kannadiga", "Tuluva", "Konkani", "Hyderabadi", "Kodava"],
+    tones: ["deep brown", "dark brown", "warm mahogany", "rich copper", "caramel", "golden brown", "cool umber", "honey", "warm bronze", "dusky brown"],
+    heat: {
+      tease: "matching tiny micro bikinis",
+      spicy: "matching tiny micro bikinis, massive J-cup tits bouncing and straining the tops, hard puffy nipples through the fabric, dripping cameltoes",
+      xxx: "matching tiny micro bikinis with the tops snapped off and hanging from their wrists, massive J-cup tits flopping and clapping, huge dark areolas, hard puffy nipples, dripping cameltoes, tongues out, eyes rolled back"
+    },
+    bank: { ar: "--ar 9:16", v: "--v 6.1", stylize: "--stylize 100" },
+    no: STYLE_NO,
+    who: "South Indian", group: "five completely different South Indian women, all adults 21+, synchronized twerk workout",
+    groupVideo: "Five completely different South Indian women, all adults 21+, doing a synchronized twerk workout",
+    action: "enormous jiggling asses clapping in sync to thumping twerk music", skin: "sweat, oil and sand on skin"
+  };
+  // NY twerk: five New York women, each in her own random NY twerk style, NOT in perfect sync; stylize 500.
+  var NY = {
+    regions: ["Bronx Puerto Rican", "Brooklyn Jamaican", "Harlem African American", "Queens Dominican", "Flatbush Haitian", "Bronx Trinidadian", "Queens Colombian", "Brooklyn Guyanese", "Harlem Senegalese", "Staten Island Italian-American", "Queens Filipino", "Bronx Mexican"],
+    tones: ["deep ebony", "dark brown", "warm mahogany", "rich copper", "caramel", "golden brown", "olive", "tan", "light tan", "honey", "cool umber", "warm beige"],
+    heat: {
+      tease: "matching tiny micro bikinis",
+      spicy: "matching tiny micro bikinis, massive J-cup tits bouncing and straining the tops, hard puffy nipples through the fabric, dripping cameltoes",
+      xxx: "matching tiny micro bikinis with the tops snapped off and hanging on their wrists, massive J-cup tits flopping and clapping, huge dark areolas, hard puffy nipples, dripping cameltoes, tongues out on the vulgar moves"
+    },
+    bank: { ar: "--ar 9:16", v: "--v 6.1", stylize: "--stylize 500" },
+    no: STYLE_NO,
+    who: "New York", group: "five completely different New York women, all adults 21+, vulgar twerking dances, ass to camera, each in her own random NY twerk style, not in perfect sync",
+    groupVideo: "Five completely different New York women, all adults 21+, doing vulgar twerking dances ass to camera, each in her own random NY twerk style, NOT in perfect sync",
+    action: "enormous jiggling asses clapping, not in perfect sync, to thumping twerk music", skin: "sweat, oil and sand on glistening skin"
+  };
+  var GROUP_STYLES = { sync: SYNC, ny: NY };
+  // Model tryouts: women only (no men), People 1-4, each a voluptuous hourglass adult model (21+); home amateur cameras.
+  var TRYOUTS = {
+    regions: null, tones: null,
+    open: "2026 secret model tryouts, voluptuous hourglass adult models, all women 21+, no men allowed",
+    heat: {
+      tease: "walking back and forth toward and away from the camera in slingshot swimsuits and heels, posing at each end",
+      spicy: "walking back and forth toward and away from the camera in slingshot swimsuits and heels, straps sliding, then stripping off at the end down to just heels, nipple slips",
+      xxx: "walking back and forth toward and away from the camera in slingshot swimsuits and heels, then stripping fully nude at the end, only heels on"
+    },
+    camera: "best amateur home porn camera work, handheld iPhone plus a propped-up phone, ordinary home lighting, unretouched skin with pores, real body weight in motion, photoreal",
+    set: ["living-room runway with the couch pushed back", "long apartment hallway used as a catwalk", "bedroom with a ring light and a phone on a tripod", "home studio corner with a plain backdrop"],
+    bank: { ar: "--ar 2:3", v: "--v 6.1", stylize: "--stylize 40", chaos: "--chaos 8", q: "--q 1", style: "--style raw" },
+    no: STYLE_NO + ", men, male, man"
+  };
+  // Rural ebony: one fixed character (consistency-locked), adult woman in her mid-40s; the camera / pose randomizes per Remix.
+  var RURAL = {
+    who: "voluptuous rural ebony American woman in her mid-40s, adult 21+",
+    body: "monstrous 34KK natural heavy hanging breasts, soft thick body, wide hips, light-skinned ebony complexion, symmetrical anatomy",
+    face: "round full face, long straight hair, seductive dark eyes, glossy red lips, black masquerade mask",
+    heat: {
+      tease: "black long-sleeve mock-neck top with gold sparkle threads, paper-thin over her gigantic 34KK breasts, cleavage bursting, extremely tight sheer g-string bikini underneath, low-rise black jeans",
+      spicy: "extremely tight sheer g-string bikini under a black long-sleeve mock-neck top with gold sparkle threads, paper-thin over gigantic 34KK tits, hard nipples poking through, cleavage bursting, low-rise black jeans",
+      xxx: "paper-thin black mock-neck top with gold sparkle threads pulled up over gigantic 34KK tits, breasts out, hard nipples, sheer g-string bikini, low-rise black jeans pushed down"
+    },
+    set: "neon orange grid room",
+    shots: ["hands on hips pushing her breasts forward, eye-level medium shot", "twerking from behind, low-angle shot, looking back over her shoulder", "slingshot bikini reveal, three-quarter angle, jeans pushed low", "full-body in strappy heels, low-angle shot"],
+    motion: "heavy weight, soft jiggle, skin folds, glossy sweat, pure amateur",
+    camera: "shot on Sony A7R V, FE 85mm f/1.4 GM II, RAW, HDR, visible pores, peach fuzz, lens breathing, subsurface scattering, cinematic color, film grain, imperfect wrinkles, editorial 8K, unretouched",
+    locks: "consistency locks: same anatomy, same face and same clothing in every shot; realism and lighting continuity locked",
+    bank: { ar: "--ar 2:3", v: "--v 6.1", stylize: "--stylize 50", style: "--style raw" },
+    no: STYLE_NO
+  };
+  // Noir duo: two curvy oiled Black women, cinematic, clothes falling off mid-twerk. Setting kept to a gritty minimalist studio
+  // (no drug-den framing: consent and sobriety stay unambiguous). Adults 21+ only.
+  var DUO = {
+    regions: ["African American", "Nigerian", "Jamaican", "Ghanaian", "Haitian", "Senegalese", "Trinidadian", "Kenyan"],
+    tones: ["deep ebony", "dark brown", "warm mahogany", "rich copper", "cool umber", "golden brown", "dark chocolate"],
+    open: "photorealistic cinematic image of two curvy oiled Black women, both adults 21+, fast raunchy dancing and twerking",
+    set: "gritty abandoned-house mood inside a minimalist hot studio, plain walls, dark floor",
+    blur: "strong motion blur on hips, breasts, hair and fabric",
+    left: { hair: "short black twisted braids", heat: {
+      tease: "tight sheer black mini dress riding up mid-twerk, straps slipping",
+      spicy: "sheer black mini dress, straps snapped and sliding off mid-twerk, breasts nearly out, ass shaking",
+      xxx: "sheer black mini dress with straps snapped, sliding off mid-twerk down around her thighs and ankles, mostly nude, breasts out and bouncing, ass exposed and shaking" } },
+    right: { hair: "high curly ponytail", heat: {
+      tease: "tight white mini dress riding up, top slipping",
+      spicy: "tight white mini dress falling off, top slipping, skirt dropping, nipple slip while bouncing",
+      xxx: "tight white mini dress falling off, top slipping and skirt dropping, both breasts out and bouncing" } },
+    tail: { tease: "clothes slipping while they dance and twerk hard", spicy: "clothes actively falling off while they dance and twerk hard, tongue out",
+      xxx: "clothes actively falling off while they dance and twerk hard, high detail nude skin, curves and nipples, tongue out" },
+    look: "dynamic motion, sharp focus on the falling fabric, cinematic dramatic lighting, deep noir shadows, high-energy, 8k",
+    tags: ["#NoirNightVibes", "#FashionPsychodramaVibes", "#CinematicShadowMood", "#tongueout"],
+    bank: { ar: "--ar 3:2", v: "--v 6.1", stylize: "--stylize 250", style: "--style raw" },
+    no: "text, watermark, logo, caption, UI, beauty filter, plastic skin, airbrush, identical faces, cloned women, CGI, 3D render, extra limbs, melted anatomy"
+  };
+  // Style casts are voluptuous IG-type bodies: skip face picks that fight that (faces stay unique and unretouched).
+  var STYLE_SOFT = { eyes: /heterochrom|small bright|laugh lines/i, brows: /unibrow|scar|uneven/i, nose: /hooked|crooked|flared/i, lips: /thin|uneven|downturned|gap|crooked/i,
+    jawCheekbones: /double chin|hollow|low flat/i, faceShape: /asymmetric|pear-shaped/i, hairColor: /gray|grey|silver|salt|roots/i, hairStyle: /buzz/i, hairTexture: /wiry|gray|frizz/i };
+  function stylePool(k) { var P = S.variety.pools, a = cleanPool(glamPool(P[k], k), k) || []; return STYLE_SOFT[k] ? a.filter(function (x) { return !STYLE_SOFT[k].test(x); }) : a; }
+  // Every woman in a style cast gets her own features: no two share a face shape, eyes, nose, lips, jaw or hairstyle.
+  function distinctCast(cast, keys) {
+    var P = S.variety.pools;
+    keys.forEach(function (k) {
+      var used = {};
+      cast.forEach(function (r) {
+        if (used[r[k]] || (STYLE_SOFT[k] && STYLE_SOFT[k].test(r[k] || ""))) { var o = stylePool(k).filter(function (x) { return !used[x]; }); if (o.length) r[k] = pick(o); }
+        used[r[k]] = 1;
+      });
+    });
+  }
+  function styleCast(look, cast) {
+    var st = styleOf(look);
+    if (st === "club") return cast;
+    if (st === "tryouts") { cast.forEach(function (r) { r.man = false; r.dna = false; r.build = pick(["voluptuous hourglass", "busty hourglass with wide hips", "slim-thick hourglass", "curvy hourglass with a tiny waist"]); if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "26-32", "26-32", "33-40"]); });
+      distinctCast(cast, ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "hairTexture"]); return cast; }
+    if (st === "rural") { cast.forEach(function (r) { r.man = false; r.dna = false; r.skinTone = "light-skinned ebony"; r.heritageRegion = "rural American"; r.ageBand = "41-50"; r.hairStyle = "long straight hair"; }); return cast; }
+    var C = GROUP_STYLES[st] || (st === "duo" ? DUO : st === "carib" ? CARIB : CONTEST), regions = C.regions.slice(), tones = C.tones.slice();
+    cast.forEach(function (r) {
+      r.man = false; r.dna = false;
+      r.heritageRegion = regions.splice(Math.floor(rnd() * regions.length), 1)[0];
+      r.skinTone = tones.splice(Math.floor(rnd() * tones.length), 1)[0];
+      if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "21-25", "26-32", "26-32", "33-40"]);   // all 21+
+      ["hairColor", "distinctiveFeature", "nails", "makeupLevel", "hairTexture"].forEach(function (k) { if (DNA.poolDrop[k] && DNA.poolDrop[k].test(r[k] || "")) r[k] = ""; });
+    });
+    if (st === "duo") { cast[0].hairStyle = DUO.left.hair; cast[0].hairColor = "black"; cast[0].hairTexture = ""; cast[1].hairStyle = DUO.right.hair; cast[1].hairTexture = "curly"; }
+    distinctCast(cast, st === "duo" ? ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones"] : ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "hairTexture"]);
+    return cast;
+  }
+  function faceShort(r) {
+    return [r.skinTone + " " + r.heritageRegion + " unique face", r.faceShape, r.eyes, r.brows, r.nose, r.lips, r.jawCheekbones,
+      (r.hairColor ? r.hairColor + " " : "") + (r.hairTexture ? r.hairTexture + " " : "") + "hair in " + r.hairStyle, r.beauty || "", "adult woman aged " + r.ageBand].filter(Boolean).join(", ");
+  }
+  function duoFace(r) { return [r.skinTone + " " + r.heritageRegion + " unique face", r.faceShape, r.eyes, r.nose, r.lips, r.jawCheekbones, r.hairStyle, "adult woman aged " + r.ageBand].join(", "); }
+  function assembleStyle(look, idea, cast, heat, tab) {
+    var st = styleOf(look), r = cast[0], out;
+    if (st === "tryouts") {
+      var set = pick(TRYOUTS.set), act = ideaW ? ideaW + ", walking back and forth, stripping off at the end in heels" : TRYOUTS.heat[heat];
+      var models = cast.map(function (p, i) { return (cast.length > 1 ? ORD[i + 1] + " model: " : "model: ") + faceShort(p) + ", " + p.build; });
+      if (tab === "video") {
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + "Video: " + TRYOUTS.open + ". " + (cast.length > 1 ? cast.length + " different women, each with a unique face. " : "") +
+          "Cast: " + models.join(". ") + ". Action: " + act + ". Set: " + set + ". Camera: " + TRYOUTS.camera + ". Aspect 9:16, motion high. adult 21+.";
+      } else {
+        out = (idea ? idea + "::2 " : "") + [TRYOUTS.open + ", video still", cast.length > 1 ? cast.length + " different women, each with a unique face" : ""].concat(models).concat([act, set, TRYOUTS.camera, "adult women 21+"]).filter(Boolean).join(", ");
+      }
+      out = scrubProse(out);
+      return /21\+/.test(out) ? out : out + ", adult 21+";
+    }
+    if (st === "rural") {
+      var shot = pick(RURAL.shots), wearR = ideaW || RURAL.heat[heat];
+      if (tab === "video") {
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of a " + RURAL.who + ". Body: " + RURAL.body + ". Face: " + RURAL.face + ". Wardrobe: " + wearR + ". Set: " + RURAL.set +
+          ". Camera move: " + shot + ". Motion: " + RURAL.motion + ". Camera: " + RURAL.camera + ". " + RURAL.locks + ". Aspect 9:16, motion high. adult 21+.";
+      } else {
+        out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of a " + RURAL.who, RURAL.body, RURAL.face, wearR, RURAL.set, shot, RURAL.motion, RURAL.camera, RURAL.locks, "adult woman 21+"].join(", ");
+      }
+      out = scrubProse(out);
+      return /21\+/.test(out) ? out : out + ", adult 21+";
+    }
+    if (st === "duo") {
+      var L2 = "Left woman: " + duoFace(cast[0]) + ", " + DUO.left.heat[heat], R2 = "Right woman: " + duoFace(cast[1]) + ", " + DUO.right.heat[heat];
+      if (tab === "video") {
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + DUO.open.replace(/^photorealistic cinematic image/, "Photorealistic cinematic video") + ". Set: " + DUO.set + ". " +
+          L2 + ". " + R2 + ". Action: " + DUO.tail[heat] + "; " + DUO.blur + ". Look: " + DUO.look + ". Aspect 16:9, motion high. adult 21+.";
+      } else {
+        out = (idea ? idea + "::2 " : "") + [DUO.open, DUO.set, DUO.blur, L2, R2, DUO.tail[heat], DUO.look, "adult women 21+"].join(", ");
+      }
+      out = scrubProse(out);
+      return /21\+/.test(out) ? out : out + ", adult 21+";
+    }
+    var g = garmentsOf(idea), ideaW = g.length ? wardrobeFor(idea, heat, r).text : "";
+    if (st === "contest" || st === "carib") {
+      var K = st === "carib" ? CARIB : CONTEST, nat = st === "carib" ? r.heritageRegion : "Nigerian", fin = K.finish ? ", " + K.finish : "";
+      var venue = pick(K.venues), act = ideaW ? ideaW + ", dancing wild" : K.heat[heat];
+      if (tab === "video") {
+        out = (idea ? "Main action (priority): " + idea + ". " : "") +
+          "Raw home iPhone video, adult amateur (21+ only), not a generic video: one new " + nat + " woman auditioning for a twerking contest. Opens on a simple head-shot, then zooms out to her full body for the judges. No text on screen. " +
+          "She: " + faceShort(r) + ". Body: " + K.body + ". Wardrobe and action: " + act + ". Setting: " + venue + ". " +
+          "Beats: " + K.beats.join("; ") + ". Home amateur quality: handheld phone, ordinary indoor lighting, unretouched skin with pores, flyaway hairs, real body weight in motion" + fin + ". Aspect 9:16, motion high. adult 21+.";
+      } else {
+        out = (idea ? idea + "::2 " : "") + ["adult amateur iPhone photo (21+ only)",
+          "side-by-side split image: a simple head-shot on the left and a zoomed-out full-body shot on the right, of one new " + nat + " woman entering a twerking contest for the judges",
+          "no text on screen", faceShort(r), K.body, act, venue, st === "carib" ? "contest music" : "",
+          "home amateur quality, ordinary indoor lighting, unretouched skin with pores, flyaway hairs, real body weight in motion, photoreal" + fin, "adult woman 21+"].filter(Boolean).join(", ");
+      }
+    } else {
+      var who = cast.map(function (p, i) { return ORD[i + 1] + " woman: " + faceShort(p); });
+      var G = GROUP_STYLES[st] || SYNC, wear = ideaW ? ideaW : G.heat[heat];
+      if (tab === "video") {
+        out = (idea ? "Main action (priority): " + idea + ". " : "") +
+          "Raw iPhone video, shaky cam, dance studio with a mirror wall. " + G.groupVideo + "; all five brand-new unique faces and bodies every time (different facial features, eye shapes, noses, lips, cheekbones, jawlines, hair). " +
+          "Cast: " + who.join(". ").replace(/^./, function (c) { return c.toUpperCase(); }) + ". All voluptuous and thick, tiny waists. Wardrobe: " + wear + ". " +
+          "Action: " + G.action + "; " + G.skin + "; ultra-realistic bounce, extreme jiggle physics. Audio: thumping twerk music. Aspect 9:16, motion high. adult 21+.";
+      } else {
+        out = (idea ? idea + "::2 " : "") + ["raw iPhone video still, shaky cam, dance studio with a mirror wall",
+          G.group,
+          "all five brand-new unique faces and bodies, different facial features, eye shapes, noses, lips, cheekbones, jawlines and hair"]
+          .concat(who).concat(["all voluptuous and thick, tiny waists", wear, G.action,
+          G.skin, "ultra-realistic bounce, extreme jiggle physics", "adult women 21+"]).join(", ");
+      }
+    }
+    out = scrubProse(out);
+    if (!/21\+/.test(out)) out += ", adult 21+";
+    return out;
+  }
+  function styleBank(look, seed, tab) {
+    var st = styleOf(look); if (st === "club") return null;
+    var C = GROUP_STYLES[st] || (st === "duo" ? DUO : st === "rural" ? RURAL : st === "carib" ? CARIB : st === "tryouts" ? TRYOUTS : CONTEST), b = C.bank;
+    var ar = ((st === "contest" || st === "carib" || st === "rural" || st === "tryouts") && tab === "video") ? "--ar 9:16" : (st === "duo" && tab === "video") ? "--ar 16:9" : b.ar;
+    var no = "--no " + C.no + (cleanOn() ? ", " + CLEAN_SKIN_NO : "");
+    return { ar: ar, v: b.v, stylize: b.stylize, chaos: b.chaos || "", weird: "", q: b.q || "", style: b.style || "", seed: "--seed " + seed, no: no, repeat: "", tile: false, realism: false };
+  }
+
+  // ---- Twerk show (one tap): forces twerk-show DNA on every look and style. Adults 21+ only. ---------------
+  var TWERK = {
+    mj: "twerk show, candid amateur energy, fast hip and glute motion, ass to camera, extreme jiggle physics, real body weight bouncing, crowd or judges hyping her up, punchy contrast, vivid saturated colors",
+    video: "Twerk show: candid amateur energy, fast hip and glute motion, ass to camera, extreme jiggle physics, real body weight bouncing, crowd or judges hyping her up, punchy contrast, vivid saturated colors.",
+    no: "low contrast, washed out colors, boring palette"
+  };
+  function twerkOn() { return S.twerk === true; }
+  function twerkIdea(idea) { idea = String(idea || ""); return /\btwerk/i.test(idea) ? idea : (idea ? idea + ", twerk show" : "twerk show"); }
 
   // ---- Heat levels (18+ mode only; default Tease) -------------------------------------------
   var HEATS = ["tease", "spicy", "xxx"];
@@ -292,7 +539,7 @@
     wardrobe: { tease: ["fitted black tee and tailored trousers", "open-collar white shirt", "black tailored suit, no tie"],
       spicy: ["shirtless in low-slung jeans", "open shirt, bare chest", "shirtless in tailored trousers"], xxx: ["shirtless", "nude"] }
   };
-  var ORD = ["", "first", "second", "third", "fourth"];
+  var ORD = ["", "first", "second", "third", "fourth", "fifth"];
 
   var SPICY_WARDROBE = ["micro bikini", "string bikini", "sheer mesh bodysuit", "lace thong and cropped tank", "see-through lace lingerie set", "wet white tank top and thong", "cheeky micro shorts and bralette", "fishnet bodystocking", "sheer robe over a G-string", "strappy cut-out swimsuit"];
   var XXX_WARDROBE = ["fully nude", "topless, nude except heels", "topless, only a G-string", "nude except thigh-high stockings", "topless in only a thong", "fully nude with body chain", "topless, sheer open robe"];
@@ -313,8 +560,10 @@
     var ht = look.hashtags || {}, adult = isAdult() && look.adult;
     var lookSafe = (ht.safe || []).filter(function (t) { return !GENERIC_TAG_RE.test(t); });
     var lookNsfw = (ht.nsfw || []).filter(function (t) { return !GENERIC_TAG_RE.test(t); });
+    if (twerkOn()) idea = twerkIdea(idea);
     var ctx = ideaCtx(idea), ideaT = [], spicyT = [];
     ctx.forEach(function (c) { ideaT = ideaT.concat(c.tags.safe || []); spicyT = spicyT.concat(c.tags.spicy || []); });
+    if (styleOf(look) === "duo") ideaT = DUO.tags.concat(ideaT);
     // the idea itself as one or two natural tags (e.g. "slow twerk" -> #slowtwerk, #twerk)
     var iw = wordTags(idea).slice(0, 3);
     if (iw.length) { if (iw.length > 1 && iw.join("").length <= 22) ideaT.unshift("#" + iw.slice(0, 2).join("")); iw.forEach(function (w) { ideaT.push("#" + w); }); }
@@ -376,14 +625,14 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -506,9 +755,10 @@
   }
   // ---- Cast: 1-4 distinct adults (each with their own face, hair, wardrobe roll) ---------------------
   function rollCast(look) {
-    var n = Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)), cast = [];
+    var st = styleOf(look);
+    var n = GROUP_STYLES[st] ? 5 : st === "duo" ? 2 : st === "tryouts" ? Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)) : (st === "rural" || st === "carib") ? 1 : st === "contest" ? 1 : Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)), cast = [];
     for (var i = 0; i < n; i++) {
-      var r = roll(look), man = S.castMix === "mixed" && i % 2 === 1;
+      var r = roll(look), man = st === "club" && S.castMix === "mixed" && i % 2 === 1;
       if (man) { r.man = true; r.mHair = pick(MALE.hair, HIST.mHair); r.mFace = pick(MALE.face, HIST.mFace); r.mBuild = pick(MALE.build, HIST.mBuild);
         if (r.beauty) { r.mFace = "handsome chiseled face, " + r.mFace; r.mBuild = r.mBuild.replace(/^(\w)/, "ripped $1"); r.beauty = "";
           r.faceShape = pick(["square-jawed face", "strong angular face", "chiseled oval face"]); r.eyes = pick(["intense dark eyes", "piercing hazel eyes", "deep brown eyes", "steel-blue eyes"]);
@@ -517,6 +767,7 @@
         ["mHair", "mFace", "mBuild"].forEach(function (k) { remember(k, r[k]); }); }
       cast.push(r);
     }
+    styleCast(look, cast);
     S.last = cast[0];
     return cast;
   }
@@ -545,12 +796,20 @@
     return out;
   }
   function motionFor(look, idea) {
+    if (twerkOn()) return "high";
+    if (styleOf(look) !== "club") return "high";
     var c = ideaCtx(idea).filter(function (x) { return x.motion === "high"; });
     return c.length ? "high" : ((look.mj && look.mj.motion) === "high" ? "high" : "low");
   }
 
   function assembleMJ(look, idea, r, seed, heat) {
+    if (!twerkOn()) return assembleMJ0(look, idea, r, seed, heat);
+    var o = assembleMJ0(look, twerkIdea(idea), r, seed, heat);
+    return o + ", " + TWERK.mj;
+  }
+  function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
+    if (styleOf(look) !== "club") return assembleStyle(look, idea, Array.isArray(r) ? r : [r], heat, "mj");
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
     var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r);
@@ -590,7 +849,12 @@
     return lead + body;  // params are added by compose(), always last
   }
   function assembleVideo(look, idea, r, heat) {
+    if (!twerkOn()) return assembleVideo0(look, idea, r, heat);
+    return assembleVideo0(look, twerkIdea(idea), r, heat).replace(/\s*adult 21\+\.?\s*$/, "") + " " + TWERK.video + " adult 21+.";
+  }
+  function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
+    if (styleOf(look) !== "club") return assembleStyle(look, idea, Array.isArray(r) ? r : [r], heat, "video");
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
     var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r);
@@ -644,6 +908,12 @@
     return out;
   }
   function bankFor(look, seed, heat, tab, motion) {
+    var bk = bankFor0(look, seed, heat, tab, motion);
+    if (twerkOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + TWERK.no : "--no " + TWERK.no;
+    return bk;
+  }
+  function bankFor0(look, seed, heat, tab, motion) {
+    var sb = styleBank(look, seed, tab); if (sb) return sb;
     var mj = look.mj || {}, no = "";
     var m = String(mj.suffix || "").match(/--no\s+(.*)$/i); if (m) no = "--no " + scrubList(m[1]);
     if (cleanOn()) no = no ? no.replace(/[,\s]+$/, "") + ", " + CLEAN_SKIN_NO : "--no " + CLEAN_SKIN_NO;
@@ -734,7 +1004,7 @@
     ".pml-in{flex:1 1 240px;min-height:44px;font-size:16px;padding:10px 12px;border-radius:8px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);color:#f1f5f9;outline:none}" +
     ".pml-btn{min-height:40px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation}" +
     ".pml-btn:hover{background:rgba(255,255,255,.1)}" +
-    ".pml-ppl{min-width:44px}.pml-ppl.on,.pml-mix.on,.pml-addtags.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.14)}.pml-addtags{border-color:#fb923c;color:#fdba74}" +
+    ".pml-ppl{min-width:44px}.pml-ppl.on,.pml-mix.on,.pml-addtags.on,.pml-style.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.14)}.pml-addtags{border-color:#fb923c;color:#fdba74}" +
     ".pml-heat{min-width:72px}.pml-heat[disabled]{opacity:.35;cursor:not-allowed}.pml-heat-tease.on{border-color:#f9a8d4;color:#fff;background:rgba(244,114,182,.14)}.pml-heat-spicy.on{border-color:#fb923c;color:#fff;background:rgba(251,146,60,.16)}.pml-heat-xxx.on{border-color:#ef4444;color:#fff;background:rgba(239,68,68,.18)}" +
     ".pml-tab.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
     ".pml-remix{width:100%;min-height:54px;border-radius:10px;border:0;font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:800;letter-spacing:.3em;color:#05070d;cursor:pointer;background:linear-gradient(90deg,var(--acc),#f1f5f9);box-shadow:0 0 26px rgba(125,211,252,.35);touch-action:manipulation}" +
@@ -865,12 +1135,13 @@
       pr.appendChild(h("button", { cls: "pml-btn pml-ppl" + (S.people === n ? " on" : ""), type: "button", role: "radio", "aria-checked": S.people === n ? "true" : "false", "data-people": String(n), text: String(n),
         title: n === 1 ? "One adult" : n + " distinct adults 21+", on: { click: function () { S.people = n; S.groupScene = n > 1; save(); renderPanel(); } } }));
     });
-    if (S.people > 1) {
+    if (S.people > 1 && (S.style || "club") === "club") {
       [["women", "Women"], ["mixed", "Woman + man"]].forEach(function (c) {
         pr.appendChild(h("button", { cls: "pml-btn pml-mix" + (S.castMix === c[0] ? " on" : ""), type: "button", "aria-pressed": S.castMix === c[0] ? "true" : "false", "data-cast": c[0], text: c[1],
           on: { click: function () { S.castMix = c[0]; save(); renderPanel(); } } }));
       });
     }
+    if (/^(sync|ny|contest|carib|duo|rural)$/.test(S.style || "")) pr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", "data-pm": "look-people-lock", text: "Style locks People to " + (S.style === "contest" || S.style === "carib" || S.style === "rural" ? 1 : S.style === "duo" ? 2 : 5) }));
     if (S.result && (S.result.people || 1) !== S.people) pr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(pr);
     var tabs = h("div", { cls: "pml-row", style: "margin-top:10px" });
@@ -912,6 +1183,22 @@
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: beautyOn() ? "glam faces \u00b7 hot bodies \u00b7 sexy outfits" : "original random mix" })]);
     if (S.result && (S.result.beauty === true) !== beautyOn()) bt.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(bt);
+    var sr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-style", role: "radiogroup", "aria-label": "Style" }, [h("span", { cls: "pml-k", text: "Style" })]);
+    STYLES.forEach(function (c) {
+      var on = (S.style || "club") === c[0];
+      sr.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-style": c[0], text: c[1],
+        on: { click: function () { S.style = c[0]; save(); renderPanel(); } } }));
+    });
+    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "tryouts" ? "women only, People 1-4, slingshot walk + strip" : S.style === "carib" ? "1 Haitian / Jamaican / Dominican woman, chair twerk" : S.style === "rural" ? "1 locked character, random camera" : S.style === "duo" ? "2 women, cinematic noir, clothes falling off" : S.style === "ny" ? "5 NY women, loose sync, stylize 500" : S.style === "sync" ? "5 women, people locked to 5" : S.style === "contest" ? "1 woman, head-shot + full body" : "packed venue \u00b7 candid iPhone" }));
+    if (S.result && (S.result.style || "club") !== (S.style || "club")) sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(sr);
+    var tw = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-twerk" }, [h("span", { cls: "pml-k", text: "Show" }),
+      h("button", { cls: "pml-toggle pml-skin" + (twerkOn() ? " on" : ""), type: "button", "data-pm": "look-twerk-toggle", "aria-pressed": twerkOn() ? "true" : "false",
+        title: "One tap: every Remix becomes a twerk show (amateur jiggle, motion, ass to camera, crowd or judges). Adults 21+ only",
+        on: { click: function () { S.twerk = !twerkOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Twerk show"]),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: twerkOn() ? "jiggle \u00b7 motion \u00b7 ass to camera" : "off" })]);
+    if (S.result && (S.result.twerk === true) !== twerkOn()) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(tw);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
     P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
     R.note = h("div", { cls: "pml-note", "data-pm": "look-notice", style: S.notice ? "" : "display:none", text: S.notice });
@@ -960,7 +1247,7 @@
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
     var tags = tagsFor(l, heat, idea, r, cast.length);
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), seed: seed, roll: r, people: cast.length, tags: tags };
     S.result.text = compose(S.result);
     save();
     try { S.api.current.setPrompt(S.result.text); } catch (e) {}
@@ -1008,14 +1295,14 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty;
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk;
       S.people = o.people || (o.group ? 2 : 1); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags };
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7];
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9];
       return o.full ? { text: out, tags: res.tags, params: res.params } : out;
     }
   };
