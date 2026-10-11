@@ -4,7 +4,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261004a";
+  var V = "20261011h";
   var STORE = "pm.looplab.v1";
   var D = null, loading = null;
   var S = null, EL = null, API = null, R = {};
@@ -39,8 +39,8 @@
 
   // ---- state --------------------------------------------------------------------------------
   function blank() {
-    return { target: "grok", mode: "loop", idea: "", genre: "", bpm: 90, key: "", scale: "minor", loopType: "melody", bars: 4,
-      instruments: [], moods: [], textures: [], mix: [], negOff: [], negOn: [], negText: "", seed: 0, preset: null, hiphop: true };
+    return { target: "generic", mode: "loop", idea: "", genre: "", bpm: 90, key: "", scale: "minor", loopType: "melody", bars: 4,
+      instruments: [], moods: [], textures: [], mix: [], negOff: [], negOn: [], negText: "", seed: 0, preset: null, hiphop: true, gear: "modern" };
   }
   function applyPreset(p, keep) {
     var b = keep ? S : blank(), pk = p.picks || {};
@@ -51,7 +51,12 @@
   }
   function load() {
     var j = null; try { j = JSON.parse(localStorage.getItem(STORE) || "null"); } catch (e) {}
-    if (j && typeof j === "object") { S = Object.assign(blank(), j); return; }
+    if (j && typeof j === "object") {
+      S = Object.assign(blank(), j);
+      // presets were rebuilt for 70s-90s hip-hop: a saved old preset moves to the new default (keeps target, mode, idea, gear, negatives)
+      if (S.preset && OLD_PRESETS.indexOf(S.preset) >= 0 && D.presets[0]) { var k = { target: S.target, mode: S.mode, idea: S.idea, gear: S.gear, negOn: S.negOn, negText: S.negText, hiphop: S.hiphop }; S = Object.assign(applyPreset(D.presets[0]), k); save(); }
+      return;
+    }
     S = blank(); var p = D.presets[0]; if (p) { var t = S.target, m = S.mode; S = applyPreset(p); S.target = t; S.mode = m; }
   }
   function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
@@ -74,6 +79,19 @@
   // the literal genre word the generators key on; subgenres (trap, phonk, jazz rap...) still get "hip-hop" in front
   var HIPHOP_WORD_RE = /hip[- ]?hop|boom[- ]?bap/i;
   function hipHopOn() { return S.hiphop !== false && !!D.hiphop; }
+  // Equipment switch: era-correct gear words in every positive prompt (default Modern hip-hop = Akai MPC + SP-404).
+  function gearList() { return (D.equipment && D.equipment.options) || []; }
+  function gearOpt() { var L = gearList(); return byId(L, S.gear) || byId(L, (D.equipment && D.equipment.default) || "modern") || L[0] || null; }
+  // 70s-90s hip-hop guard: no choir / jazz / acoustic / ballad wording unless Equipment = Country.
+  var OLD_PRESETS = ["zig-cinematic", "piano-driven", "urban-soundtrack", "desperado", "first-crush", "money-moves"];
+  var BAD_RE = /\b(jazz\w*|choir\w*|acoustic|lush|zen|ballad|bebop|smoky|wordless|church|gospel)\b/i, BAD_INST = ["choir", "acoustic-guitar", "nylon-guitar", "upright-bass", "sax"];
+  function guardOn() { var o = gearOpt(); return !o || o.id !== "country"; }
+  function okWord(item, r) {
+    if (!guardOn()) return word(item, r);
+    var w = ((item && item.words) || []).filter(function (x) { return !BAD_RE.test(x); });
+    if (!w.length) return item && item.label && !BAD_RE.test(item.label) ? item.label : "";
+    return S.seed ? w[Math.floor(r() * w.length)] : w[0];
+  }
   var DRUM_IDS = ["percussion", "cowbell"], BASS_IDS = ["808", "bass-guitar", "upright-bass", "synth-bass"];
   function build() {
     var r = rng(S.seed || 1), T = D.targets[S.target] || D.targets.generic, sketch = S.mode === "sketch";
@@ -82,6 +100,7 @@
     if (idea.swapped.length) notes.push("Artist names swapped for sound descriptions (Suno rejects names): " + idea.swapped.join(", ") + ".");
     // instruments allowed by the loop type
     var ids = S.instruments.slice();
+    if (guardOn()) ids = ids.filter(function (x) { return BAD_INST.indexOf(x) < 0; });
     if (!sketch) {
       if (lt.drumsOnly) ids = ids.filter(function (x) { return DRUM_IDS.indexOf(x) >= 0 || x === "808"; });
       else if (lt.bassOnly) { ids = ids.filter(function (x) { return BASS_IDS.indexOf(x) >= 0; }); if (!ids.length) ids = ["808"]; }
@@ -92,25 +111,25 @@
     var color = null;
     if (S.seed && g && g.colors && r() < 0.6) {
       var ok = g.colors.filter(function (c) {
-        if (ids.indexOf(c) >= 0 || !byId(D.instruments, c)) return false;
+        if (ids.indexOf(c) >= 0 || !byId(D.instruments, c) || (guardOn() && BAD_INST.indexOf(c) >= 0)) return false;
         if (sketch) return true;
         if (lt.drumsOnly) return DRUM_IDS.indexOf(c) >= 0; if (lt.bassOnly) return BASS_IDS.indexOf(c) >= 0;
         if (lt.noDrums) return DRUM_IDS.indexOf(c) < 0 && BASS_IDS.indexOf(c) < 0; return true;
       });
       if (ok.length) { color = ok[Math.floor(r() * ok.length)]; ids.push(color); }
     }
-    var inst = ids.map(function (x) { return word(byId(D.instruments, x), r); }).filter(Boolean);
+    var inst = ids.map(function (x) { return okWord(byId(D.instruments, x), r); }).filter(Boolean);
     if (S.seed && inst.length > 2) { var lead = inst.shift(); inst.sort(function () { return r() - 0.5; }); inst.unshift(lead); }
-    var instrumental = sketch ? S.negOff.indexOf("vocals") < 0 : lt.instrumental !== false;
+    var instrumental = sketch ? true : lt.instrumental !== false;   // instrumental only (Zig): sketches too
     var bpm = Math.max(40, Math.min(220, parseInt(S.bpm, 10) || 90));
     var slots = {
       idea: idea.text,
       loopType: sketch ? "" : (lt.oneShot ? word(lt, r) + ", each hit isolated" : S.bars + "-bar " + word(lt, r)),
       sketch: "finish my sketch into a full song",
       genre: (function () {
-        var gw = g ? word(g, r) : "";
+        var gw = g ? okWord(g, r) : "";
         if (hipHopOn()) {
-          if (!gw) gw = word(D.hiphop.fallbackGenre, r);
+          if (!gw) { gw = word(D.hiphop.fallbackGenre, r); var gid = (gearOpt() || {}).id; if (gid !== "90s" && gid !== "akai") gw = gw.replace(/^90s /, ""); }   // era-correct fallback
           else if (!HIPHOP_WORD_RE.test(gw)) gw = (D.hiphop.prefix || "hip-hop") + " " + gw;
         }
         if (!gw) return instrumental ? "instrumental" : "";
@@ -125,11 +144,13 @@
         // drums / full loops: hip-hop genres already bring their own drum wording
         return genreIsHipHop && g.drums ? "" : word(D.hiphop.drums, r);
       })(),
+      gear: (function () { var o = gearOpt(); return o ? word(o, r) : ""; })(),
       tempoKey: bpm + " BPM" + (S.key ? ", " + S.key + " " + S.scale : ""),
-      instruments: inst.length ? inst[0] + " lead" + (inst.length > 1 ? ", with " + listJoin(inst.slice(1)) : "") : "",
+      instruments: inst.length ? inst[0] + (/\blead$/i.test(inst[0]) ? "" : " lead") + (inst.length > 1 ? ", with " + listJoin(inst.slice(1)) : "") : "",
       drums: g && (sketch || S.loopType === "full" || S.loopType === "drums") ? g.drums : "",
       mood: S.moods.length ? listJoin(S.moods) + " mood" : "",
-      texture: S.textures.map(function (x) { return word(byId(D.textures, x), r); }).join(", "),
+      texture: S.textures.map(function (x) { return okWord(byId(D.textures, x), r); }).filter(Boolean).join(", "),
+      musicOnly: S.target === "grok" ? "" : "music only, no speech, no sound effects",
       mix: S.mix.map(function (x) { return word(byId(D.mixNotes, x), r); }).join(", "),
       loopRules: (lt.oneShot ? ["single isolated hits", "short clean tails", "tight to the tempo grid"] : D.loopRules).map(function (x) { return x.replace("{bars}", S.bars); })
         .filter(function (x) { return instrumental || x !== "instrumental"; }).join(", "),
@@ -138,7 +159,10 @@
     };
     var order = (D.order[sketch ? "sketch" : "loop"] || []).slice();
     if (order.indexOf("hiphop") < 0) order.splice(Math.max(0, order.indexOf("genre") + 1), 0, "hiphop");
-    var frags = order.map(function (k) { return slots[k] || ""; }).filter(Boolean);
+    if (order.indexOf("gear") < 0) order.splice(order.indexOf("hiphop") + 1, 0, "gear");
+    if (order.indexOf("musicOnly") < 0) order.push("musicOnly");
+    // guard every slot except Zig's own idea text
+    var frags = order.map(function (k) { var f = slots[k] || ""; return guardOn() && k !== "idea" ? f.split(/,\s*/).filter(function (x) { return !BAD_RE.test(x); }).join(", ") : f; }).filter(Boolean);
     var leadName = inst[0] || "lead", colorName = color ? word(byId(D.instruments, color), rng(7)) : (inst[1] || "strings");
     var structure = sketch ? D.structure.map(function (s) { return "[" + s.tag + (s.hint ? ": " + s.hint.replace("{lead}", leadName).replace("{color}", colorName) : "") + "]"; }) : [];
     var positive = frags.join(", "), trimmedPos = false;
@@ -152,11 +176,13 @@
     // negatives
     var C = D.negatives.catalog, auto = sketch ? D.negatives.autoSketch.slice() : D.negatives.autoLoop.concat(lt.negatives || []);
     if (hipHopOn()) (D.hiphop.autoNegatives || []).forEach(function (x) { if (C[x] && auto.indexOf(x) < 0) auto.push(x); });
+    var go = gearOpt(); if (go && go.id !== "country" && C.country) auto.push("country");   // keep old country gear out unless Country is picked
     if (!sketch && lt.instrumental !== false) auto = auto.concat(D.negatives.autoInstrumental);
     if (sketch) auto = auto.concat(D.negatives.autoInstrumental);
     auto = uniq(auto).filter(function (x) { return C[x]; });
     var pri = D.negatives.priority, rank = function (x) { var i = pri.indexOf(x); return i < 0 ? 999 : i; };
-    var on = auto.filter(function (x) { return S.negOff.indexOf(x) < 0; }).sort(function (a, b) { return rank(a) - rank(b); })
+    // Negatives are OFF by default: nothing goes in the negative / Avoid line until Zig opts in (suggested = fits this loop type / mode).
+    var on = auto.filter(function (x) { return S.negOn.indexOf(x) >= 0; }).sort(function (a, b) { return rank(a) - rank(b); })
       .concat(S.negOn.filter(function (x) { return C[x] && auto.indexOf(x) < 0; }));
     var free = String(S.negText || "").split(/[,\n]+/).map(function (x) { return cleanIdea(x.replace(/^\s*(no|avoid)\s+/i, "")).text; }).filter(Boolean);
     var tags = uniq(on.map(function (x) { return C[x].tag; }).concat(free));
@@ -200,7 +226,7 @@
     list.forEach(function (it) {
       var id = typeof it === "object" ? it.id : it, label = typeof it === "object" ? it.label : String(it);
       row.appendChild(h("button", { cls: "pll-chip" + (opts.neg ? " neg" : "") + (isOn(id) ? " on" : ""), type: "button", "data-v": String(id), "aria-pressed": isOn(id) ? "true" : "false",
-        on: { click: function () { onTap(id); } } }, [label, opts.autoMark && opts.autoMark(id) ? h("span", { cls: "a", text: "auto" }) : null]));
+        on: { click: function () { onTap(id); } } }, [label, opts.autoMark && opts.autoMark(id) ? h("span", { cls: "a", text: "sugg" }) : null]));
     });
     return row;
   }
@@ -235,7 +261,7 @@
     var prow = h("div", { cls: "pll-chips", "data-pm": "ll-presets" });
     D.presets.forEach(function (p) {
       prow.appendChild(h("button", { cls: "pll-btn pll-preset" + (S.preset === p.id ? " on" : ""), type: "button", "data-preset": p.id, text: p.label, on: { click: function () {
-        var keep = { target: S.target, mode: S.mode, idea: S.idea, negOn: S.negOn, negText: S.negText };
+        var keep = { target: S.target, mode: S.mode, idea: S.idea, negOn: S.negOn, negText: S.negText, gear: S.gear };
         S = Object.assign(applyPreset(p), keep); changed(); toast("Preset loaded", p.label);
       } } }));
     });
@@ -267,6 +293,9 @@
     ]);
     P.appendChild(grid);
     P.appendChild(chipRow(D.bpmPresets, function (v) { return String(S.bpm) === String(v); }, function (v) { S.bpm = v; S.preset = null; changed(); }, { scroll: true, dp: "ll-bpm-presets" }));
+    var curG = gearOpt();
+    P.appendChild(h("div", { cls: "pll-sec" }, [h("div", { cls: "pll-k", text: "Equipment \u00b7 era gear in the prompt" }),
+      chipRow(gearList(), function (v) { return curG && curG.id === v; }, function (v) { S.gear = v; changed(); toast("Equipment", (byId(gearList(), v) || {}).label || v); }, { dp: "ll-gear" })]));
     if (!sketch) {
       P.appendChild(h("div", { cls: "pll-sec" }, [h("div", { cls: "pll-k", text: "Loop type" }),
         chipRow(D.loopTypes, function (v) { return S.loopType === v; }, function (v) { S.loopType = v; S.negOff = []; S.preset = null; changed(); }, { dp: "ll-looptype" })]));
@@ -280,9 +309,9 @@
     // negatives
     var b = build(), C = D.negatives.catalog;
     var negList = b.auto.concat(D.negatives.optional.filter(function (x) { return b.auto.indexOf(x) < 0; })).map(function (x) { return { id: x, label: C[x].label }; });
-    P.appendChild(h("div", { cls: "pll-sec" }, [h("div", { cls: "pll-k", text: "Negatives (tap to toggle · auto = set by loop type / mode)" }),
-      chipRow(negList, function (v) { return b.auto.indexOf(v) >= 0 ? S.negOff.indexOf(v) < 0 : S.negOn.indexOf(v) >= 0; },
-        function (v) { if (b.auto.indexOf(v) >= 0) toggleIn(S.negOff, v); else toggleIn(S.negOn, v); changed(); }, { neg: true, dp: "ll-negs", autoMark: function (v) { return b.auto.indexOf(v) >= 0; } })]));
+    P.appendChild(h("div", { cls: "pll-sec" }, [h("div", { cls: "pll-k", text: "Negatives (off by default \u00b7 tap to opt in \u00b7 sugg = suggested for this loop type / mode)" }),
+      chipRow(negList, function (v) { return S.negOn.indexOf(v) >= 0; },
+        function (v) { toggleIn(S.negOn, v); changed(); }, { neg: true, dp: "ll-negs", autoMark: function (v) { return b.auto.indexOf(v) >= 0; } })]));
     var nt = h("input", { cls: "pll-in", type: "text", placeholder: "Extra negatives, comma separated (e.g. harpsichord, bright cymbals)", "aria-label": "Extra negatives", "data-pm": "ll-negtext", autocomplete: "off",
       on: { input: function (e) { S.negText = e.target.value; save(); renderOutput(); } } });
     nt.value = S.negText;
@@ -328,7 +357,7 @@
     P.appendChild(h("div", { cls: "pll-row pll-sec" }, [
       h("button", { cls: "pll-remix", type: "button", "data-pm": "ll-remix", text: "REMIX", on: { click: function () { S.seed = newSeed(); save(); renderOutput(); toast("Remixed", "New wording and instrument roll"); } } }),
       h("button", { cls: "pll-btn", type: "button", "data-pm": "ll-copy-both", text: "Copy both", disabled: b.positive ? null : true, on: { click: function () { copy(both(), "Positive + negative copied"); } } }),
-      h("button", { cls: "pll-btn", type: "button", "data-pm": "ll-clear", text: "Clear", on: { click: function () { var t = S.target, m = S.mode; S = blank(); S.target = t; S.mode = m; save(); renderControls(); renderOutput(); toast("Loop Lab cleared", ""); } } })
+      h("button", { cls: "pll-btn", type: "button", "data-pm": "ll-clear", text: "Clear", on: { click: function () { var t = S.target, m = S.mode, gr = S.gear; S = blank(); S.target = t; S.mode = m; S.gear = gr; save(); renderControls(); renderOutput(); toast("Loop Lab cleared", ""); } } })
     ]));
   }
 

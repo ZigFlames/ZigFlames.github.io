@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-04a",
+  "version": "2026-10-11h",
   "notes": "Loop Lab data. Edit wording, order and presets here; the app reads this file (no code changes needed). 'words' = wording variants (Remix rolls between them; the first one is the default). No artist names anywhere: describe the sound.",
   "targets": {
     "grok": {
@@ -10,7 +10,7 @@
       "negativeField": false,
       "negativePrefix": "Avoid: ",
       "template": "Visual: {visual}. AUDIO: music only, speech: none, sound effects: none. Music: {positive}.",
-      "visual": "locked-off close-up of a vinyl record spinning on a turntable in a dim studio, no people",
+      "visual": "locked-off close-up of an Akai MPC with glowing pads beside a turntable and crates of dusty records in a 90s hip-hop beat studio, no people",
       "maxClipSeconds": 15,
       "hint": "Grok has no standalone music model: music comes from Grok Imagine video audio (clips up to ~15 s). Paste the prompt into grok.com/imagine, add the Avoid line at the end (Grok follows 'avoid' wording loosely), then rip the audio from the clip.",
       "sketchHint": "Grok Imagine can't take your sketch audio as input. Describe the sketch in the Idea box, or use the Suno target (Upload → Cover / Extend) to finish a real sketch."
@@ -1186,6 +1186,10 @@
       "spoken": {
         "label": "Spoken word",
         "tag": "spoken word, talking"
+      },
+      "country": {
+        "label": "Old country gear",
+        "tag": "old country music, banjo, pedal steel, honky-tonk"
       }
     },
     "autoLoop": [
@@ -1222,6 +1226,7 @@
     "priority": [
       "vocals",
       "drums",
+      "country",
       "fade",
       "reverb-tail",
       "tempo-drift",
@@ -1246,28 +1251,27 @@
   },
   "presets": [
     {
-      "id": "zig-cinematic",
-      "label": "Zig Cinematic Hip-Hop",
+      "id": "boom-bap-crate",
+      "label": "Boom Bap Crate Dig",
       "picks": {
-        "genre": "cinematic-hiphop",
-        "bpm": 88,
+        "genre": "boom-bap",
+        "bpm": 90,
         "key": "D",
         "scale": "minor",
         "loopType": "melody",
-        "bars": 8,
+        "bars": 4,
         "instruments": [
           "piano",
           "strings",
-          "choir"
+          "vinyl"
         ],
         "moods": [
-          "dark",
-          "triumphant",
-          "epic"
+          "gritty",
+          "nostalgic"
         ],
         "textures": [
-          "hall",
-          "tape"
+          "dusty-vinyl",
+          "90s"
         ],
         "mix": [
           "unmastered",
@@ -1276,88 +1280,26 @@
       }
     },
     {
-      "id": "piano-driven",
-      "label": "Piano-Driven Instrumental",
+      "id": "mpc-soul-chop",
+      "label": "MPC Soul Chop",
       "picks": {
-        "genre": "piano-ballad",
-        "bpm": 80,
+        "genre": "soul-sample",
+        "bpm": 92,
         "key": "A",
         "scale": "minor",
         "loopType": "melody",
         "bars": 4,
         "instruments": [
-          "piano",
           "rhodes",
-          "synth-pad"
-        ],
-        "moods": [
-          "emotional",
-          "nostalgic"
-        ],
-        "textures": [
-          "tape",
-          "clean-modern"
-        ],
-        "mix": [
-          "dry",
-          "unmastered"
-        ]
-      }
-    },
-    {
-      "id": "urban-soundtrack",
-      "label": "Urban Soundtrack",
-      "picks": {
-        "genre": "orchestral-trap",
-        "bpm": 140,
-        "key": "F",
-        "scale": "minor",
-        "loopType": "full",
-        "bars": 8,
-        "instruments": [
-          "strings",
-          "brass",
-          "808",
-          "synth-pad"
-        ],
-        "moods": [
-          "tense",
-          "gritty",
-          "late-night"
-        ],
-        "textures": [
-          "clean-modern",
-          "hall"
-        ],
-        "mix": [
-          "unmastered",
-          "wide"
-        ]
-      }
-    },
-    {
-      "id": "desperado",
-      "label": "Desperado Western",
-      "picks": {
-        "genre": "western",
-        "bpm": 92,
-        "key": "E",
-        "scale": "harmonic minor",
-        "loopType": "melody",
-        "bars": 8,
-        "instruments": [
-          "nylon-guitar",
-          "whistle",
-          "trumpet",
+          "horns",
           "strings"
         ],
         "moods": [
-          "lonesome",
-          "tense",
-          "epic"
+          "nostalgic",
+          "confident"
         ],
         "textures": [
-          "western-reverb",
+          "70s-soul",
           "dusty-vinyl"
         ],
         "mix": [
@@ -1367,58 +1309,109 @@
       }
     },
     {
-      "id": "first-crush",
-      "label": "First Crush R&B",
+      "id": "sp1200-break",
+      "label": "SP-1200 Drum Break",
       "picks": {
-        "genre": "rnb",
-        "bpm": 72,
-        "key": "Ab",
-        "scale": "major",
-        "loopType": "chords",
+        "genre": "boom-bap",
+        "bpm": 94,
+        "key": "",
+        "scale": "minor",
+        "loopType": "drums",
         "bars": 4,
-        "instruments": [
-          "rhodes",
-          "guitar",
-          "synth-pad",
-          "bass-guitar"
-        ],
+        "instruments": [],
         "moods": [
-          "romantic",
-          "late-night",
-          "dreamy"
+          "gritty",
+          "confident"
         ],
         "textures": [
-          "70s-soul",
-          "tape"
+          "90s",
+          "dusty-vinyl"
         ],
         "mix": [
-          "dry",
-          "unmastered"
+          "mono-low",
+          "sample-ready"
         ]
       }
     },
     {
-      "id": "money-moves",
-      "label": "Money Moves Anthem",
+      "id": "dusty-rhodes",
+      "label": "Dusty Rhodes Chords",
       "picks": {
-        "genre": "trap",
-        "bpm": 142,
+        "genre": "boom-bap",
+        "bpm": 86,
+        "key": "F",
+        "scale": "minor",
+        "loopType": "chords",
+        "bars": 4,
+        "instruments": [
+          "rhodes",
+          "organ"
+        ],
+        "moods": [
+          "late-night",
+          "melancholy"
+        ],
+        "textures": [
+          "tape",
+          "dusty-vinyl"
+        ],
+        "mix": [
+          "unmastered",
+          "sample-ready"
+        ]
+      }
+    },
+    {
+      "id": "g-funk-whine",
+      "label": "G-Funk Synth Whine",
+      "picks": {
+        "genre": "g-funk",
+        "bpm": 92,
         "key": "G",
         "scale": "minor",
         "loopType": "full",
-        "bars": 8,
+        "bars": 4,
         "instruments": [
-          "808",
-          "brass",
-          "piano",
-          "choir"
+          "synth-lead",
+          "synth-bass",
+          "rhodes"
         ],
         "moods": [
-          "triumphant",
-          "confident"
+          "confident",
+          "playful"
         ],
         "textures": [
-          "clean-modern"
+          "90s",
+          "80s-analog"
+        ],
+        "mix": [
+          "unmastered",
+          "mono-low"
+        ]
+      }
+    },
+    {
+      "id": "hard-90s-full",
+      "label": "Hard 90s Full Beat",
+      "picks": {
+        "genre": "boom-bap",
+        "bpm": 90,
+        "key": "C",
+        "scale": "minor",
+        "loopType": "full",
+        "bars": 4,
+        "instruments": [
+          "piano",
+          "bass-guitar",
+          "horns"
+        ],
+        "moods": [
+          "dark",
+          "gritty"
+        ],
+        "textures": [
+          "90s",
+          "dusty-vinyl"
         ],
         "mix": [
           "unmastered",
@@ -1483,6 +1476,18 @@
     "daddy yankee": "classic dembow reggaeton",
     "beyonce": "powerful modern R&B",
     "rihanna": "Caribbean-tinged pop R&B"
+  },
+  "equipment": {
+    "_note": "Equipment switch (default Modern hip-hop): era-correct gear words injected into every positive prompt, right after the genre. Anything but Country also auto-adds the 'Old country gear' negative. No brand-new artist names; gear names only.",
+    "default": "modern",
+    "options": [
+      { "id": "modern", "label": "Modern hip-hop", "words": ["modern hip-hop production on an Akai MPC Live II and a Roland SP-404 MKII, crisp punchy mix", "made on an Akai MPC X and an SP-404 MKII, clean hard-hitting modern hip-hop sound", "modern hip-hop studio: Akai MPC One chops, SP-404 MKII resampling"] },
+      { "id": "akai", "label": "Akai", "words": ["chopped and sequenced on an Akai MPC 3000, 12-bit Akai S950 sampler grit, pad-banged drums with MPC swing", "Akai MPC 2000XL chops, Akai S950 filtered samples, finger-drummed MPC swing", "classic Akai MPC60 sequencing, Akai sampler crunch, swung pad-tapped drums"] },
+      { "id": "80s", "label": "80s", "words": ["80s studio gear: Roland TR-808 and LinnDrum machines, Yamaha DX7 keys, Juno-60 synths, gated reverb", "Oberheim DMX and TR-808 drums, Yamaha DX7 and Roland Jupiter-8 synths, 80s analog console", "LinnDrum LM-1 beats, Juno-106 pads, DX7 electric piano, 80s gated-reverb snare"] },
+      { "id": "90s", "label": "90s", "words": ["90s hip-hop gear: E-mu SP-1200 and Akai MPC60 grit, Ensoniq ASR-10 sampler, Roland JV-1080 keys", "SP-1200 12-bit drums, Akai S950 filtered loops, Ensoniq ASR-10 chops, 90s boom bap studio", "Akai MPC 2000 and E-mu SP-1200 crunch, Technics turntable samples, 90s analog desk"] },
+      { "id": "pop", "label": "Pop", "words": ["modern pop production: Ableton Live and Logic Pro, Serum and Omnisphere synths, bright polished radio-pop sound", "radio-ready pop gear: Serum leads, Omnisphere pads, tight programmed drums, glossy modern pop mix", "Logic Pro pop session, Serum plucks, Omnisphere pads, crisp clap and kick, bright modern pop sheen"] },
+      { "id": "country", "label": "Country", "words": ["Nashville session gear: Fender Telecaster twang, pedal steel, banjo, Martin acoustic, fiddle", "country studio band: Telecaster chicken-pickin', pedal steel swells, banjo rolls, acoustic strums", "modern Nashville country gear: Telecaster, pedal steel, Martin D-28 acoustic, fiddle"] }
+    ]
   },
   "hiphop": {
     "_note": "Hip-hop anchor (on by default): every Loop Lab prompt carries hip-hop genre words so generators stop drifting into ballad / EDM / pop. Toggle lives next to Genre.",
