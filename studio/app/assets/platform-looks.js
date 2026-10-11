@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261011d";
+  var V = "20261011e";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -221,6 +221,52 @@
   var CROWD_LINE = "packed spectators with phones raised in soft background bokeh";
   var NO_CROWD_NO = "crowd, spectators, audience, onlookers, people in the background";
   function crowdOn() { return S.crowd === true; }
+  // ---- People + Multi-tone: the cast count always equals the People control; 2+ people are always plural and all different. ----
+  var NUMW = ["zero", "one", "two", "three", "four", "five"];
+  function peopleN() { return Math.max(1, Math.min(5, parseInt(S.people, 10) || 1)); }
+  function multiOn() { return S.multitone === true; }
+  var TONE_BANDS = [["deep ebony", "dark brown", "warm mahogany", "cool umber", "dark chocolate"], ["rich copper", "golden brown", "caramel", "honey", "sun-weathered bronze"], ["olive", "tan", "light tan", "warm beige"], ["porcelain", "pale with pink undertones", "freckled fair", "ruddy fair"]];
+  var RURAL_TONES = ["light-skinned ebony", "caramel ebony", "warm brown ebony", "deep ebony", "dark chocolate ebony"];
+  function shuffled(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  // Multi-tone ON: every person a different heritage and a skin tone from a different tone band (deep -> fair).
+  // Always (2+ people): no two people share a skin tone or heritage.
+  function toneCast(look, cast) {
+    if (cast.length < 2) return;
+    var st = styleOf(look), P = S.variety.pools;
+    if (multiOn()) {
+      var regs = shuffled(cleanPool(P.heritageRegion, "heritageRegion").filter(function (x) { return x !== "mixed-heritage"; }));
+      var bands = shuffled(TONE_BANDS.map(function (b) { return shuffled(b); }));
+      cast.forEach(function (r, i) { r.heritageRegion = regs[i % regs.length]; var b = bands[i % bands.length]; r.skinTone = b[Math.floor(i / bands.length) % b.length]; r.multi = true; });
+      return;
+    }
+    if (st === "rural") { var t = shuffled(RURAL_TONES.slice(1)); cast.forEach(function (r, i) { r.skinTone = i ? t[(i - 1) % t.length] : RURAL_TONES[0]; }); return; }
+    var C = GROUP_STYLES[st] || (st === "duo" ? DUO : st === "carib" ? CARIB : st === "contest" ? CONTEST : null);
+    var tones = C && C.tones ? C.tones : cleanPool(P.skinTone, "skinTone"), regsP = C && C.regions ? C.regions : cleanPool(P.heritageRegion, "heritageRegion");
+    var ut = {}, ur = {};
+    cast.forEach(function (r) {
+      if (ut[r.skinTone]) { var o = tones.filter(function (x) { return !ut[x]; }); if (o.length) r.skinTone = pick(o); }
+      if (ur[r.heritageRegion] && regsP.length >= cast.length) { var q = regsP.filter(function (x) { return !ur[x]; }); if (q.length) r.heritageRegion = pick(q); }
+      ut[r.skinTone] = 1; ur[r.heritageRegion] = 1;
+    });
+  }
+  function castNoun(cast) { return cast.some(function (r) { return r.man; }) ? "adults" : "women"; }
+  function castTag(i, n, noun) { return ORD[i + 1] + " of the " + n + " " + noun; }
+  // Last pass for 2+ people: the cast is always plural (they / them / women), never "she" or one "woman".
+  var VERB_FIX = { is: "are", has: "have", does: "do", was: "were" };
+  function pluralCast(text, cast) {
+    var n = cast.length; if (n < 2) return text;
+    var W = castNoun(cast);
+    return String(text)
+      .replace(/\badult woman aged\b/g, "adult aged")
+      .replace(/\bone (woman|character|person) per frame( preferred)?/gi, n + " different " + W + " in frame")
+      .replace(/\badult woman 21\+/g, "adult " + W + " 21+")
+      .replace(/\bevery woman has\b/gi, "all " + n + " " + W + " have")
+      .replace(/\bjust her\b/gi, "just them").replace(/\b(hyping|for|at|to|on|with) her\b(?!\s+(?!up\b|down\b)[a-z])/gi, "$1 them")
+      .replace(/\b([Ss])he (\w+)/g, function (m, s0, v) { var b = VERB_FIX[v] || (/(ch|sh|ss|x)es$/.test(v) ? v.slice(0, -2) : /[^su]s$/.test(v) ? v.slice(0, -1) : v); return (s0 === "S" ? "They " : "they ") + b; })
+      .replace(/\bShe\b/g, "They").replace(/\bshe\b/g, "they").replace(/\bherself\b/gi, "themselves").replace(/\bHer\b/g, "Their").replace(/\bher\b/g, "their")
+      .replace(/\b(?:a|an|one) ((?:[\w-]+ ){0,4}?)(woman|girl)\b/gi, function (m, mid) { return n + " " + mid + W; })
+      .replace(/\bwoman\b/g, W).replace(/\bWoman\b/g, W.replace(/^./, function (c) { return c.toUpperCase(); })).replace(/\bgirl\b/gi, W);
+  }
   // ---- DNA leads: when his DNA is in charge (candid DNA, Fresh faces, Crowd, Twerk show, Mash-up, any Style),
   // the platform look's own generic camera / lighting / set / framing / pacing / beats text is stripped so it can't overlay his stems.
   function leanOn(look) { return !!look && gearOf(look).kind !== "virtual" && (dnaOn(look) || freshOn() || crowdOn() || twerkOn() || S.mash === true || styleOf(look) !== "club"); }
@@ -239,7 +285,7 @@
 
   // ---- Style presets (Remix matches Zig's examples). Adults 21+ only, every style, every heat. --------------
   // club = candid club DNA (above); contest = Nigerian twerk-contest audition; sync = five South Indian women in sync.
-  var STYLES = [["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync \u00b7 5"], ["ny", "NY twerk \u00b7 5"], ["duo", "Noir duo \u00b7 2"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"]];
+  var STYLES = [["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync"], ["ny", "NY twerk"], ["duo", "Noir duo"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"]];
   function styleOf(look) {
     if (look && gearOf(look).kind === "virtual") return "club";
     var st = S.mash && S._mashPrimary ? S._mashPrimary : S.style;
@@ -331,7 +377,7 @@
     action: "enormous jiggling asses clapping, not in perfect sync, to thumping twerk music", skin: "sweat, oil and sand on glistening skin"
   };
   var GROUP_STYLES = { sync: SYNC, ny: NY };
-  // Model tryouts: women only (no men), People 1-4, each a voluptuous hourglass adult model (21+); home amateur cameras.
+  // Model tryouts: women only (no men), People 1-5, each a voluptuous hourglass adult model (21+); home amateur cameras.
   var TRYOUTS = {
     regions: null, tones: null,
     open: "2026 secret model tryouts, voluptuous hourglass adult models, all women 21+, no men allowed",
@@ -406,16 +452,18 @@
     if (st === "club") return cast;
     if (st === "tryouts") { cast.forEach(function (r) { r.man = false; r.dna = false; r.build = pick(["voluptuous hourglass", "busty hourglass with wide hips", "slim-thick hourglass", "curvy hourglass with a tiny waist"]); if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "26-32", "26-32", "33-40"]); });
       distinctCast(cast, ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "hairTexture"]); return cast; }
-    if (st === "rural") { cast.forEach(function (r) { r.man = false; r.dna = false; r.skinTone = "light-skinned ebony"; r.heritageRegion = "rural American"; r.ageBand = "41-50"; r.hairStyle = "long straight hair"; }); return cast; }
+    if (st === "rural") { cast.forEach(function (r, i) { r.man = false; r.dna = false; r.skinTone = "light-skinned ebony"; r.heritageRegion = "rural American"; r.ageBand = i ? pick(["33-40", "41-50"]) : "41-50"; if (!i) r.hairStyle = "long straight hair"; });
+      if (cast.length > 1) distinctCast(cast.slice(1), ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle"]); return cast; }
     var C = GROUP_STYLES[st] || (st === "duo" ? DUO : st === "carib" ? CARIB : CONTEST), regions = C.regions.slice(), tones = C.tones.slice();
     cast.forEach(function (r) {
       r.man = false; r.dna = false;
+      if (!regions.length) regions = C.regions.slice(); if (!tones.length) tones = C.tones.slice();
       r.heritageRegion = regions.splice(Math.floor(rnd() * regions.length), 1)[0];
       r.skinTone = tones.splice(Math.floor(rnd() * tones.length), 1)[0];
       if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "21-25", "26-32", "26-32", "33-40"]);   // all 21+
       ["hairColor", "distinctiveFeature", "nails", "makeupLevel", "hairTexture"].forEach(function (k) { if (DNA.poolDrop[k] && DNA.poolDrop[k].test(r[k] || "")) r[k] = ""; });
     });
-    if (st === "duo") { cast[0].hairStyle = DUO.left.hair; cast[0].hairColor = "black"; cast[0].hairTexture = ""; cast[1].hairStyle = DUO.right.hair; cast[1].hairTexture = "curly"; }
+    if (st === "duo") cast.forEach(function (r, i) { if (i < 2) { r.hairStyle = i ? DUO.right.hair : DUO.left.hair; r.hairColor = i ? r.hairColor : "black"; r.hairTexture = i ? "curly" : ""; } });
     distinctCast(cast, st === "duo" ? ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones"] : ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "hairTexture"]);
     return cast;
   }
@@ -428,7 +476,7 @@
     var st = styleOf(look), r = cast[0], out;
     if (st === "tryouts") {
       var set = pick(TRYOUTS.set), act = ideaW ? ideaW + ", walking back and forth, stripping off at the end in heels" : TRYOUTS.heat[heat];
-      var models = cast.map(function (p, i) { return (cast.length > 1 ? ORD[i + 1] + " model: " : "model: ") + faceShort(p) + ", " + p.build; });
+      var models = cast.map(function (p, i) { return (cast.length > 1 ? castTag(i, cast.length, "models") + ": " : "model: ") + faceShort(p) + ", " + p.build; });
       if (tab === "video") {
         out = (idea ? "Main action (priority): " + idea + ". " : "") + "Video: " + TRYOUTS.open + ". " + (cast.length > 1 ? cast.length + " different women, each with a unique face. " : "") +
           "Cast: " + models.join(". ") + ". Action: " + act + ". Set: " + set + ". Camera: " + TRYOUTS.camera + ". Aspect 9:16, motion high. adult 21+.";
@@ -440,6 +488,17 @@
     }
     if (st === "rural") {
       var shot = pick(RURAL.shots), wearR = ideaW || RURAL.heat[heat];
+      if (cast.length > 1) {
+        var nR = cast.length, rw = cast.map(function (p, i) { return castTag(i, nR, "women") + ": " + (i ? faceShort(p) + ", black masquerade mask" : RURAL.face + ", " + p.skinTone + " complexion, aged 41-50"); });
+        var whoR = NUMW[nR] + " voluptuous rural American women in their 30s and 40s, every one a different face and skin tone, all adults 21+";
+        var bodyR = "each with " + RURAL.body.replace(/, light-skinned ebony complexion/, "").replace(/\bher\b/g, "their");
+        var locksR = RURAL.locks.replace("same face", "same faces");
+        if (tab === "video") out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of " + whoR + ". Body: " + bodyR + ". Cast: " + rw.join(". ") + ". Wardrobe: " + wearR + ". Set: " + RURAL.set +
+          ". Camera move: " + shot + ". Motion: " + RURAL.motion + ". Camera: " + RURAL.camera + ". " + locksR + ". Aspect 9:16, motion high. adult 21+.";
+        else out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of " + whoR, bodyR].concat(rw).concat([wearR, RURAL.set, shot, RURAL.motion, RURAL.camera, locksR, "adult women 21+"]).join(", ");
+        out = scrubProse(out);
+        return /21\+/.test(out) ? out : out + ", adult 21+";
+      }
       if (tab === "video") {
         out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of a " + RURAL.who + ". Body: " + RURAL.body + ". Face: " + RURAL.face + ". Wardrobe: " + wearR + ". Set: " + RURAL.set +
           ". Camera move: " + shot + ". Motion: " + RURAL.motion + ". Camera: " + RURAL.camera + ". " + RURAL.locks + ". Aspect 9:16, motion high. adult 21+.";
@@ -450,12 +509,16 @@
       return /21\+/.test(out) ? out : out + ", adult 21+";
     }
     if (st === "duo") {
-      var L2 = "Left woman: " + duoFace(cast[0]) + ", " + DUO.left.heat[heat], R2 = "Right woman: " + duoFace(cast[1]) + ", " + DUO.right.heat[heat];
+      var nD = cast.length, side = ["on the left", "on the right", "in the center", "front left", "front right"];
+      var D2 = cast.map(function (p, i) { var sd = i % 2 ? DUO.right : DUO.left; return (nD > 1 ? castTag(i, nD, "women") + " (" + side[i] + "): " : "") + duoFace(p) + ", " + sd.heat[heat]; });
+      var openD0 = nD === 2 ? DUO.open : nD === 1 ? "photorealistic cinematic image of one curvy oiled Black woman, adult 21+, fast raunchy dancing and twerking" : DUO.open.replace("two curvy", NUMW[nD] + " curvy").replace("both adults", "all adults");
+      var openD = multiOn() && nD > 1 ? openD0.replace("Black women", "mixed-heritage women, every skin tone different") : openD0;
+      var tailD = nD === 1 ? DUO.tail[heat].replace(/they dance/g, "she dances") : DUO.tail[heat];
       if (tab === "video") {
-        out = (idea ? "Main action (priority): " + idea + ". " : "") + DUO.open.replace(/^photorealistic cinematic image/, "Photorealistic cinematic video") + ". Set: " + DUO.set + ". " +
-          L2 + ". " + R2 + ". Action: " + DUO.tail[heat] + "; " + DUO.blur + ". Look: " + DUO.look + ". Aspect 16:9, motion high. adult 21+.";
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + openD.replace(/^photorealistic cinematic image/, "Photorealistic cinematic video") + ". Set: " + DUO.set + ". " +
+          D2.join(". ") + ". Action: " + tailD + "; " + DUO.blur + ". Look: " + DUO.look + ". Aspect 16:9, motion high. adult 21+.";
       } else {
-        out = (idea ? idea + "::2 " : "") + [DUO.open, DUO.set, DUO.blur, L2, R2, DUO.tail[heat], DUO.look, "adult women 21+"].join(", ");
+        out = (idea ? idea + "::2 " : "") + [openD, DUO.set, DUO.blur].concat(D2).concat([tailD, DUO.look, nD > 1 ? "adult women 21+" : "adult woman 21+"]).join(", ");
       }
       out = scrubProse(out);
       return /21\+/.test(out) ? out : out + ", adult 21+";
@@ -463,8 +526,23 @@
     var g = garmentsOf(idea), ideaW = g.length ? wardrobeFor(idea, heat, r).text : "";
     if (st === "contest" || st === "carib") {
       var K = st === "carib" ? CARIB : CONTEST, nat = st === "carib" ? r.heritageRegion : "Nigerian", fin = K.finish ? ", " + K.finish : "";
-      var venue = pick(K.venues), act = ideaW ? ideaW + ", dancing wild" : K.heat[heat];
-      if (tab === "video") {
+      var venue = pick(K.venues), act = ideaW ? ideaW + ", dancing wild" : K.heat[heat], nC = cast.length;
+      if (nC > 1) {
+        var natC = multiOn() ? "mixed-heritage" : st === "carib" ? "Caribbean" : "Nigerian";
+        var whoC = cast.map(function (p, i) { return castTag(i, nC, "women") + ": " + faceShort(p); });
+        var grpC = NUMW[nC] + " new " + natC + " women, every one a different face and skin tone, all adults 21+, auditioning together for a twerking contest";
+        if (tab === "video") {
+          out = (idea ? "Main action (priority): " + idea + ". " : "") +
+            "Raw home iPhone video, adult amateur (21+ only), not a generic video: " + grpC + ". Opens on simple head-shots of each of them, then zooms out to their full bodies for the judges. No text on screen. " +
+            "Cast: " + whoC.join(". ") + ". Bodies: all with " + K.body + ". Wardrobe and action: " + act + ". Setting: " + venue + ". " +
+            "Beats: " + K.beats.join("; ") + ". Home amateur quality: handheld phone, ordinary indoor lighting, unretouched skin with pores, flyaway hairs, real body weight in motion" + fin + ". Aspect 9:16, motion high. adult 21+.";
+        } else {
+          out = (idea ? idea + "::2 " : "") + ["adult amateur iPhone photo (21+ only)",
+            "side-by-side split image: head-shots on the left and a zoomed-out full-body group shot on the right, of " + grpC,
+            "no text on screen"].concat(whoC).concat(["all with " + K.body, act, venue, st === "carib" ? "contest music" : "",
+            "home amateur quality, ordinary indoor lighting, unretouched skin with pores, flyaway hairs, real body weight in motion, photoreal" + fin, "adult women 21+"]).filter(Boolean).join(", ");
+        }
+      } else if (tab === "video") {
         out = (idea ? "Main action (priority): " + idea + ". " : "") +
           "Raw home iPhone video, adult amateur (21+ only), not a generic video: one new " + nat + " woman auditioning for a twerking contest. Opens on a simple head-shot, then zooms out to her full body for the judges. No text on screen. " +
           "She: " + faceShort(r) + ". Body: " + K.body + ". Wardrobe and action: " + act + ". Setting: " + venue + ". " +
@@ -476,20 +554,22 @@
           "home amateur quality, ordinary indoor lighting, unretouched skin with pores, flyaway hairs, real body weight in motion, photoreal" + fin, "adult woman 21+"].filter(Boolean).join(", ");
       }
     } else {
-      var who = cast.map(function (p, i) { return ORD[i + 1] + " woman: " + faceShort(p); });
-      var G = GROUP_STYLES[st] || SYNC, wear = ideaW ? ideaW : G.heat[heat];
+      var nG = cast.length, who = cast.map(function (p, i) { return (nG > 1 ? castTag(i, nG, "women") : "the woman") + ": " + faceShort(p); });
+      var G = GROUP_STYLES[st] || SYNC, wear = ideaW ? ideaW : G.heat[heat], numG = function (t) { return nG === 1 ? t.replace(/^(F|f)ive completely different ([\w ]+?) women, all adults 21\+/, function (m, f, w) { return (f === "F" ? "One " : "one ") + w + " woman, adult 21+"; }).replace(/,? ?not in perfect sync|, NOT in perfect sync/g, "").replace(/each in her own/g, "in her own").replace(/\ball five\b/, "a").replace(/\bunique faces and bodies\b/, "unique face and body") : t.replace(/\bFive\b/, NUMW[nG].replace(/^./, function (c) { return c.toUpperCase(); })).replace(/\bfive\b/g, NUMW[nG]); };
+      if (multiOn() && nG > 1) { var nat0 = G.who; numG = (function (f) { return function (t) { return f(t).split(nat0 + " women").join("mixed-heritage women"); }; })(numG); }
       if (tab === "video") {
         out = (idea ? "Main action (priority): " + idea + ". " : "") +
-          "Raw iPhone video, shaky cam, dance studio with a mirror wall. " + G.groupVideo + "; all five brand-new unique faces and bodies every time (different facial features, eye shapes, noses, lips, cheekbones, jawlines, hair). " +
+          "Raw iPhone video, shaky cam, dance studio with a mirror wall. " + numG(G.groupVideo) + "; " + numG("all five") + " brand-new unique faces and bodies every time (different facial features, eye shapes, noses, lips, cheekbones, jawlines, hair). " +
           "Cast: " + who.join(". ").replace(/^./, function (c) { return c.toUpperCase(); }) + ". All voluptuous and thick, tiny waists. Wardrobe: " + wear + ". " +
           "Action: " + G.action + "; " + G.skin + "; ultra-realistic bounce, extreme jiggle physics. Audio: thumping twerk music. Aspect 9:16, motion high. adult 21+.";
       } else {
         out = (idea ? idea + "::2 " : "") + ["raw iPhone video still, shaky cam, dance studio with a mirror wall",
-          G.group,
-          "all five brand-new unique faces and bodies, different facial features, eye shapes, noses, lips, cheekbones, jawlines and hair"]
+          numG(G.group),
+          numG("all five") + " brand-new unique faces and bodies, different facial features, eye shapes, noses, lips, cheekbones, jawlines and hair"]
           .concat(who).concat(["all voluptuous and thick, tiny waists", wear, G.action,
           G.skin, "ultra-realistic bounce, extreme jiggle physics", "adult women 21+"]).join(", ");
       }
+      if (nG === 1) out = out.replace(/\ba brand-new unique faces and bodies\b/, "a brand-new unique face and body").replace(/\b[Aa]ll voluptuous and thick, tiny waists\b/, "voluptuous and thick, tiny waist").replace(/adult women 21\+/g, "adult woman 21+");
     }
     out = scrubProse(out);
     if (!/21\+/.test(out)) out += ", adult 21+";
@@ -726,14 +806,14 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, fresh: false, crowd: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
-      S.people = Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
+      S.people = Math.max(1, Math.min(5, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -855,10 +935,10 @@
     var seen = {};
     return String(text).split(/,\s*/).filter(function (f) { var k = f.trim().toLowerCase(); if (!k || seen[k]) return false; seen[k] = 1; return true; }).join(", ");
   }
-  // ---- Cast: 1-4 distinct adults (each with their own face, hair, wardrobe roll) ---------------------
+  // ---- Cast: 1-5 distinct adults (each with their own face, hair, wardrobe roll) ---------------------
   function rollCast(look) {
     var st = styleOf(look);
-    var n = GROUP_STYLES[st] ? 5 : st === "duo" ? 2 : st === "tryouts" ? Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)) : (st === "rural" || st === "carib") ? 1 : st === "contest" ? 1 : Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)), cast = [];
+    var n = peopleN(), cast = [];   // every style follows the People control (1-5)
     for (var i = 0; i < n; i++) {
       var r = roll(look), man = st === "club" && S.castMix === "mixed" && i % 2 === 1;
       if (man) { r.man = true; r.mHair = pick(MALE.hair, HIST.mHair); r.mFace = pick(MALE.face, HIST.mFace); r.mBuild = pick(MALE.build, HIST.mBuild);
@@ -871,7 +951,8 @@
     }
     styleCast(look, cast);
     freshCast(look, cast);
-    S.last = cast[0];
+    toneCast(look, cast);
+    S.last = cast[0]; S._cast = cast;
     return cast;
   }
   function personWardrobe(idea, heat, r, i) {
@@ -885,7 +966,7 @@
     return face + (prose ? "; " : ", ") + bodyOf(V2, r) + (prose ? "; styling: " : ", ") + st;
   }
   function bodyOf(V2, r) { return (r.beauty ? r.beauty + ", " : "") + fill(V2.body, r) + (r.dna ? ", " + DNA.body + ", " + (DNA.heatBody[S._heatNow] || DNA.heatBody.tease) : ""); }
-  function castLabel(r, i, n) { return n === 1 ? "" : ORD[i + 1] + " " + (r.man ? "man" : "woman"); }
+  function castLabel(r, i, n) { return n === 1 ? "" : castTag(i, n, S.castMix === "mixed" ? "adults" : "women") + (r.man ? ", a man" : ""); }
   // Beats: idea beats first; the look's generic setup / dialogue beats are dropped when an idea is typed; shuffled for variety.
   function beatsFor(look, idea, n) {
     var ctx = ideaCtx(idea), ib = [], lean = leanOn(look);
@@ -910,7 +991,7 @@
     var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
     var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
     if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
-    return noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : "");
+    return pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]);
   }
   function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -957,7 +1038,7 @@
   function assembleVideo(look, idea, r, heat) {
     var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
     var extra = (twerkOn() ? " " + TWERK.video.replace("{crowd}", crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera") : "") + (crowdOn() && styleOf(look) !== "club" ? " Crowd: " + CROWD_LINE + "." : "") + mashLine("video") + (freshOn() ? " Faces: every woman has " + FRESH_FACE + ". Skin: " + FRESH_SKIN + "." : "");
-    return noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o);
+    return pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]);
   }
   function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1246,9 +1327,9 @@
     } });
     R.idea.value = S.idea;
     P.appendChild(h("div", { cls: "pml-row", style: "margin-top:12px" }, [R.idea]));
-    // People: 1-4 distinct adults per prompt (each rolls its own face, hair and outfit).
+    // People: 1-5 distinct adults per prompt (each rolls its own face, hair and outfit).
     var pr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-people", role: "radiogroup", "aria-label": "People in the prompt" }, [h("span", { cls: "pml-k", text: "People" })]);
-    [1, 2, 3, 4].forEach(function (n) {
+    [1, 2, 3, 4, 5].forEach(function (n) {
       pr.appendChild(h("button", { cls: "pml-btn pml-ppl" + (S.people === n ? " on" : ""), type: "button", role: "radio", "aria-checked": S.people === n ? "true" : "false", "data-people": String(n), text: String(n),
         title: n === 1 ? "One adult" : n + " distinct adults 21+", on: { click: function () { S.people = n; S.groupScene = n > 1; save(); renderPanel(); } } }));
     });
@@ -1258,7 +1339,6 @@
           on: { click: function () { S.castMix = c[0]; save(); renderPanel(); } } }));
       });
     }
-    if (/^(sync|ny|contest|carib|duo|rural)$/.test(S.style || "")) pr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", "data-pm": "look-people-lock", text: "Style locks People to " + (S.style === "contest" || S.style === "carib" || S.style === "rural" ? 1 : S.style === "duo" ? 2 : 5) }));
     if (S.result && (S.result.people || 1) !== S.people) pr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(pr);
     var tabs = h("div", { cls: "pml-row", style: "margin-top:10px" });
@@ -1314,13 +1394,20 @@
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: crowdOn() ? "packed spectators \u00b7 phones \u00b7 bokeh" : "no crowd \u00b7 empty venue" })]);
     if (S.result && (S.result.crowd === true) !== crowdOn()) cw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(cw);
+    var mt = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-multitone" }, [h("span", { cls: "pml-k", text: "Tones" }),
+      h("button", { cls: "pml-toggle pml-skin" + (multiOn() ? " on" : ""), type: "button", "data-pm": "look-multitone-toggle", "aria-pressed": multiOn() ? "true" : "false",
+        title: "On: with People 2+, every person a different heritage and skin tone (deep to fair). Off: the style's own heritage, still no two people alike",
+        on: { click: function () { S.multitone = !multiOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Multi-tone"]),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: multiOn() ? "mixed heritages \u00b7 every tone different" : "style heritage \u00b7 no two alike" })]);
+    if (S.result && (S.result.multitone === true) !== multiOn()) mt.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(mt);
     var sr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-style", role: "radiogroup", "aria-label": "Style" }, [h("span", { cls: "pml-k", text: "Style" })]);
     STYLES.forEach(function (c) {
       var on = (S.style || "club") === c[0];
       sr.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-style": c[0], text: c[1],
-        on: { click: function () { S.style = c[0]; save(); renderPanel(); } } }));
+        on: { click: function () { S.style = c[0]; var d = { sync: 5, ny: 5, duo: 2 }[c[0]]; if (d) { S.people = d; S.groupScene = true; } save(); renderPanel(); } } }));
     });
-    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : S.style === "tryouts" ? "women only, People 1-4, slingshot walk + strip" : S.style === "carib" ? "1 Haitian / Jamaican / Dominican woman, chair twerk" : S.style === "rural" ? "1 locked character, random camera" : S.style === "duo" ? "2 women, cinematic noir, clothes falling off" : S.style === "ny" ? "5 NY women, loose sync, stylize 500" : S.style === "sync" ? "5 women, people locked to 5" : S.style === "contest" ? "1 woman, head-shot + full body" : "packed venue \u00b7 candid iPhone" }));
+    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : (S.people > 1 ? S.people + " women \u00b7 " : "1 woman \u00b7 ") + (S.style === "tryouts" ? "women only, slingshot walk + strip" : S.style === "carib" ? "Haitian / Jamaican / Dominican, chair twerk" : S.style === "rural" ? "locked lead character, random camera" : S.style === "duo" ? "cinematic noir, clothes falling off" : S.style === "ny" ? "NY women, loose sync, stylize 500" : S.style === "sync" ? "South Indian, in sync" : S.style === "contest" ? "head-shot + full body" : "packed venue \u00b7 candid iPhone") }));
     if (S.result && (S.result.style || "club") !== (S.style || "club")) sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(sr);
     var tw = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-twerk" }, [h("span", { cls: "pml-k", text: "Show" }),
@@ -1383,7 +1470,7 @@
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
     var tags = tagsFor(l, heat, idea, r, cast.length);
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
     S.result.text = compose(S.result);
     save();
     try { S.api.current.setPrompt(S.result.text); } catch (e) {}
@@ -1431,15 +1518,15 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; mashRoll();
-      S.people = o.people || (o.group ? 2 : 1); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; mashRoll();
+      S.people = Math.max(1, Math.min(5, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags };
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S._mashPrimary = null;
-      return o.full ? { text: out, tags: res.tags, params: res.params, mash: mixL } : out;
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S._mashPrimary = null;
+      return o.full ? { text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man }; }) } : out;
     }
   };
   window.addEventListener("pm:clear-all", onClearAll);
