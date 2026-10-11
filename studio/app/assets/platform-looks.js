@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261011e";
+  var V = "20261011f";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -249,6 +249,28 @@
       ut[r.skinTone] = 1; ur[r.heritageRegion] = 1;
     });
   }
+  // ---- Eye color quick switch (default Regular = brown / dark brown, the most common). Exotic = the old random mix. ----
+  var EYES = [["regular", "Regular"], ["hazel", "Hazel"], ["green", "Green"], ["blue", "Blue"], ["gray", "Gray"], ["hetero", "Heterochromia"], ["exotic", "Exotic"]];
+  var EYE_SHADES = { regular: ["dark brown", "brown", "deep brown", "warm brown", "chocolate brown", "dark espresso brown"], hazel: ["hazel", "light hazel", "golden hazel", "green-flecked hazel"],
+    green: ["green", "emerald green", "olive green", "pale green"], blue: ["blue", "light blue", "steel-blue", "deep blue"], gray: ["gray", "gray-blue", "silver-gray", "smoky gray"] };
+  var EYE_COLOR_RE = /\b(dark espresso brown|chocolate brown|dark brown|deep brown|warm brown|honey-brown|grey-green|gray-green|steel-blue|dark|black|brown|hazel|green|gray|grey|blue|amber|bright)\s+/gi;
+  function eyeMode() { var m = S.eye || "regular"; return EYES.some(function (e) { return e[0] === m; }) ? m : "regular"; }
+  function eyeShape(e) { e = String(e || "almond eyes"); if (/heterochrom/i.test(e) || !/\beyes\b/i.test(e)) e = "almond eyes"; return e.replace(EYE_COLOR_RE, "").replace(/\s+with laugh lines/i, "").replace(/^\s+|\s+$/g, "") || "almond eyes"; }
+  function eyeColorOf(i, mode, used) {
+    if (mode === "hetero") { var pairs = [["brown", "blue"], ["dark brown", "green"], ["hazel", "blue"], ["brown", "gray"], ["blue", "green"], ["amber", "blue"]], pr = pairs[(used.h = (used.h == null ? Math.floor(rnd() * pairs.length) : used.h + 1)) % pairs.length]; return pr; }
+    var sh = EYE_SHADES[mode] || EYE_SHADES.regular; if (!used.s) used.s = shuffled(sh); return used.s[i % used.s.length];
+  }
+  function eyeCast(look, cast) {
+    var mode = eyeMode(); if (mode === "exotic") return;
+    var used = {};
+    cast.forEach(function (r, i) {
+      if (r.man) return;
+      var c = eyeColorOf(i, mode, used), shape = eyeShape(r.eyes);
+      if (mode === "hetero") { r.eyes = shape + ", heterochromia: one " + c[0] + " eye and one " + c[1] + " eye"; r.eyeTint = "mismatched " + c[0] + " and " + c[1]; }
+      else { r.eyes = shape.replace(/\beyes\b/i, c + " eyes"); r.eyeTint = c; }
+    });
+  }
+  function ruralFace(r) { return r && r.eyeTint ? RURAL.face.replace("seductive dark eyes", "seductive " + r.eyeTint + " eyes") : RURAL.face; }
   function castNoun(cast) { return cast.some(function (r) { return r.man; }) ? "adults" : "women"; }
   function castTag(i, n, noun) { return ORD[i + 1] + " of the " + n + " " + noun; }
   // Last pass for 2+ people: the cast is always plural (they / them / women), never "she" or one "woman".
@@ -489,7 +511,7 @@
     if (st === "rural") {
       var shot = pick(RURAL.shots), wearR = ideaW || RURAL.heat[heat];
       if (cast.length > 1) {
-        var nR = cast.length, rw = cast.map(function (p, i) { return castTag(i, nR, "women") + ": " + (i ? faceShort(p) + ", black masquerade mask" : RURAL.face + ", " + p.skinTone + " complexion, aged 41-50"); });
+        var nR = cast.length, rw = cast.map(function (p, i) { return castTag(i, nR, "women") + ": " + (i ? faceShort(p) + ", black masquerade mask" : ruralFace(p) + ", " + p.skinTone + " complexion, aged 41-50"); });
         var whoR = NUMW[nR] + " voluptuous rural American women in their 30s and 40s, every one a different face and skin tone, all adults 21+";
         var bodyR = "each with " + RURAL.body.replace(/, light-skinned ebony complexion/, "").replace(/\bher\b/g, "their");
         var locksR = RURAL.locks.replace("same face", "same faces");
@@ -500,10 +522,10 @@
         return /21\+/.test(out) ? out : out + ", adult 21+";
       }
       if (tab === "video") {
-        out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of a " + RURAL.who + ". Body: " + RURAL.body + ". Face: " + RURAL.face + ". Wardrobe: " + wearR + ". Set: " + RURAL.set +
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of a " + RURAL.who + ". Body: " + RURAL.body + ". Face: " + ruralFace(cast[0]) + ". Wardrobe: " + wearR + ". Set: " + RURAL.set +
           ". Camera move: " + shot + ". Motion: " + RURAL.motion + ". Camera: " + RURAL.camera + ". " + RURAL.locks + ". Aspect 9:16, motion high. adult 21+.";
       } else {
-        out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of a " + RURAL.who, RURAL.body, RURAL.face, wearR, RURAL.set, shot, RURAL.motion, RURAL.camera, RURAL.locks, "adult woman 21+"].join(", ");
+        out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of a " + RURAL.who, RURAL.body, ruralFace(cast[0]), wearR, RURAL.set, shot, RURAL.motion, RURAL.camera, RURAL.locks, "adult woman 21+"].join(", ");
       }
       out = scrubProse(out);
       return /21\+/.test(out) ? out : out + ", adult 21+";
@@ -806,14 +828,14 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, eye: "regular", result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(5, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -952,6 +974,7 @@
     styleCast(look, cast);
     freshCast(look, cast);
     toneCast(look, cast);
+    eyeCast(look, cast);
     S.last = cast[0]; S._cast = cast;
     return cast;
   }
@@ -1401,6 +1424,15 @@
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: multiOn() ? "mixed heritages \u00b7 every tone different" : "style heritage \u00b7 no two alike" })]);
     if (S.result && (S.result.multitone === true) !== multiOn()) mt.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(mt);
+    var ey = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-eyes", role: "radiogroup", "aria-label": "Eye color" }, [h("span", { cls: "pml-k", text: "Eyes" })]);
+    EYES.forEach(function (e) {
+      var on = eyeMode() === e[0];
+      ey.appendChild(h("button", { cls: "pml-btn pml-style pml-eye" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-eye": e[0], text: e[1],
+        on: { click: function () { S.eye = e[0]; save(); renderPanel(); } } }));
+    });
+    ey.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: { regular: "brown \u00b7 dark brown (most common)", hazel: "hazel shades", green: "green shades", blue: "blue shades", gray: "gray shades", hetero: "two different colors", exotic: "random mix (any color)" }[eyeMode()] }));
+    if (S.result && (S.result.eye || "regular") !== eyeMode()) ey.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+    P.appendChild(ey);
     var sr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-style", role: "radiogroup", "aria-label": "Style" }, [h("span", { cls: "pml-k", text: "Style" })]);
     STYLES.forEach(function (c) {
       var on = (S.style || "club") === c[0];
@@ -1470,7 +1502,7 @@
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
     var tags = tagsFor(l, heat, idea, r, cast.length);
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), eye: eyeMode(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
     S.result.text = compose(S.result);
     save();
     try { S.api.current.setPrompt(S.result.text); } catch (e) {}
@@ -1518,15 +1550,15 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; mashRoll();
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; mashRoll();
       S.people = Math.max(1, Math.min(5, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags };
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S._mashPrimary = null;
-      return o.full ? { text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man }; }) } : out;
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S._mashPrimary = null;
+      return o.full ? { text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
     }
   };
   window.addEventListener("pm:clear-all", onClearAll);
