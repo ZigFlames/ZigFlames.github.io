@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261011f";
+  var V = "20261011g";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -271,6 +271,44 @@
     });
   }
   function ruralFace(r) { return r && r.eyeTint ? RURAL.face.replace("seductive dark eyes", "seductive " + r.eyeTint + " eyes") : RURAL.face; }
+  // ---- Core DNA chip: the style's key DNA words, weighted in the MJ prompt (chip::2) so they never get buried,
+  // and flashed by the Focus cue before a Remix. Adults 21+ always.
+  var STYLE_CORE = {
+    contest: ["raw home iPhone twerk-contest audition", "head-shot then full body"],
+    carib: ["Caribbean twerk-contest audition", "deep twerk bent over a chair"],
+    sync: ["synchronized twerk workout", "shaky-cam dance studio"],
+    ny: ["vulgar NY twerk", "ass to camera", "not in sync"],
+    duo: ["cinematic noir twerk", "motion blur", "clothes falling off"],
+    rural: ["ultra-realistic 4K amateur", "voluptuous rural ebony", "neon orange grid room"],
+    tryouts: ["secret model tryouts", "slingshot swimsuit walk"]
+  };
+  var EYE_CHIP = { regular: "brown eyes", hazel: "hazel eyes", green: "green eyes", blue: "blue eyes", gray: "gray eyes", hetero: "heterochromia" };
+  function dnaChip(look, cast, preview) {
+    if (!look || gearOf(look).kind === "virtual") return [];
+    var st = styleOf(look), n = cast ? cast.length : peopleN(), man = cast ? cast.some(function (r) { return r.man; }) : (st === "club" && S.castMix === "mixed" && n > 1);
+    var c = [];
+    if (preview && S.mash) c.push("mash-up: random style blend");
+    else if (st === "club") c = c.concat(dnaOn(look) ? ["candid iPhone photo", "unretouched real skin", "thicc IG-model body"] : ["gorgeous glam", "real skin texture"]);
+    else c = c.concat((STYLE_CORE[st] || []).map(function (x) { return st === "rural" && multiOn() && n > 1 ? x.replace("rural ebony", "rural women") : x; }));
+    if (n > 1) c.push(NUMW[n] + " different " + (man ? "adults" : "women"));
+    if (n > 1 && multiOn()) c.push("every skin tone different");
+    if (twerkOn()) c.push("twerk show, extreme jiggle physics");
+    if (freshOn()) c.push(n > 1 ? "brand-new unique faces, real pores" : "brand-new unique face, real pores");
+    if (crowdOn()) c.push("packed crowd");
+    if (EYE_CHIP[eyeMode()]) c.push(EYE_CHIP[eyeMode()]);
+    c.push(n > 1 ? "adults 21+" : "adult 21+");
+    return c;
+  }
+  function chipMJ(text, look, cast) {
+    var chip = dnaChip(look, cast); if (!chip.length) return text;
+    var k = text.indexOf("::2 "), w = chip.join(", ") + "::2 ";
+    return k >= 0 && k < 220 ? text.slice(0, k + 4) + w + text.slice(k + 4) : w + text;
+  }
+  function chipVideo(text, look, cast) {
+    var chip = dnaChip(look, cast); if (!chip.length) return text;
+    var w = "Core DNA (priority): " + chip.join(", ") + ".", m = text.match(/^Main action \(priority\):[^.]*\.\s*/);
+    return m ? m[0] + w + " " + text.slice(m[0].length) : w + " " + text;
+  }
   function castNoun(cast) { return cast.some(function (r) { return r.man; }) ? "adults" : "women"; }
   function castTag(i, n, noun) { return ORD[i + 1] + " of the " + n + " " + noun; }
   // Last pass for 2+ people: the cast is always plural (they / them / women), never "she" or one "woman".
@@ -1014,7 +1052,7 @@
     var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
     var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
     if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
-    return pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]);
+    return chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]);
   }
   function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1061,7 +1099,7 @@
   function assembleVideo(look, idea, r, heat) {
     var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
     var extra = (twerkOn() ? " " + TWERK.video.replace("{crowd}", crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera") : "") + (crowdOn() && styleOf(look) !== "club" ? " Crowd: " + CROWD_LINE + "." : "") + mashLine("video") + (freshOn() ? " Faces: every woman has " + FRESH_FACE + ". Skin: " + FRESH_SKIN + "." : "");
-    return pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]);
+    return chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]);
   }
   function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1229,6 +1267,13 @@
     ".pml-heat{min-width:72px}.pml-heat[disabled]{opacity:.35;cursor:not-allowed}.pml-heat-tease.on{border-color:#f9a8d4;color:#fff;background:rgba(244,114,182,.14)}.pml-heat-spicy.on{border-color:#fb923c;color:#fff;background:rgba(251,146,60,.16)}.pml-heat-xxx.on{border-color:#ef4444;color:#fff;background:rgba(239,68,68,.18)}" +
     ".pml-tab.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
     ".pml-remix{width:100%;min-height:54px;border-radius:10px;border:0;font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:800;letter-spacing:.3em;color:#05070d;cursor:pointer;background:linear-gradient(90deg,var(--acc),#f1f5f9);box-shadow:0 0 26px rgba(125,211,252,.35);touch-action:manipulation}" +
+    ".pml-focus{border-color:#fbbf24;color:#fde68a}.pml-focus:hover{background:rgba(251,191,36,.12)}" +
+    ".pml-focus-cue{margin-top:8px;padding:10px;border-radius:10px;border:1px solid rgba(251,191,36,.55);background:rgba(251,191,36,.07);display:flex;flex-wrap:wrap;gap:6px}" +
+    ".pml-focus-cue.flash{animation:pmlFocus 1.6s ease-out 1}" +
+    ".pml-focus-chip{display:inline-block;padding:5px 10px;border-radius:999px;border:1px solid rgba(251,191,36,.7);background:rgba(251,191,36,.14);color:#fff;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;letter-spacing:.04em;animation:pmlChip .9s ease-out both}" +
+    "@keyframes pmlFocus{0%{box-shadow:0 0 0 0 rgba(251,191,36,.9)}30%{box-shadow:0 0 26px 6px rgba(251,191,36,.55)}60%{box-shadow:0 0 8px 2px rgba(251,191,36,.3)}100%{box-shadow:0 0 0 0 rgba(251,191,36,0)}}" +
+    "@keyframes pmlChip{0%{opacity:0;transform:scale(.8)}40%{opacity:1;transform:scale(1.08);background:rgba(251,191,36,.45)}100%{opacity:1;transform:scale(1)}}" +
+    "@media (prefers-reduced-motion:reduce){.pml-focus-cue.flash,.pml-focus-chip{animation:none}}" +
     ".pml-remix[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none}" +
     ".pml-out{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.55;color:#e2e8f0;background:rgba(0,0,0,.45);border:1px solid rgba(168,85,247,.3);border-radius:10px;padding:12px;margin-top:8px}" +
     ".pml-note{margin-top:8px;padding:8px 10px;border-radius:8px;border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);color:#fde68a;font-size:12px}" +
@@ -1457,6 +1502,11 @@
     P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
     R.note = h("div", { cls: "pml-note", "data-pm": "look-notice", style: S.notice ? "" : "display:none", text: S.notice });
     P.appendChild(R.note);
+    R.focus = h("div", { cls: "pml-focus-cue", "data-pm": "look-focus-cue", style: "display:none", "aria-live": "polite" });
+    P.appendChild(h("div", { cls: "pml-row", style: "margin-top:12px" }, [
+      h("button", { cls: "pml-btn pml-focus", type: "button", "data-pm": "look-focus", title: "Flash this style's key DNA words (weighted ::2 in the prompt)", text: "\u25ce Focus", on: { click: showFocus } }),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "key DNA \u00b7 weighted ::2" })]));
+    P.appendChild(R.focus);
     P.appendChild(h("button", { cls: "pml-remix", type: "button", "data-pm": "look-remix", style: "margin-top:12px", text: S.result ? "REMIX AGAIN" : "REMIX", on: { click: doRemix } }));
 
     if (S.result) {
@@ -1480,6 +1530,16 @@
         P.appendChild(tr);
       }
     }
+  }
+  function showFocus() {
+    var l = lookById(S.sel), el = R.focus; if (!l || !el) return;
+    var chips = dnaChip(l, null, true);
+    if (!chips.length) chips = ["rendered look", "adult 21+"];
+    el.innerHTML = "";
+    el.appendChild(h("span", { cls: "pml-k", style: "flex-basis:100%;margin-bottom:2px;color:#fde68a", text: "Focus \u00b7 " + ((STYLES.filter(function (c) { return c[0] === (S.style || "club"); })[0] || ["", "Club candid"])[1]) + (S.mash ? " \u00b7 mash-up" : "") }));
+    chips.forEach(function (c, i) { el.appendChild(h("span", { cls: "pml-focus-chip", style: "animation-delay:" + (i * 0.08) + "s", text: c })); });
+    el.style.display = ""; el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    clearTimeout(S._focusT); S._focusT = setTimeout(function () { if (R.focus) R.focus.style.display = "none"; }, 6000);
   }
   function setNotice(msg) { S.notice = msg || ""; if (R.note) { R.note.textContent = S.notice; R.note.style.display = S.notice ? "" : "none"; } }
 
