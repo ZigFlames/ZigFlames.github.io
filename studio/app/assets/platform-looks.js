@@ -218,7 +218,35 @@
   // ---- Style presets (Remix matches Zig's examples). Adults 21+ only, every style, every heat. --------------
   // club = candid club DNA (above); contest = Nigerian twerk-contest audition; sync = five South Indian women in sync.
   var STYLES = [["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync \u00b7 5"], ["ny", "NY twerk \u00b7 5"], ["duo", "Noir duo \u00b7 2"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"]];
-  function styleOf(look) { return (look && gearOf(look).kind === "virtual") ? "club" : (/^(contest|carib|sync|ny|duo|rural|tryouts)$/.test(S.style || "") ? S.style : "club"); }
+  function styleOf(look) {
+    if (look && gearOf(look).kind === "virtual") return "club";
+    var st = S.mash && S._mashPrimary ? S._mashPrimary : S.style;
+    return /^(contest|carib|sync|ny|duo|rural|tryouts)$/.test(st || "") ? st : "club";
+  }
+  // ---- Mash-up: each Remix picks one DNA as the base (cast, setting, params) and blends in 1-2 more as flavor lines.
+  var MASH_FLAVOR = {
+    club: "candid iPhone club snapshot feel, packed indoor venue, spectators and phones in soft background bokeh, slight motion blur",
+    contest: "twerking-contest audition energy for the judges, head-shot then full body, home amateur quality",
+    carib: "bent over a chair in a deep twerk, heavy ass bouncing to contest music, looking back",
+    sync: "shaky-cam dance-studio twerk workout energy, mirror wall, sweat, oil and sand on skin",
+    ny: "vulgar NY twerk style, ass to camera, loose not-in-sync moves, tongue out on the vulgar moves",
+    duo: "cinematic noir shadows, strong motion blur on hips, hair and fabric, clothes falling off mid-twerk",
+    rural: "neon orange grid room, Sony A7R V 85mm look, film grain, black masquerade mask",
+    tryouts: "secret model tryouts walk, back and forth in slingshot swimsuits and heels"
+  };
+  function mashRoll() {
+    S._mashPrimary = null; S._mashExtra = [];
+    if (!S.mash) return;
+    var ids = STYLES.map(function (c) { return c[0]; }), out = [];
+    while (ids.length) out.push(ids.splice(Math.floor(rnd() * ids.length), 1)[0]);
+    S._mashPrimary = out[0]; S._mashExtra = out.slice(1, 1 + (rnd() < 0.5 ? 1 : 2));
+  }
+  function mashLine(tab) {
+    if (!S.mash || !S._mashExtra || !S._mashExtra.length) return "";
+    var f = S._mashExtra.map(function (k) { return MASH_FLAVOR[k]; }).join("; ");
+    return tab === "video" ? " Mash-up blend: " + f + "." : ", mash-up blend: " + f;
+  }
+  function mashLabel() { return S.mash && S._mashPrimary ? [S._mashPrimary].concat(S._mashExtra || []).map(function (k) { var c = STYLES.filter(function (x) { return x[0] === k; })[0]; return c ? c[1] : k; }).join(" + ") : ""; }
   var STYLE_NO = "text, watermark, logo, caption, UI, beauty filter, plastic skin, airbrush, identical faces, cloned women, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch";
   var CONTEST = {
     regions: ["Yoruba Nigerian", "Igbo Nigerian", "Hausa Nigerian", "Edo Nigerian", "Efik Nigerian", "Ijaw Nigerian", "Urhobo Nigerian", "Tiv Nigerian"],
@@ -625,14 +653,14 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(4, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -803,9 +831,8 @@
   }
 
   function assembleMJ(look, idea, r, seed, heat) {
-    if (!twerkOn()) return assembleMJ0(look, idea, r, seed, heat);
-    var o = assembleMJ0(look, twerkIdea(idea), r, seed, heat);
-    return o + ", " + TWERK.mj;
+    var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj : assembleMJ0(look, idea, r, seed, heat);
+    return o + mashLine("mj");
   }
   function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -849,8 +876,9 @@
     return lead + body;  // params are added by compose(), always last
   }
   function assembleVideo(look, idea, r, heat) {
-    if (!twerkOn()) return assembleVideo0(look, idea, r, heat);
-    return assembleVideo0(look, twerkIdea(idea), r, heat).replace(/\s*adult 21\+\.?\s*$/, "") + " " + TWERK.video + " adult 21+.";
+    var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
+    var extra = (twerkOn() ? " " + TWERK.video : "") + mashLine("video");
+    return extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o;
   }
   function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1196,8 +1224,12 @@
       h("button", { cls: "pml-toggle pml-skin" + (twerkOn() ? " on" : ""), type: "button", "data-pm": "look-twerk-toggle", "aria-pressed": twerkOn() ? "true" : "false",
         title: "One tap: every Remix becomes a twerk show (amateur jiggle, motion, ass to camera, crowd or judges). Adults 21+ only",
         on: { click: function () { S.twerk = !twerkOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Twerk show"]),
-      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: twerkOn() ? "jiggle \u00b7 motion \u00b7 ass to camera" : "off" })]);
-    if (S.result && (S.result.twerk === true) !== twerkOn()) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: twerkOn() ? "jiggle \u00b7 motion \u00b7 ass to camera" : "off" }),
+      h("button", { cls: "pml-toggle pml-skin" + (S.mash ? " on" : ""), type: "button", "data-pm": "look-mash-toggle", "aria-pressed": S.mash ? "true" : "false",
+        title: "Each Remix randomly blends 2-3 of Zig's style DNAs (one sets the cast and params, the others add flavor). Adults 21+ only",
+        on: { click: function () { S.mash = !S.mash; save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Mash-up"]),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", "data-pm": "look-mash-note", text: S.mash ? (S.result && S.result.mashMix ? "last: " + S.result.mashMix : "random blend each Remix") : "off" })]);
+    if (S.result && ((S.result.twerk === true) !== twerkOn() || (S.result.mash === true) !== (S.mash === true))) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(tw);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
     P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
@@ -1241,13 +1273,14 @@
     if (banned) { setNotice("Adults 21+ only. " + banned); return; }
     S.idea = idea; if (R.idea) R.idea.value = idea;
     var heat = heatFor(l);
+    mashRoll();
     var cast = rollCast(l), r = cast[0], seed = seed32(), body;
     if (S.tab === "video") body = assembleVideo(l, idea, cast, heat);
     else body = assembleMJ(l, idea, cast, seed, heat);
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
     var tags = tagsFor(l, heat, idea, r, cast.length);
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
     S.result.text = compose(S.result);
     save();
     try { S.api.current.setPrompt(S.result.text); } catch (e) {}
@@ -1255,7 +1288,7 @@
     S.notice = msg;
     renderPanel();
     var who = cast.length > 1 ? cast.length + " adults" : r.skinTone + " " + r.heritageRegion;
-    toast(S.tab === "video" ? "Video prompt remixed" : "Look remixed", displayLabel(l) + " \u00b7 " + who + " \u00b7 written to Prompt Output");
+    toast(S.tab === "video" ? "Video prompt remixed" : "Look remixed", displayLabel(l) + " \u00b7 " + (S.mash ? "Mash-up: " + mashLabel() : who) + " \u00b7 written to Prompt Output");
   }
   function toggleTags() {
     var res = S.result; if (!res || !res.body) return;
@@ -1295,15 +1328,15 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk;
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; mashRoll();
       S.people = o.people || (o.group ? 2 : 1); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags };
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9];
-      return o.full ? { text: out, tags: res.tags, params: res.params } : out;
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S._mashPrimary = null;
+      return o.full ? { text: out, tags: res.tags, params: res.params, mash: mixL } : out;
     }
   };
   window.addEventListener("pm:clear-all", onClearAll);
