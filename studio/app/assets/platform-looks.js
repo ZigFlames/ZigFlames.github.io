@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261010b";
+  var V = "20261011a";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -68,9 +68,9 @@
     virtual: ""
   };
   function gearOf(look) { return look.gear || { kind: "phone", line: "shot on {iphone}, main camera 24mm, handheld, available light", confidence: "guess" }; }
-  function camKind(look) { return S.cam === "iphone" ? "phone" : gearOf(look).kind; }
+  function camKind(look) { return (S.cam === "iphone" || dnaOn(look)) ? "phone" : gearOf(look).kind; }
   function camLine(look, tab) {
-    if (S.cam === "iphone") {
+    if (S.cam === "iphone" || dnaOn(look)) {
       return tab === "video" ? "Shot on " + IPHONE_MODEL + ", " + (String(look.aspect) === "9:16" ? "vertical " : "") + "handheld smartphone footage, " + IPHONE_MODEL + " main camera"
         : "shot on " + IPHONE_MODEL + ", " + IPHONE_MODEL + " main camera, smartphone photo";
     }
@@ -174,6 +174,47 @@
     return no ? no.replace(/[,\s]+$/, "") + ", " + BEAUTY_NO : "--no " + BEAUTY_NO;
   }
 
+  // ---- Candid DNA (Beauty OFF, default): Zig's target look for every real-camera platform look -----------
+  // Candid iPhone snapshot in a packed indoor venue, IG-model thicc body, adult woman 21+. Rendered (virtual) looks keep their own style.
+  var DNA = {
+    real: "candid iPhone photo, slight motion blur, dirty sensor spots, ordinary mixed indoor lighting, not studio, not beauty lighting, unretouched skin with pores, peach fuzz, uneven tone, sweat sheen only where bodies heat, flyaway hairs, real body weight in motion",
+    crowd: "packed indoor venue, spectators and phones in soft background bokeh",
+    tail: "unique face, natural proportions pushed but plausible, photoreal, documentary fashion snapshot, amateur framing, imperfect exposure",
+    body: "UAE women IG model style body: busty, big tits, wide hips, thicc, curvy, thick ass, bubble butt, fake tits, narrow waist",
+    heatBody: {
+      tease: "huge ass bouncing, vulgar confident walk, barefoot or thin heels",
+      spicy: "heavy G-cup swinging, puffy nipples through strained bikini, huge ass bouncing, thong cutting in, cameltoe, vulgar confident walk, barefoot or thin heels",
+      xxx: "heavy G-cup swinging and slapping, dark areolas, puffy nipples, huge ass bouncing, thong cutting in, cameltoe, vulgar confident walk, barefoot or thin heels"
+    },
+    builds: ["thicc curvy build", "busty hourglass with wide hips", "slim-thick with a bubble butt", "thick BBW-leaning curves", "voluptuous thick build"],
+    venues: ["packed indoor nightclub floor", "crowded backstage hallway at an indoor event", "packed indoor pool party", "crowded hotel ballroom afterparty", "packed indoor bikini contest stage", "crowded house party living room", "packed strip-club main floor", "crowded indoor booty-shake contest"],
+    wardrobe: {
+      tease: ["tight bodycon mini dress riding up", "bikini top and tiny thong shorts", "stretched crop top and booty shorts", "tight micro skirt and bandeau top"],
+      spicy: ["strained string bikini, thong cutting in", "tiny micro bikini straining at the seams", "sheer stretched bikini top and thong", "cheeky bikini bottoms riding up, strained top"]
+    },
+    mood: "raw, vulgar, confident, real",
+    no: "text, watermark, logo, caption, UI, beauty filter, plastic skin, airbrush, identical faces, cloned women, CGI, 3D render, extra limbs, melted anatomy, studio softbox, glossy magazine retouch",
+    bank: { ar: "--ar 2:3", v: "--v 6.1", stylize: "--stylize 40", chaos: "--chaos 8", q: "--q 1", style: "--style raw" },
+    artifacts: "Smart HDR tone mapping, slight sensor noise in the shadows",
+    // studio / beauty lighting from a look's own text fights the candid DNA
+    dropRe: /\b(softbox\w*|three-point|high-key|studio\w*|glossy|polished|beauty\b|retouch\w*|strobe\w*|ring light|key light|warm key|soft key|fill light|rim light|lamp|catchlights?|\d{4}K|LED|spotless|no dark corners|flattering|clean whites|saturated|lifted shadows|staged|luxury|clean white set|office or gym|wide masters|punch-ins|mediums|sharp focus|warm skin|16:9|9:16|4:5|1:1)\b/i,
+    // picks that fight the IG-model body (face / hair / nails); everything else stays random and unretouched
+    poolDrop: { hairColor: /gray|grey|silver|salt|roots/i, distinctiveFeature: /gold tooth|under-eye|glasses|ears that/i, nails: /bitten|chipped|short bare/i,
+      makeupLevel: /sweat-worn|day-old/i, heightFeel: /heavy-set|short-legged/i, hairTexture: /wiry|gray/i }
+  };
+  function dnaOn(look) { return !beautyOn() && !(look && gearOf(look).kind === "virtual"); }
+  function dnaList(text) { return String(text || "").split(/,\s*/).filter(function (f) { return f && (/adults? 21\+/i.test(f) || !DNA.dropRe.test(f)); }).join(", "); }
+  function dnaProse(text) {
+    return String(text || "").split(/(?<=\.)\s+/).map(function (sen) {
+      if (/^Main action \(priority\):/.test(sen)) return sen;
+      var m = sen.match(/^([A-Z][A-Za-z ]{0,20}:\s*)/), lab = m ? m[1] : "", body = m ? sen.slice(lab.length) : sen;
+      var end = /\.\s*$/.test(body) ? "." : ""; body = body.replace(/\.\s*$/, "");
+      var kept = body.split(/;\s*/).map(function (part) { return dnaList(part); }).filter(Boolean).join("; ");
+      return kept ? lab + kept + end : "";
+    }).filter(Boolean).join(" ");
+  }
+  function dnaVenue(idea, r) { return /\bback ?stage\b/i.test(String(idea || "")) ? "crowded backstage hallway at an indoor event" : r.venue; }
+
   // ---- Heat levels (18+ mode only; default Tease) -------------------------------------------
   var HEATS = ["tease", "spicy", "xxx"];
   var HEAT_LABEL = { tease: "Tease", spicy: "Spicy", xxx: "XXX" };
@@ -203,6 +244,12 @@
     [/sheer|mesh|see-through|fishnet/i, ["#sheer", "#fishnet"]], [/wet/i, ["#wetlook"]], [/leather/i, ["#leather"]], [/heels/i, ["#heels"]], [/nude|topless/i, ["#artnude"]]];
   // Idea context: matching beats, motion and tags, so the prompt and tags follow what Zig typed (e.g. "twerking").
   var IDEA_CTX = [
+    { re: /\b(walk\w*|strut\w*|back ?stage|runway)\b/i, motion: "high",
+      beats: ["walking away toward backstage, seen from behind, looking back over her shoulder, huge ass jiggling with each step", "mid-stride from behind, thong cutting in, phones raised in the crowd", "vulgar confident strut through the packed room"],
+      tags: { safe: ["#backstage", "#walk", "#strut"], spicy: ["#thick", "#curvy", "#thicc"] } },
+    { re: /\b(jiggl\w*|booty\b|ass\b|bbw|thicc|thick)\b/i, motion: "high",
+      beats: ["huge ass jiggling and bouncing mid-step", "low-angle from behind, bubble butt bouncing", "thick thighs and hips shaking to the beat"],
+      tags: { safe: ["#thick", "#curvy", "#bbw"], spicy: ["#thicc", "#bootybash", "#phat"] } },
     { re: /\b(twerk\w*|booty[\s-]?shak\w*|bounc\w*|clap\w* (?:it|cheeks))\b/i, motion: "high",
       beats: ["full-body low-angle twerk from behind, looking back over the shoulder", "rhythmic hip and glute motion on the beat", "slow-motion detail of the bounce", "hands on knees, back arched, confident glance to camera"],
       tags: { safe: ["#twerk", "#twerking", "#twerkvideo", "#dance", "#dancevideo"], spicy: ["#twerkqueen", "#bootyshake", "#thick", "#curvy"] } },
@@ -374,12 +421,23 @@
     if (glam) bands = MATURE_LOOKS[look.id] ? ["33-40", "41-50"] : ["21-25", "21-25", "26-32", "26-32", "33-40"];  // all 21+
     r.ageBand = pick(bands.length ? bands : ["26-32"], L.ageBand);
     if (glam) r.beauty = pick(BEAUTY_LINE);
+    if (dnaOn(look)) {
+      Object.keys(DNA.poolDrop).forEach(function (k) { if (DNA.poolDrop[k].test(r[k] || "")) { var o = cleanPool(P[k], k).filter(function (x) { return !DNA.poolDrop[k].test(x); }); if (o.length) r[k] = pick(o); } });
+      r.dna = true; r.build = pick(DNA.builds, L.dnaBuild); remember("dnaBuild", r.build);
+      if (rnd() < 0.6) r.venue = pick(DNA.venues, L.dnaVenue); remember("dnaVenue", r.venue);
+      if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "26-32", "26-32", "33-40"]);   // all 21+
+      r.dnaWardrobe = { tease: pick(DNA.wardrobe.tease), spicy: pick(DNA.wardrobe.spicy) };
+    }
     Object.keys(r).forEach(function (k) { remember(k, r[k]); });
     if (r.tattoosPiercings === "none") r.tattoosPiercings = "no tattoos or piercings";
     S.last = r;
     return r;
   }
   function realism(look, heat) {
+    if (dnaOn(look)) {
+      var grpD = S.groupScene ? (S.people > 1 ? S.people + " distinct adults 21+ in frame" : "group scene") + ", every person a distinct adult 21+ with a unique face" : "one woman per frame preferred";
+      return [DNA.real, grpD, "adult woman 21+", DNA.tail].join(", ");   // his exact wording (clean-skin pool filter still applies to the random picks)
+    }
     var b = String(look.realismBlock || "").replace(/photoreal documentary snapshot/gi, "photoreal candid snapshot");
     if (heat && heat !== "tease") b = b.replace(/natural sweat sheen only where skin heats/gi, "glistening skin, natural sweat sheen").replace(/,\s*dirty sensor spots/gi, "").replace(/,\s*imperfect exposure/gi, "");
     if (S.groupScene) {
@@ -425,6 +483,7 @@
       } else if (heat === "xxx" && !/nude|naked/i.test(nude.join(" "))) parts.push("nude");
       return { text: parts.join(", "), fromIdea: true };
     }
+    if (r.dnaWardrobe && heat !== "xxx") return { text: r.dnaWardrobe[heat] || r.dnaWardrobe.tease, fromIdea: false };
     if (heat === "spicy") return { text: r.spicyWardrobe, fromIdea: false };
     if (heat === "xxx") return { text: r.xxxWardrobe, fromIdea: false };
     return { text: r.wardrobe, fromIdea: false };
@@ -471,7 +530,7 @@
     var st = [personWardrobe(idea, heat, r, i), r.makeupLevel, r.nails, r.tattoosPiercings].filter(Boolean).join(", ");
     return face + (prose ? "; " : ", ") + bodyOf(V2, r) + (prose ? "; styling: " : ", ") + st;
   }
-  function bodyOf(V2, r) { return (r.beauty ? r.beauty + ", " : "") + fill(V2.body, r); }
+  function bodyOf(V2, r) { return (r.beauty ? r.beauty + ", " : "") + fill(V2.body, r) + (r.dna ? ", " + DNA.body + ", " + (DNA.heatBody[S._heatNow] || DNA.heatBody.tease) : ""); }
   function castLabel(r, i, n) { return n === 1 ? "" : ORD[i + 1] + " " + (r.man ? "man" : "woman"); }
   // Beats: idea beats first; the look's generic setup / dialogue beats are dropped when an idea is typed; shuffled for variety.
   function beatsFor(look, idea, n) {
@@ -491,19 +550,21 @@
   }
 
   function assembleMJ(look, idea, r, seed, heat) {
-    heat = heat || "tease";
+    heat = heat || "tease"; S._heatNow = heat;
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
+    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r);
     var w = wardrobeFor(idea, heat, r);
     var heritage = fill(V2.heritageFace, r), bodyTxt = bodyOf(V2, r);
-    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
+    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() && !dna ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
     if (cast.length > 1) {
       heritage = cast.map(function (p, i) { return castLabel(p, i, cast.length) + ": " + personText(V2, p, heat, idea, i, false).replace(/,\s*/g, " / "); }).join(", ");
-      bodyTxt = ""; styling = cleanOn() ? CLEAN_TOKEN : "";
+      bodyTxt = ""; styling = cleanOn() && !dna ? CLEAN_TOKEN : "";
     }
     var beat = beatsFor(look, idea, 1)[0] || "", ex = examplePhrase(look, idea);
     var head = headOf(look, w.fromIdea || heat !== "tease", heat), real = realism(look, heat);
-    head = camScrubList(head, look, "mj"); real = camScrubList(real, look, "mj");  // only one camera in the prompt
+    head = camScrubList(head, look, "mj"); real = dna ? real : camScrubList(real, look, "mj");
+    if (dna) head = dnaList(head);  // only one camera in the prompt
     var parts = [
       cast.length > 1 ? cast.length + " distinct adults 21+ together in one frame" : "",
       beat,                                   // one idea-matched beat (generic setup beats dropped)
@@ -512,12 +573,13 @@
       camLine(look, "mj"),                    // camera: platform gear or iPhone
       head,                                   // mjPrompt without {idea}
       fill(V2.venue, r),                      // venue
+      dna ? DNA.crowd : "",                   // candid DNA: packed indoor venue
       heritage,                               // heritage/skin + unique face + face picks
       bodyTxt,                                // hair + build + heightFeel + ageBand (single person)
       styling,                                // wardrobe (idea first) + makeup + nails + tattoos
       "adult 21+",                            // always, in code
       real,                                   // realismBlock
-      ARTIFACTS[camKind(look)] || ""          // real-capture artifacts for that camera
+      dna ? DNA.artifacts : (ARTIFACTS[camKind(look)] || "")  // real-capture artifacts for that camera
     ];
     var body = dedupe(scrubFraming(scrubList(parts.filter(Boolean).join(", ").replace(/\s+/g, " ").replace(/,\s*,/g, ","))));
     if (cast.length > 1) body = body.replace(/ \/ /g, ", ");
@@ -528,9 +590,10 @@
     return lead + body;  // params are added by compose(), always last
   }
   function assembleVideo(look, idea, r, heat) {
-    heat = heat || "tease";
+    heat = heat || "tease"; S._heatNow = heat;
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
+    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r);
     var w = wardrobeFor(idea, heat, r);
     // Scrub only the look's own text; the idea is added afterwards so no filter can ever drop it.
     var rest = String(look.promptTemplate || "").replace(/^\{idea\}\s*[\u2014-]\s*/, "").replace(/\{idea\}/g, "");
@@ -556,22 +619,26 @@
       }).filter(function (c) { if (!c) return false; if (/adults 21\+/i.test(c)) return true; return !FRAMING_RE.test(c) && !(heat !== "tease" && CLEAN_RE.test(c)); }).join("; ");
       return kept ? lab + kept + end : "";
     }).filter(Boolean).join(" ");
+    if (dna) {
+      t = dnaProse(t).replace(/\s*Set:[^.]*\./i, "").replace(/\b(16:9|9:16|4:5)\b/g, "2:3").replace(/Mood:[^.]*\./i, "Mood: " + DNA.mood + ".");
+      t += " Look: " + realism(look, heat) + ".";
+    }
     var i = t.indexOf(". ");
-    var cl = camLine(look, "video"), art = ARTIFACTS[camKind(look)] || "";
+    var cl = camLine(look, "video"), art = dna ? DNA.artifacts : (ARTIFACTS[camKind(look)] || "");
     var heatLine = pick(HEAT_VIDEO[heat] || [HEAT[heat].video]) + (cl ? " Camera: " + cl + (art ? "; " + art : "") + "." : "");
     t = i > 0 ? t.slice(0, i + 1) + " " + heatLine + t.slice(i + 1) : heatLine + " " + t;
-    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
+    var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() && !dna ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
     var lead, stylingTxt;
     if (cast.length > 1) {
       lead = "Cast (" + cast.length + " distinct adults 21+, each with a unique face): " + cast.map(function (p, i) { return castLabel(p, i, cast.length).replace(/^./, function (c) { return c.toUpperCase(); }) + " \u2014 " + personText(V2, p, heat, idea, i, true); }).join(". ") + ".";
-      stylingTxt = cleanOn() ? " Skin: " + CLEAN_TOKEN + "." : "";
+      stylingTxt = cleanOn() && !dna ? " Skin: " + CLEAN_TOKEN + "." : "";
     } else {
       lead = (S.groupScene ? "Group scene; lead woman: " : "One woman per frame: ") + fill(V2.heritageFace, r) + "; " + bodyOf(V2, r) + ".";
       stylingTxt = " Styling: " + styling + ".";
     }
     var ex = examplePhrase(look, idea);
-    var out = t + (ex ? " Style note: " + ex + "." : "") + " Setting: " + fill(V2.venue, r) + ". " + lead + stylingTxt + " " +
-      "Aspect " + look.aspect + ", clip length " + look.clipLength + ", motion " + motionFor(look, idea) + ". adult 21+.";
+    var out = t + (ex ? " Style note: " + ex + "." : "") + " Setting: " + fill(V2.venue, r) + (dna ? ", " + DNA.crowd : "") + ". " + lead + stylingTxt + " " +
+      "Aspect " + (dna ? "2:3" : look.aspect) + ", clip length " + look.clipLength + ", motion " + motionFor(look, idea) + ". adult 21+.";
     out = scrubProse(out).split(CLEAN_TOKEN).join(CLEAN_SKIN_STYLE);
     if (!/adult 21\+/.test(out)) out += " adult 21+.";
     return out;
@@ -584,6 +651,11 @@
     var ch = mj.chaos != null ? Number(mj.chaos) : null;
     if (ch != null && heat && heat !== "tease") ch = Math.min(40, ch + 10);   // a little more variety on Spicy / XXX
     if (ch != null && S.people > 1) ch = Math.min(45, ch + 5);
+    if (dnaOn(look)) {
+      var dn = "--no " + DNA.no + (cleanOn() ? ", " + CLEAN_SKIN_NO : "");
+      return { ar: DNA.bank.ar, v: DNA.bank.v, stylize: DNA.bank.stylize, chaos: DNA.bank.chaos, weird: "", q: DNA.bank.q, style: DNA.bank.style,
+        seed: "--seed " + seed, no: dn, repeat: "", tile: false, realism: false };
+    }
     var b = {
       ar: mj.ar ? "--ar " + mj.ar : "", v: mj.model || "", stylize: mj.stylize != null ? "--stylize " + stylizeOf(look) : "",
       chaos: ch != null ? "--chaos " + ch : "", weird: mj.weird ? "--weird " + mj.weird : "", q: mj.quality || "",
