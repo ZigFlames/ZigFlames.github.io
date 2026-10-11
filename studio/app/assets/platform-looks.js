@@ -336,6 +336,12 @@
       chip: ["early-2000s uncut rap video", "SD video bleed", "red and blue gels", "not AI polish"],
       mj: "early-2000s after-hours uncut rap video look, standard-definition camcorder video with SD color bleed and interlace softness, fisheye wide, club strobes, saturated red and blue gels, cheap gloss, contrasty, dancers in the foreground, money-in-the-air slow motion, real tape texture, not AI polish",
       video: "early-2000s after-hours uncut rap video look; SD camcorder video with color bleed and interlace softness, handheld and jib, fisheye wide performer-to-lens; club strobes, saturated red and blue gels, cheap gloss, contrasty; dancers in the foreground; real tape texture; not AI polish"
+    },
+    "mr-supremo": {
+      name: "Mr. Supremo",
+      chip: ["Colombian pro-am curvy casting", "hip-level camcorder follow", "hot tropical color", "not AI polish"],
+      mj: "2010s Colombian pro-am curvy casting look, director-held HD camcorder from behind the camera, low hip-level angle tracking big round hips and thick thighs, full-figure walk-away and turn-around shots, proud natural curvy bodies, warm Medellin tropical daylight with simple on-camera fill, hot saturated Latin color, slightly contrasty camcorder video with soft blown highlights, run-and-gun zoom reframes, real camcorder grit: video noise, slight motion blur, auto white-balance drift, not AI polish",
+      video: "2010s Colombian pro-am curvy casting look; director-held HD camcorder from behind the camera with casual off-camera banter, low hip-level follow tracking big round hips and thick thighs, full-figure walk-away and turn-around beats, run-and-gun zoom reframes; warm Medellin tropical daylight with simple on-camera fill, hot saturated Latin color, slightly contrasty camcorder video with soft blown highlights; proud natural curvy bodies; real camcorder grit: video noise, slight motion blur, auto white-balance drift; not AI polish"
     }
   };
   var STAMP_NO = ["AI polish", "CGI sheen", "over-smoothed render", "HDR glow"];
