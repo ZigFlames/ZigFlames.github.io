@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261011g";
+  var V = "20261014c";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -204,7 +204,9 @@
     poolDrop: { hairColor: /gray|grey|silver|salt|roots/i, distinctiveFeature: /gold tooth|under-eye|glasses|ears that/i, nails: /bitten|chipped|short bare/i,
       makeupLevel: /sweat-worn|day-old/i, heightFeel: /heavy-set|short-legged/i, hairTexture: /wiry|gray/i }
   };
-  function dnaOn(look) { return !beautyOn() && styleOf(look) === "club" && !(look && gearOf(look).kind === "virtual"); }
+  // Style "None": no style preset and no candid Club DNA; the platform's own look + focus DNA drive the prompt.
+  function noneOn() { return S.style === "none" && S.mash !== true; }
+  function dnaOn(look) { return !noneOn() && !beautyOn() && styleOf(look) === "club" && !(look && gearOf(look).kind === "virtual"); }
   function dnaList(text) { return String(text || "").split(/,\s*/).filter(function (f) { return f && (/adults? 21\+/i.test(f) || !DNA.dropRe.test(f)); }).join(", "); }
   function dnaProse(text) {
     return String(text || "").split(/(?<=\.)\s+/).map(function (sen) {
@@ -288,6 +290,7 @@
     var st = styleOf(look), n = cast ? cast.length : peopleN(), man = cast ? cast.some(function (r) { return r.man; }) : (st === "club" && S.castMix === "mixed" && n > 1);
     var c = [];
     if (preview && S.mash) c.push("mash-up: random style blend");
+    else if (st === "club" && noneOn()) c = c;
     else if (st === "club") c = c.concat(dnaOn(look) ? ["candid iPhone photo", "unretouched real skin", "thicc IG-model body"] : ["gorgeous glam", "real skin texture"]);
     else c = c.concat((STYLE_CORE[st] || []).map(function (x) { return st === "rural" && multiOn() && n > 1 ? x.replace("rural ebony", "rural women") : x; }));
     if (n > 1) c.push(NUMW[n] + " different " + (man ? "adults" : "women"));
@@ -369,13 +372,79 @@
   }
   function uniqList(a) { var seen = {}; return a.filter(function (x) { var k = String(x || "").toLowerCase(); if (!k || seen[k]) return false; seen[k] = 1; return true; }); }
   // virtual (AI / anime) looks are never DNA-led, so their full look text already shows every Remix
-  function stampOf(look) { if (!look || gearOf(look).kind === "virtual") return null; return STAMP_CACHE[look.id] || (STAMP_CACHE[look.id] = buildStamp(look)); }
+  function stampOf(look) { if (!look || gearOf(look).kind === "virtual") return null; if (!STAMP_OVERRIDE[look.id] && focusDna(look).length) return null; return STAMP_CACHE[look.id] || (STAMP_CACHE[look.id] = buildStamp(look)); }
   // drop stamp pieces the prompt already says (e.g. Beauty / platform-camera mode keeps some look text)
   function stampFresh(stamp, text, sep) {
     var low = String(text).toLowerCase();
     return stamp.split(sep).filter(function (x) { var t = x.trim().toLowerCase(); return t && (t.indexOf("not ai polish") >= 0 || t.indexOf(" look") >= 0 || low.indexOf(t) < 0); }).join(sep);
   }
+  // ---- FOCUS DNA: 4-8 hand-written aesthetic keys per platform (data/focus-dna.json), editable per look in the
+  // panel (chips). Front-loaded and weighted so the platform choice really shapes the prompt:
+  //   Midjourney tab: own segment right after the idea, weighted ::2.5 (above the ::2 core chip, below nothing).
+  //   Video tab (natural-language: Grok Imagine, ChatGPT/Sora, Kling...): plain "FOCUS DNA" sentence near the front
+  //   plus a short recap at the end. Tokens are scrubbed by the same safety filters (adults 21+, no framing words).
+  var FOCUS_DNA = {}, DNA_STORE = "pm.looks.focusdna.v1", DNA_EDIT = null;
+  function dnaEdits() { if (DNA_EDIT) return DNA_EDIT; try { DNA_EDIT = JSON.parse(localStorage.getItem(DNA_STORE) || "{}") || {}; } catch (e) { DNA_EDIT = {}; } return DNA_EDIT; }
+  function saveDnaEdits() { try { localStorage.setItem(DNA_STORE, JSON.stringify(DNA_EDIT || {})); } catch (e) {} }
+  function cleanDnaToken(t) { t = sanitizeIdea(stripBlocked(String(t || "")).text).replace(/[,;]+/g, " ").replace(/::+/g, " ").replace(/\s{2,}/g, " ").trim(); return t && !hasBlocked(t) && !FRAMING_RE.test(t) ? t.slice(0, 80) : ""; }
+  // An entry is either a key list, or {keys, rotate, sfw}: rich entries (Zig's own, e.g. OnlyFans) apply only in
+  // 18+ mode on adult looks; outside it the "sfw" list is used. Rotating pools add one pick per slot each Remix,
+  // heat-aware (partner content only at XXX), and pass the same safety scrub.
+  function dnaEntry(look) { return look ? FOCUS_DNA[look.id] : null; }
+  function dnaRich(look) { var e = dnaEntry(look); return !!(e && !Array.isArray(e) && e.keys && look.adult && isAdult()); }
+  function focusDnaRaw(look) {
+    if (!look) return []; var e = dnaEdits()[look.id]; if (Array.isArray(e)) return e;
+    var d = dnaEntry(look); if (!d) return []; if (Array.isArray(d)) return d;
+    return dnaRich(look) ? d.keys : (d.sfw || []);
+  }
+  function dnaRotate(look) {
+    if (!dnaRich(look)) return [];
+    var rot = dnaEntry(look).rotate || {}, heat = heatFor(look), out = [];
+    Object.keys(rot).forEach(function (k) { var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (t) out.push(t); });
+    S._dnaLast = out.join(", ");
+    return out;
+  }
+  function focusDna(look, withRotate) {
+    var keys = focusDnaRaw(look).map(cleanDnaToken).filter(Boolean);
+    return uniqList(keys).filter(function (t) {
+      return S.cam !== "iphone" || !GEAR_RE.test(t);   // iPhone mode: one camera only, drop lens/camera keys
+    }).slice(0, 8).concat(withRotate ? dnaRotate(look) : []);
+  }
+  function dnaEdited(look) { return !!(look && Array.isArray(dnaEdits()[look.id])); }
+  var DNA_LIGHT_RE = /\b(light|lighting|lit|flash|sun|daylight|golden[- ]hour|key|backlight|gels?|strobes?|neon|haze|practicals?|lamp)\b/i;
+  // generic candid-DNA lighting lines that would cancel the platform's own lighting key
+  function dnaDeconflict(text, dna) {
+    if (!dna.some(function (t) { return DNA_LIGHT_RE.test(t); })) return text;
+    return String(text).replace(/,?\s*ordinary mixed indoor lighting,\s*not studio,\s*not beauty lighting/g, "");
+  }
+  // label scrubbed like any prompt text (a few platform names carry blocked words: never let them into a prompt)
+  var NAME_RISK_RE = /sis|taboo|step|teen|famil|nubile|lil|tiny|daddy|mom|kid|young|school|freeuse|perv/i;
+  function lookName(look) { var n = String(displayLabel(look)).replace(/\s*\([^)]*\)/g, "").replace(/\s+(Look|Style|Aesthetic)$/i, "").trim(); return n && !hasBlocked(n) && !FRAMING_RE.test(n) && !NAME_RISK_RE.test(n) ? n : "this platform"; }
+  function focusMJ(text, look) {
+    var dna = focusDna(look, true); if (!dna.length) return text;
+    text = dnaDeconflict(text, dna);
+    var seg = lookName(look) + " look, " + dna.join(", ") + "::2.5 ";
+    var k = text.indexOf("::2 "), chip = dnaChip(look, null).join(", ");
+    // right after the idea segment (idea::2); with no idea typed it goes at the very front
+    if (chip && text.indexOf(chip) === 0) k = -1;
+    return k >= 0 && k < 400 ? text.slice(0, k + 4) + seg + text.slice(k + 4) : seg + text;
+  }
+  function focusVideo(text, look) {
+    var dna = focusDna(look, true); if (!dna.length) return text;
+    text = dnaDeconflict(text, dna);
+    var w = "FOCUS DNA \u2014 " + lookName(look) + " look (highest priority after the action; must read in every frame): " + dna.join(", ") + ".";
+    var m = text.match(/^Main action \(priority\):[^.]*\.\s*/);
+    var out = m ? m[0] + w + " " + text.slice(m[0].length) : w + " " + text;
+    if (dnaRich(look)) {   // Zig's rotated location + wardrobe replace the random venue and outfit
+      var rot = dnaEntry(look).rotate || {};
+      if (rot.location) out = out.replace(/\s*Setting: [^.]*\.(?=\s)/, "");
+      if (rot.wardrobe) out = out.replace(/(Styling: )[^,.]*,\s*/, "$1");
+    }
+    var recap = " Focus DNA recap: " + dna.slice(0, 3).join("; ") + ".";
+    return /\s*adult 21\+\.?\s*$/.test(out) ? out.replace(/\s*adult 21\+\.?\s*$/, recap + " adult 21+.") : out + recap;
+  }
   function stampMJ(text, look) {
+    text = focusMJ(text, look);
     var st = stampOf(look); if (!st) return text;
     // own segment right after his DNA chip, weighted under it (::1.5 < ::2) so his DNA still leads
     var k1 = text.indexOf("::2 "), k2 = k1 >= 0 ? text.indexOf("::2 ", k1 + 4) : -1, at = k2 >= 0 && k2 < 600 ? k2 + 4 : (k1 >= 0 ? k1 + 4 : 0);
@@ -383,9 +452,11 @@
     return out;
   }
   function stampVideo(text, look) {
+    text = focusVideo(text, look);
     var st = stampOf(look); if (!st) return text;
     var w = "Look stamp (on top of the DNA above, never replaces cast, faces or style): " + stampFresh(st.video, text, "; ") + ".";
-    var m = text.match(/^Main action \(priority\):[^.]*\.\s*(Core DNA \(priority\):[^.]*\.\s*)?/);
+    var m = text.match(/^(Main action \(priority\):[^.]*\.\s*)?(FOCUS DNA [^:]*:[^.]*\.\s*)?(Core DNA \(priority\):[^.]*\.\s*)?/);
+    if (m && !m[0]) m = null;
     var out = m ? m[0] + w + " " + text.slice(m[0].length) : w + " " + text;
     return out;
   }
@@ -409,7 +480,7 @@
   }
   // ---- DNA leads: when his DNA is in charge (candid DNA, Fresh faces, Crowd, Twerk show, Mash-up, any Style),
   // the platform look's own generic camera / lighting / set / framing / pacing / beats text is stripped so it can't overlay his stems.
-  function leanOn(look) { return !!look && gearOf(look).kind !== "virtual" && (dnaOn(look) || freshOn() || crowdOn() || twerkOn() || S.mash === true || styleOf(look) !== "club"); }
+  function leanOn(look) { return !!look && gearOf(look).kind !== "virtual" && (dnaOn(look) || dnaRich(look) || freshOn() || crowdOn() || twerkOn() || S.mash === true || styleOf(look) !== "club"); }
   var LEAN_KEEP_RE = /^(Main action \(priority\)|Beats|Mood|Look):/;
   function noCrowdList(text) { return crowdOn() ? String(text || "") : String(text || "").split(/,\s*/).filter(function (f) { return f && (/adults? 21\+|::2|^\s*no\s/i.test(f) || !CROWD_RE.test(f)); }).join(", "); }
   function noCrowdProse(text) {
@@ -425,7 +496,7 @@
 
   // ---- Style presets (Remix matches Zig's examples). Adults 21+ only, every style, every heat. --------------
   // club = candid club DNA (above); contest = Nigerian twerk-contest audition; sync = five South Indian women in sync.
-  var STYLES = [["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync"], ["ny", "NY twerk"], ["duo", "Noir duo"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"]];
+  var STYLES = [["none", "None"], ["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync"], ["ny", "NY twerk"], ["duo", "Noir duo"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"]];
   function styleOf(look) {
     if (look && gearOf(look).kind === "virtual") return "club";
     var st = S.mash && S._mashPrimary ? S._mashPrimary : S.style;
@@ -946,7 +1017,7 @@
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
-  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "club", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, eye: "regular", result: null, last: {}, notice: "", _forceAdult: null, examples: null };
+  var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "none", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, eye: "regular", result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
     try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
@@ -968,6 +1039,9 @@
       fetch("./assets/data/looks.json?v=" + V).then(function (r) { if (!r.ok) throw new Error("looks " + r.status); return r.json(); }),
       fetch("./assets/data/variety.json?v=" + V).then(function (r) { if (!r.ok) throw new Error("variety " + r.status); return r.json(); })
     ]).then(function (a) { S.looks = a[0]; S.variety = a[1]; });
+    // Focus DNA per platform (optional file; looks still work without it).
+    S.loadingDNA = fetch("./assets/data/focus-dna.json?v=" + V).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { FOCUS_DNA = j || {}; }).catch(function () { FOCUS_DNA = {}; });
+    S.loading = Promise.all([S.loading, S.loadingDNA]).then(function () {});
     // Optional: Zig's liked prompts (never blocks loading).
     fetch("./assets/data/style-examples.json?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { S.examples = j; }).catch(function () {});
     return S.loading;
@@ -1244,6 +1318,8 @@
     var bk = bankFor0(look, seed, heat, tab, motion);
     if (twerkOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + TWERK.no : "--no " + TWERK.no;
     if (!crowdOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + NO_CROWD_NO : "--no " + NO_CROWD_NO;
+    // a rotated Focus DNA lighting pick (e.g. softbox high-key) must not be negated by the look's own --no list
+    if (dnaRich(look) && /softbox/i.test(S._dnaLast || "") && bk.no) bk.no = bk.no.replace(/,?\s*studio softbox/i, "");
     var stN = stampOf(look);
     if (stN) { var hv = String(bk.no || "").toLowerCase(), ad = uniqList(stN.no).filter(function (x) { return hv.indexOf(x.toLowerCase()) < 0; }).join(", "); if (ad) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + ad : "--no " + ad; }
     if (freshOn()) {
@@ -1349,6 +1425,12 @@
     ".pml-heat{min-width:72px}.pml-heat[disabled]{opacity:.35;cursor:not-allowed}.pml-heat-tease.on{border-color:#f9a8d4;color:#fff;background:rgba(244,114,182,.14)}.pml-heat-spicy.on{border-color:#fb923c;color:#fff;background:rgba(251,146,60,.16)}.pml-heat-xxx.on{border-color:#ef4444;color:#fff;background:rgba(239,68,68,.18)}" +
     ".pml-tab.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
     ".pml-remix{width:100%;min-height:54px;border-radius:10px;border:0;font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:800;letter-spacing:.3em;color:#05070d;cursor:pointer;background:linear-gradient(90deg,var(--acc),#f1f5f9);box-shadow:0 0 26px rgba(125,211,252,.35);touch-action:manipulation}" +
+    ".pml-dna{margin-top:10px;padding:10px;border-radius:10px;border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.05)}" +
+    ".pml-dna-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}" +
+    ".pml-dna-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 4px 4px 10px;border-radius:999px;border:1px solid rgba(251,191,36,.7);background:rgba(251,191,36,.14);color:#fff;font-family:ui-monospace,Menlo,monospace;font-size:11.5px}" +
+    ".pml-dna-chip.off{opacity:.45;text-decoration:line-through}" +
+    ".pml-dna-x{border:0;background:transparent;color:#fde68a;cursor:pointer;font-size:14px;line-height:1;padding:0 4px}.pml-dna-x:hover{color:#fff}" +
+    ".pml-dna-in{flex:1 1 140px;min-width:140px;padding:5px 9px;font-size:12px}" +
     ".pml-focus{border-color:#fbbf24;color:#fde68a}.pml-focus:hover{background:rgba(251,191,36,.12)}" +
     ".pml-focus-cue{margin-top:8px;padding:10px;border-radius:10px;border:1px solid rgba(251,191,36,.55);background:rgba(251,191,36,.07);display:flex;flex-wrap:wrap;gap:6px}" +
     ".pml-focus-cue.flash{animation:pmlFocus 1.6s ease-out 1}" +
@@ -1483,7 +1565,7 @@
       pr.appendChild(h("button", { cls: "pml-btn pml-ppl" + (S.people === n ? " on" : ""), type: "button", role: "radio", "aria-checked": S.people === n ? "true" : "false", "data-people": String(n), text: String(n),
         title: n === 1 ? "One adult" : n + " distinct adults 21+", on: { click: function () { S.people = n; S.groupScene = n > 1; save(); renderPanel(); } } }));
     });
-    if (S.people > 1 && (S.style || "club") === "club") {
+    if (S.people > 1 && ((S.style || "none") === "club" || S.style === "none")) {
       [["women", "Women"], ["mixed", "Woman + man"]].forEach(function (c) {
         pr.appendChild(h("button", { cls: "pml-btn pml-mix" + (S.castMix === c[0] ? " on" : ""), type: "button", "aria-pressed": S.castMix === c[0] ? "true" : "false", "data-cast": c[0], text: c[1],
           on: { click: function () { S.castMix = c[0]; save(); renderPanel(); } } }));
@@ -1562,11 +1644,12 @@
     P.appendChild(ey);
     var sr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-style", role: "radiogroup", "aria-label": "Style" }, [h("span", { cls: "pml-k", text: "Style" })]);
     STYLES.forEach(function (c) {
-      var on = (S.style || "club") === c[0];
+      var on = (S.style || "none") === c[0];
       sr.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-style": c[0], text: c[1],
-        on: { click: function () { S.style = c[0]; var d = { sync: 5, ny: 5, duo: 2 }[c[0]]; if (d) { S.people = d; S.groupScene = true; } save(); renderPanel(); } } }));
+        title: c[0] === "none" ? "No style preset: the platform's focus DNA drives the look" : "Tap again to deselect (back to None)",
+        on: { click: function () { if (S.style === c[0] && c[0] !== "none") { S.style = "none"; save(); renderPanel(); return; } S.style = c[0]; var d = { sync: 5, ny: 5, duo: 2 }[c[0]]; if (d) { S.people = d; S.groupScene = true; } save(); renderPanel(); } } }));
     });
-    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : (S.people > 1 ? S.people + " women \u00b7 " : "1 woman \u00b7 ") + (S.style === "tryouts" ? "women only, slingshot walk + strip" : S.style === "carib" ? "Haitian / Jamaican / Dominican, chair twerk" : S.style === "rural" ? "locked lead character, random camera" : S.style === "duo" ? "cinematic noir, clothes falling off" : S.style === "ny" ? "NY women, loose sync, stylize 500" : S.style === "sync" ? "South Indian, in sync" : S.style === "contest" ? "head-shot + full body" : "packed venue \u00b7 candid iPhone") }));
+    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "none" ? "no preset \u00b7 platform focus DNA drives the look" : S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : (S.people > 1 ? S.people + " women \u00b7 " : "1 woman \u00b7 ") + (S.style === "tryouts" ? "women only, slingshot walk + strip" : S.style === "carib" ? "Haitian / Jamaican / Dominican, chair twerk" : S.style === "rural" ? "locked lead character, random camera" : S.style === "duo" ? "cinematic noir, clothes falling off" : S.style === "ny" ? "NY women, loose sync, stylize 500" : S.style === "sync" ? "South Indian, in sync" : S.style === "contest" ? "head-shot + full body" : "packed venue \u00b7 candid iPhone") }));
     if (S.result && (S.result.style || "club") !== (S.style || "club")) sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(sr);
     var tw = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-twerk" }, [h("span", { cls: "pml-k", text: "Show" }),
@@ -1583,6 +1666,7 @@
     P.appendChild(tw);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
     P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
+    P.appendChild(renderDnaRow(l));
     R.note = h("div", { cls: "pml-note", "data-pm": "look-notice", style: S.notice ? "" : "display:none", text: S.notice });
     P.appendChild(R.note);
     R.focus = h("div", { cls: "pml-focus-cue", "data-pm": "look-focus-cue", style: "display:none", "aria-live": "polite" });
@@ -1614,6 +1698,31 @@
       }
     }
   }
+  // Focus DNA chips: tap x to drop a key, type + Enter to add one, Reset restores the platform defaults.
+  function renderDnaRow(l) {
+    var box = h("div", { cls: "pml-dna", "data-pm": "look-focus-dna" });
+    var dna = focusDna(l), edited = dnaEdited(l);
+    box.appendChild(h("div", { cls: "pml-row", style: "justify-content:space-between;margin-bottom:6px" }, [
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", text: "Focus DNA \u00b7 " + lookName(l) + (S.tab === "video" ? " \u00b7 front-loaded + recap" : " \u00b7 weighted ::2.5") + (edited ? " \u00b7 edited" : "") }),
+      edited ? h("button", { cls: "pml-btn", type: "button", "data-pm": "look-dna-reset", text: "Reset", on: { click: function () { delete dnaEdits()[l.id]; saveDnaEdits(); renderPanel(); } } }) : null
+    ]));
+    var row = h("div", { cls: "pml-dna-chips" });
+    var setList = function (list) { dnaEdits()[l.id] = list; saveDnaEdits(); renderPanel(); };
+    focusDnaRaw(l).forEach(function (t, i) {
+      var live = dna.indexOf(cleanDnaToken(t)) >= 0;
+      row.appendChild(h("span", { cls: "pml-dna-chip" + (live ? "" : " off"), title: live ? "In the prompt" : "Skipped (iPhone camera mode keeps one camera)" }, [t,
+        h("button", { cls: "pml-dna-x", type: "button", "aria-label": "Remove " + t, text: "\u00d7", on: { click: function () { var a = focusDnaRaw(l).slice(); a.splice(i, 1); setList(a); } } })]));
+    });
+    var inp = h("input", { cls: "pml-in pml-dna-in", type: "text", placeholder: "+ add key (Enter)", "data-pm": "look-dna-add", "aria-label": "Add a focus DNA key", maxlength: "80",
+      on: { keydown: function (e) { if (e.key !== "Enter") return; e.preventDefault(); var t = cleanDnaToken(e.target.value); if (!t) { e.target.value = ""; return; } var a = focusDnaRaw(l).slice(); if (a.length >= 8) { toast("Focus DNA", "8 keys max \u2014 drop one first"); return; } a.push(t); setList(a); } } });
+    row.appendChild(inp);
+    box.appendChild(row);
+    if (dnaRich(l)) {
+      var rot = dnaEntry(l).rotate || {}, ht = heatFor(l);
+      box.appendChild(h("div", { cls: "pml-k", style: "margin-top:8px;letter-spacing:.08em;text-transform:none", "data-pm": "look-dna-rotate", text: "Zig's DNA \u00b7 rotates one per Remix (" + (HEAT_LABEL[ht] || ht) + "): " + Object.keys(rot).map(function (k) { var p = rot[k]; p = Array.isArray(p) ? p : (p[ht] || p.tease || []); return k + " \u2014 " + p.join(" / "); }).join(" \u00b7 ") + " \u00b7 adults 21+ only" }));
+    }
+    return box;
+  }
   function showFocus() {
     var l = lookById(S.sel), el = R.focus; if (!l || !el) return;
     var chips = dnaChip(l, null, true);
@@ -1621,6 +1730,7 @@
     el.innerHTML = "";
     el.appendChild(h("span", { cls: "pml-k", style: "flex-basis:100%;margin-bottom:2px;color:#fde68a", text: "Focus \u00b7 " + ((STYLES.filter(function (c) { return c[0] === (S.style || "club"); })[0] || ["", "Club candid"])[1]) + (S.mash ? " \u00b7 mash-up" : "") }));
     var stc = stampOf(l); if (stc) chips = chips.concat(stc.chip);
+    chips = focusDna(l).concat(chips);
     chips.forEach(function (c, i) { el.appendChild(h("span", { cls: "pml-focus-chip", style: "animation-delay:" + (i * 0.08) + "s", text: c })); });
     el.style.display = ""; el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
     clearTimeout(S._focusT); S._focusT = setTimeout(function () { if (R.focus) R.focus.style.display = "none"; }, 6000);
