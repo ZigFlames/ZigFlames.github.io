@@ -223,6 +223,78 @@
     return { hashtags: out.slice(0, n), rationale: rationale, tier: tier, provider: "on-device" };
   }
 
+  // ---- Psych Mood hashtags (browser): Noir, Blanche, 6 colors, 7 Aura colors, or Random color.
+  // ~60% bank tags verbatim + ~40% PascalCase recombinations of the bank's word parts; no numbers.
+  // Seductive tags only at Edgy / Adult (and NSFW/XXX) sensitivity; Adult still needs an 18+ mode (gate above).
+  var PSYCH_OPTIONS = [
+    { id: "noir", label: "Noir" }, { id: "blanche", label: "Blanche" }, { id: "blush", label: "Blush" }, { id: "crimson", label: "Crimson" },
+    { id: "gold", label: "Gold" }, { id: "ice-blue", label: "Ice Blue" }, { id: "violet", label: "Violet" }, { id: "emerald", label: "Emerald" },
+    { id: "aura-root", label: "Aura Root Red" }, { id: "aura-sacral", label: "Aura Sacral Orange" }, { id: "aura-solar", label: "Aura Solar Gold" },
+    { id: "aura-heart", label: "Aura Heart Green" }, { id: "aura-throat", label: "Aura Throat Blue" }, { id: "aura-third-eye", label: "Aura Third-Eye Indigo" },
+    { id: "aura-crown", label: "Aura Crown Violet-White" }, { id: "random", label: "Random color" }];
+  var PSYCH_BANKS = null, PSYCH_LOADING = null;
+  function pascal(t) { return String(t || "").split(/[,]/)[0].replace(/[^A-Za-z\s-]/g, " ").split(/[\s-]+/).filter(Boolean).map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(""); }
+  function loadPsych(base) {
+    if (PSYCH_BANKS) return Promise.resolve(PSYCH_BANKS);
+    if (PSYCH_LOADING) return PSYCH_LOADING;
+    base = base || "./assets/data/";
+    var get = function (f) { return fetch(base + f).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); };
+    PSYCH_LOADING = Promise.all([get("psych-noir-tags.json"), get("psych-blanche-tags.json"), get("psych-colors-tags.json"), get("psych-aura-tags.json")]).then(function (a) {
+      var b = {};
+      if (a[0]) b.noir = { label: "Noir", sfw: a[0].sfw || [], adult: a[0].adult || [] };
+      if (a[1]) b.blanche = { label: "Blanche", sfw: a[1].sfw || [], adult: a[1].adult || [] };
+      var c = (a[2] && a[2].colors) || {}; Object.keys(c).forEach(function (k) { b[k] = c[k]; });
+      var au = (a[3] && a[3].colors) || {};
+      Object.keys(au).forEach(function (k) { b["aura-" + k] = { label: "Aura " + au[k].label, sfw: au[k].sfw.map(pascal), adult: au[k].adult.map(pascal) }; });
+      PSYCH_BANKS = b; return b;
+    });
+    return PSYCH_LOADING;
+  }
+  function splitWords(t) { return String(t).match(/[A-Z][a-z]+|[A-Z]+(?![a-z])/g) || []; }
+  function psychGenerate(body, banks, opts) {
+    body = body || {}; opts = opts || {};
+    var tier = tierOf({ intent: norm(body.intent) || intentOf(body.director), mode: norm(body.mode), sensitivity: body.sensitivity });
+    var adult = tier === "adult" || tier === "nsfw" || tier === "xxx";
+    if (opts.gate !== false) {
+      if (opts.cleanKey && adult) throw err("After Dark / adult models need a FACE/OFF Prompt Machine key. Clean Studios keys stay on the safe lane.", "CLEAN_KEY_BLOCKED");
+      if (adult && !body.isAdult) throw err("Adult / NSFW / XXX hashtags need an 18+ mode. Switch the machine to NSFW or XXX (age-verified, Prompt Machine key) first — or pick SFW / Edgy.", "ADULT_MODE_REQUIRED");
+    }
+    var theme = typeof body.theme === "string" ? body.theme.trim() : "";
+    checkSafety(theme, adult);
+    var seductive = tier !== "sfw";
+    var keys = Object.keys(banks || {}); if (!keys.length) throw err("Psych Mood banks did not load. Refresh and try again.", "PSYCH_UNAVAILABLE");
+    var id = norm(body.psych); if (id === "random" || !banks[id]) id = keys[Math.floor(Math.random() * keys.length)];
+    var bank = banks[id];
+    var n = Math.max(6, Math.min(30, Math.round(Number(body.count)) || 12));
+    var pool = (bank.sfw || []).concat(seductive ? bank.adult || [] : []).filter(function (t) { return /^[A-Za-z]{3,30}$/.test(t) && !MINOR_RE.test(splitWords(t).join(" ")); });
+    var shuffle = function (a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; };
+    var out = [], seen = new Set();
+    var add = function (t) { var k = String(t).toLowerCase(); if (!t || seen.has(k) || !/^[A-Z][A-Za-z]{2,29}$/.test(t) || /teen|young|minor|child|kid|school|skin/.test(k)) return false; seen.add(k); out.push("#" + t); return true; };
+    // light theme blend: up to 2 theme words joined to a bank anchor word (e.g. RooftopNoir)
+    var words = [];
+    pool.forEach(function (t) { splitWords(t).forEach(function (w) { if (w.length >= 3 && !/^(And|Of|The|In|On)$/.test(w)) words.push(w); }); });
+    var uw = Array.from(new Set(words)), anchor = splitWords(pool[0] || bank.label || "Noir")[0] || "Noir";
+    var head = splitWords(bank.label.replace(/^Aura\s+/, "").replace(/[^A-Za-z ]/g, " ").split(" ").map(function (w) { return w ? w[0].toUpperCase() + w.slice(1) : ""; }).join(""));
+    var themeWords = theme.toLowerCase().replace(/[^a-z\s]+/g, " ").split(/\s+/).filter(function (w) { return w.length >= 3 && !STOP.has(w) && !WEAK.has(w) && !MINOR_RE.test(w) && (seductive || !SEXUAL_RE.test(w)); }).slice(0, 2);
+    themeWords.forEach(function (w) { add(w[0].toUpperCase() + w.slice(1) + (head[0] || anchor)); });
+    var bankN = Math.round((n - out.length) * 0.6);
+    shuffle(pool).some(function (t) { if (out.length >= themeWords.length + bankN) return true; add(t); return false; });
+    var guard = 0;
+    while (out.length < n && guard++ < 4000) {
+      var a1 = uw[Math.floor(Math.random() * uw.length)], a2 = uw[Math.floor(Math.random() * uw.length)];
+      if (!a1 || !a2 || a1 === a2) continue;
+      var t = (Math.random() < 0.5 && head.length ? head[0] : a1) + a2 + (Math.random() < 0.25 ? ["Mood", "Vibes", "Editorial"][Math.floor(Math.random() * 3)] : "");
+      if (/(\w{4,})\1/.test(t) || pool.indexOf(t) >= 0) continue;
+      add(t);
+    }
+    shuffle(pool).forEach(function (t) { if (out.length < n) add(t); });
+    var platformKey = PLATFORM_ALIAS[norm(body.platform)] || norm(body.platform) || "all";
+    var pt = ((PLATFORM[platformKey] || PLATFORM.all).any || [])[0];
+    if (pt && out.length >= n) out[out.length - 1] = "#" + pt; else if (pt) out.push("#" + pt);
+    return { hashtags: out.slice(0, n), tier: tier, psych: id, provider: "on-device",
+      rationale: "Psych Mood · " + bank.label + ": ~60% bank tags + ~40% recombined PascalCase tags" + (themeWords.length ? " + theme blend" : "") + (seductive ? " (" + tier + ": seductive tags allowed)" : " (SFW: no seductive tags)") + ". Generated on-device." };
+  }
+
   function intentPhrase(director) {
     var id = intentOf(director);
     var d = INTENTS[id];
@@ -248,6 +320,13 @@
         }
       } catch (x) { /* network / relay failure — fall back to on-device */ }
     }
+    if (body && body.psych) {
+      try {
+        var fo0 = root.__FO || null, ck = !!(fo0 && fo0.kind && fo0.kind !== "nsfw" && fo0.kind !== "owner") || !!opts.cleanKey;
+        var banks = await loadPsych(opts.base);
+        return { data: psychGenerate(body, banks, { cleanKey: ck }), error: null };
+      } catch (x3) { return { data: null, error: { message: x3.message, code: x3.code } }; }
+    }
     try {
       var fo = root.__FO || null;
       var cleanKey = !!(fo && fo.kind && fo.kind !== "nsfw" && fo.kind !== "owner");
@@ -257,7 +336,7 @@
     }
   }
 
-  var api = { generate: generate, invoke: invoke, intentPhrase: intentPhrase, isAdultRequest: isAdultRequest, checkSafety: checkSafety, INTENTS: INTENTS, PLATFORM_ALIAS: PLATFORM_ALIAS };
+  var api = { psychGenerate: psychGenerate, loadPsych: loadPsych, PSYCH_OPTIONS: PSYCH_OPTIONS, generate: generate, invoke: invoke, intentPhrase: intentPhrase, isAdultRequest: isAdultRequest, checkSafety: checkSafety, INTENTS: INTENTS, PLATFORM_ALIAS: PLATFORM_ALIAS };
   root.PMHashtags = api;
   root.__pmHashtagInvoke = invoke;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

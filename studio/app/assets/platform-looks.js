@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261014c";
+  var V = "20261015a";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -224,8 +224,9 @@
   var NO_CROWD_NO = "crowd, spectators, audience, onlookers, people in the background";
   function crowdOn() { return S.crowd === true; }
   // ---- People + Multi-tone: the cast count always equals the People control; 2+ people are always plural and all different. ----
-  var NUMW = ["zero", "one", "two", "three", "four", "five"];
-  function peopleN() { return Math.max(1, Math.min(5, parseInt(S.people, 10) || 1)); }
+  var NUMW = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight"];
+  var PEOPLE_MAX = 8;
+  function peopleN() { return Math.max(1, Math.min(PEOPLE_MAX, parseInt(S.people, 10) || 1)); }
   function multiOn() { return S.multitone === true; }
   var TONE_BANDS = [["deep ebony", "dark brown", "warm mahogany", "cool umber", "dark chocolate"], ["rich copper", "golden brown", "caramel", "honey", "sun-weathered bronze"], ["olive", "tan", "light tan", "warm beige"], ["porcelain", "pale with pink undertones", "freckled fair", "ruddy fair"]];
   var RURAL_TONES = ["light-skinned ebony", "caramel ebony", "warm brown ebony", "deep ebony", "dark chocolate ebony"];
@@ -282,7 +283,9 @@
     ny: ["vulgar NY twerk", "ass to camera", "not in sync"],
     duo: ["cinematic noir twerk", "motion blur", "clothes falling off"],
     rural: ["ultra-realistic 4K amateur", "voluptuous rural ebony", "neon orange grid room"],
-    tryouts: ["secret model tryouts", "slingshot swimsuit walk"]
+    tryouts: ["secret model tryouts", "slingshot swimsuit walk"],
+    sabaddie: ["South African baddie walk", "ass to camera rear-view follow", "women only, staged urban set"],
+    roomwalk: ["Room Walk Loop", "seamless 12-20s vertical loop", "one original woman, small warm-grey room"]
   };
   var EYE_CHIP = { regular: "brown eyes", hazel: "hazel eyes", green: "green eyes", blue: "blue eyes", gray: "gray eyes", hetero: "heterochromia" };
   function dnaChip(look, cast, preview) {
@@ -374,9 +377,16 @@
   // virtual (AI / anime) looks are never DNA-led, so their full look text already shows every Remix
   function stampOf(look) { if (!look || gearOf(look).kind === "virtual") return null; if (!STAMP_OVERRIDE[look.id] && focusDna(look).length) return null; return STAMP_CACHE[look.id] || (STAMP_CACHE[look.id] = buildStamp(look)); }
   // drop stamp pieces the prompt already says (e.g. Beauty / platform-camera mode keeps some look text)
+  // Walk styles (SABADDIE, Room Walk Loop) set their own camera and scene: mute a look's conflicting camera/scene notes
+  // (OnlyFans selfie / nightstand, Worldstar crowd ...) but keep its lighting and color-grade keys.
+  var WALK_HARD = /selfie|nightstand|propped|front[- ]cam|driver|windshield|\bcar\b|office|bedroom|\bbed\b|crowd|bystander|audience|spectator|bodies blocking|webcam|couch|sofa|hotel|kitchen|shower|bathroom|\bpov\b|tripod|mirror|talking to the viewer|from the stands|ringside|dance floor|vip booth|to the phone|phone visible/i;
+  var WALK_SOFT = /handheld|shaky|zoom|framing|vertical|street|club|room|location|\bset\b|venue|stage|backdrop|studio|close-?up|angle|lens|\bcam(era)?\b/i;
+  function walkStyle(look) { return /^(sabaddie|roomwalk)$/.test(styleOf(look)); }
+  function walkMuted(t) { return WALK_HARD.test(t) || (WALK_SOFT.test(t) && !DNA_LIGHT_RE.test(t) && !/grade|color|colour|grain|tone|saturat|contrast/i.test(t)); }
   function stampFresh(stamp, text, sep) {
     var low = String(text).toLowerCase();
-    return stamp.split(sep).filter(function (x) { var t = x.trim().toLowerCase(); return t && (t.indexOf("not ai polish") >= 0 || t.indexOf(" look") >= 0 || low.indexOf(t) < 0); }).join(sep);
+    var mute = walkStyle(null);
+    return stamp.split(sep).filter(function (x) { var t = x.trim().toLowerCase(); if (mute && walkMuted(t)) return false; return t && (t.indexOf("not ai polish") >= 0 || t.indexOf(" look") >= 0 || low.indexOf(t) < 0); }).join(sep);
   }
   // ---- FOCUS DNA: 4-8 hand-written aesthetic keys per platform (data/focus-dna.json), editable per look in the
   // panel (chips). Front-loaded and weighted so the platform choice really shapes the prompt:
@@ -400,13 +410,16 @@
   function dnaRotate(look) {
     if (!dnaRich(look)) return [];
     var rot = dnaEntry(look).rotate || {}, heat = heatFor(look), out = [];
-    Object.keys(rot).forEach(function (k) { var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (t) out.push(t); });
+    var sabOn = walkStyle(look);   // the style owns set + wardrobe
+    Object.keys(rot).forEach(function (k) { if (sabOn && /^(location|wardrobe|setting|outfit)$/.test(k)) return; var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (t && !(sabOn && walkMuted(t))) out.push(t); });
     S._dnaLast = out.join(", ");
     return out;
   }
   function focusDna(look, withRotate) {
     var keys = focusDnaRaw(look).map(cleanDnaToken).filter(Boolean);
+    var mute = walkStyle(look);
     return uniqList(keys).filter(function (t) {
+      if (mute && walkMuted(t)) return false;   // walk styles own camera + scene; keep the look's lighting / grade
       return S.cam !== "iphone" || !GEAR_RE.test(t);   // iPhone mode: one camera only, drop lens/camera keys
     }).slice(0, 8).concat(withRotate ? dnaRotate(look) : []);
   }
@@ -420,10 +433,65 @@
   // label scrubbed like any prompt text (a few platform names carry blocked words: never let them into a prompt)
   var NAME_RISK_RE = /sis|taboo|step|teen|famil|nubile|lil|tiny|daddy|mom|kid|young|school|freeuse|perv/i;
   function lookName(look) { var n = String(displayLabel(look)).replace(/\s*\([^)]*\)/g, "").replace(/\s+(Look|Style|Aesthetic)$/i, "").trim(); return n && !hasBlocked(n) && !FRAMING_RE.test(n) && !NAME_RISK_RE.test(n) ? n : "this platform"; }
+  // ---- Psych Editorial Noir switch: ONE random phrase from Zig's tag bank per Remix, as a light mood accent
+  // (never overrides the Focus DNA). Seductive tags only in 18+ mode on adult looks. Adults 21+ always.
+  // Psych Mood colors: Noir and Blanche (white / pale / bleached / ghostly / clinical / sterile unease). One at a time.
+  var PSYCH = { noir: { label: "Psych Editorial Noir", file: "psych-noir-tags.json", bank: null }, blanche: { label: "Psych Editorial Blanche", file: "psych-blanche-tags.json", bank: null } };
+  // Aura: 7 chakra colors (light / aura / mood only; never skin tone or ethnicity; the random cast stays as rolled).
+  var AURA_KEYS = ["root", "sacral", "solar", "heart", "throat", "third-eye", "crown"];
+  var AURA_LABEL = { root: "Root Red", sacral: "Sacral Orange", solar: "Solar Gold", heart: "Heart Green", throat: "Throat Blue", "third-eye": "Third-Eye Indigo", crown: "Crown Violet-White" };
+  AURA_KEYS.forEach(function (k) { PSYCH["aura-" + k] = { label: AURA_LABEL[k], aura: true, bank: null }; });
+  PSYCH["aura-random"] = { label: "Aura: random", aura: true, random: true, bank: null };
+  // More Psych Mood colors (light and mood only, never skin). "Random color" = any color mood incl. Noir, Blanche and Aura.
+  var COLOR_KEYS = ["blush", "crimson", "gold", "ice-blue", "violet", "emerald"];
+  var COLOR_LABEL = { blush: "Blush", crimson: "Crimson", gold: "Gold", "ice-blue": "Ice Blue", violet: "Violet", emerald: "Emerald" };
+  COLOR_KEYS.forEach(function (k) { PSYCH[k] = { label: COLOR_LABEL[k], bank: null }; });
+  PSYCH["psych-random"] = { label: "Random color", random: true, any: true, bank: null };
+  function psychBank(m) {
+    var d = PSYCH[m]; if (!d) return null;
+    if (!d.random) return d.bank;
+    if (d.any) {
+      var all = Object.keys(PSYCH).filter(function (k) { return !PSYCH[k].random && PSYCH[k].bank; }); if (!all.length) return null;
+      var c = pick(all); S._auraColor = PSYCH[c].aura ? PSYCH[c].label : ""; S._psychPicked = PSYCH[c].label; return PSYCH[c].bank;
+    }
+    var ks = AURA_KEYS.filter(function (k) { return PSYCH["aura-" + k].bank; }); if (!ks.length) return null;
+    var k = pick(ks); S._auraColor = AURA_LABEL[k]; return PSYCH["aura-" + k].bank;
+  }
+  function psychMood() { if (S.noir === true && !S.psych) S.psych = "noir"; return PSYCH[S.psych] ? S.psych : ""; }
+  function noirOn() { return !!psychMood(); }
+  function noirWords(tag) { return String(tag).replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").toLowerCase().replace(/\bof\b/g, "of").trim(); }
+  function noirAccent(look) {
+    S._auraColor = PSYCH[psychMood()] && PSYCH[psychMood()].aura && !PSYCH[psychMood()].random ? PSYCH[psychMood()].label : "";
+    var bank = noirOn() ? psychBank(psychMood()) : null; if (!bank) return "";
+    var pool = (bank.sfw || []).slice();
+    if (look && look.adult && isAdult()) pool = pool.concat(bank.adult || []);
+    for (var i = 0; i < 6; i++) { var t = cleanDnaToken(noirWords(String(pick(pool, S._noirLast)).replace(/,\s*/g, " and "))); if (t) { S._noirLast = t; return t; } }
+    return "";
+  }
+  function noirMJ(text, look) {
+    var a = noirAccent(look); if (!a) return text; S._noirUsed = a;
+    var fw = S._focusW || "::2.5 ", k = text.indexOf(fw), seg = "mood accent: " + a + "::0.6 ";
+    return k >= 0 ? text.slice(0, k + fw.length) + seg + text.slice(k + fw.length) : seg + text;
+  }
+  function noirVideo(text, look) {
+    var a = noirAccent(look); if (!a) return text; S._noirUsed = a;
+    var w = " Mood accent (light touch, never overrides the Focus DNA" + (S._auraColor ? "; " + S._auraColor + " aura as light and atmosphere only, cast unchanged" : "") + "): " + a + ".";
+    var m = text.match(/FOCUS DNA [^:]*:[^.]*\./);
+    return m ? text.replace(m[0], m[0] + w) : w.trim() + " " + text;
+  }
+  // ---- Perfect Anatomy (default ON) + Focus DNA weight (Light / Normal / Strong / Max), both saved per device.
+  var ANATOMY_MJ = "perfect anatomy, correct hands five fingers, natural proportions";
+  var ANATOMY_VIDEO = "Perfect anatomy (hold every frame): correct hands, exactly five fingers per hand, natural limb count and proportions, accurate joints, natural feet, symmetrical eyes, coherent body.";
+  var ANATOMY_NO = ["extra limbs", "extra fingers", "missing fingers", "fused fingers", "distorted hands", "malformed hands"];
+  var DNA_W = { light: "1.5", normal: "2.5", strong: "3", max: "3.5" };
+  var DNA_W_LABEL = [["light", "Light"], ["normal", "Normal"], ["strong", "Strong"], ["max", "Max"]];
+  function anatomyOn() { return S.anatomy !== false; }
+  function dnaW() { return DNA_W[S.dnaW] ? S.dnaW : "normal"; }
   function focusMJ(text, look) {
     var dna = focusDna(look, true); if (!dna.length) return text;
     text = dnaDeconflict(text, dna);
-    var seg = lookName(look) + " look, " + dna.join(", ") + "::2.5 ";
+    S._focusW = "::" + DNA_W[dnaW()] + " ";
+    var seg = lookName(look) + " look, " + dna.join(", ") + (anatomyOn() ? ", " + ANATOMY_MJ : "") + S._focusW;
     var k = text.indexOf("::2 "), chip = dnaChip(look, null).join(", ");
     // right after the idea segment (idea::2); with no idea typed it goes at the very front
     if (chip && text.indexOf(chip) === 0) k = -1;
@@ -432,19 +500,62 @@
   function focusVideo(text, look) {
     var dna = focusDna(look, true); if (!dna.length) return text;
     text = dnaDeconflict(text, dna);
-    var w = "FOCUS DNA \u2014 " + lookName(look) + " look (highest priority after the action; must read in every frame): " + dna.join(", ") + ".";
+    var wt = dnaW();
+    var w = "FOCUS DNA \u2014 " + lookName(look) + " look (highest priority after the action; " + (wt === "max" ? "strictly " : "") + "must read in every frame): " + dna.join(", ") + "." + (anatomyOn() ? " " + ANATOMY_VIDEO : "");
     var m = text.match(/^Main action \(priority\):[^.]*\.\s*/);
     var out = m ? m[0] + w + " " + text.slice(m[0].length) : w + " " + text;
     if (dnaRich(look)) {   // Zig's rotated location + wardrobe replace the random venue and outfit
-      var rot = dnaEntry(look).rotate || {};
+      var rot = walkStyle(look) ? {} : (dnaEntry(look).rotate || {});
       if (rot.location) out = out.replace(/\s*Setting: [^.]*\.(?=\s)/, "");
       if (rot.wardrobe) out = out.replace(/(Styling: )[^,.]*,\s*/, "$1");
     }
-    var recap = " Focus DNA recap: " + dna.slice(0, 3).join("; ") + ".";
+    var rk = (wt === "max" ? dna : dna.slice(0, 3)).concat(anatomyOn() ? ["perfect anatomy"] : []);
+    if (wt === "strong") out = out.replace(/(\s)(Camera: )/, "$1Focus DNA again: " + dna.slice(0, 3).join("; ") + ". $2");
+    var recap = wt === "light" ? (anatomyOn() ? " Recap: perfect anatomy." : "") : " Focus DNA recap" + (wt === "max" ? " (strictly)" : "") + ": " + rk.join("; ") + ".";
+    if (!recap) return out;
     return /\s*adult 21\+\.?\s*$/.test(out) ? out.replace(/\s*adult 21\+\.?\s*$/, recap + " adult 21+.") : out + recap;
   }
+  // ---- Art by (Zig): one subtle artist INFLUENCE per Remix (lighting / composition / color / attitude). Never a medium,
+  // never a painting: the photorealistic iPhone/photo look and Focus DNA stay in charge. Banks in data/art-by.json.
+  // Categories: photo / director, plus adult (18+ mode only; real, publicly known adult-film directors and glamour photographers).
+  // MJ: low-weight ::0.6 segment. Video: one light-touch line. --no gets painting/illustration/drawing/cartoon/CGI.
+  var ART = null, ART_CATS = [["all", "All"], ["photo", "Photo"], ["director", "Director"], ["adult", "Adult"]];
+  var ART_NO = "painting, illustration, drawing, cartoon, CGI";
+  function artCat() { var c = S.artCat || "all"; return ART_CATS.some(function (x) { return x[0] === c; }) ? c : "all"; }
+  function artPick(look) {
+    if (!ART || !ART.artists) return null;
+    var c = artCat(), cats = c === "all" ? ["photo", "director"].concat(isAdult() ? ["adult"] : []) : [c === "adult" && !isAdult() ? "photo" : c];
+    var pool = []; cats.forEach(function (k) { (ART.artists[k] || []).forEach(function (e) { if (Array.isArray(e) && !hasBlocked(e[0] + " " + e[1])) pool.push([k, e[0], e[1]]); }); });
+    if (!pool.length) return null;
+    var e = pick(pool), plat = look ? lookName(look) : "iPhone";
+    var credit = "with a subtle influence of " + e[1] + "'s " + e[2];
+    return { cat: e[0], name: e[1], trait: e[2], credit: e[1] + " \u00b7 " + e[2],
+      mj: credit + ", still a photorealistic " + plat + " shot::0.6",
+      video: "Influence (light touch only, never overrides Focus DNA, stays photorealistic): " + credit + ", still a photorealistic " + plat + " shot." };
+  }
+  function artApply(text, tab, look) {
+    S._artUsed = null; if (S.artOn !== true) return text;
+    var a = artPick(look); if (!a) return text; S._artUsed = a;
+    return artInsert(text, a, tab);
+  }
+  function artInsert(text, a, tab) {
+    if (tab === "video") return /\s*adult 21\+\.?\s*$/.test(text) ? text.replace(/\s*adult 21\+\.?\s*$/, " " + a.video + " adult 21+.") : text + " " + a.video;
+    return text + " " + a.mj;
+  }
+  function artNo(params) {
+    if (!params || params.indexOf("painting, illustration") >= 0) return params;
+    return /--no /.test(params) ? params.replace(/--no /, "--no " + ART_NO + ", ") : params + " --no " + ART_NO;
+  }
+  function artReroll() {
+    var res = S.result, a = artPick(res ? lookById(res.look) : null); if (!a) return;
+    if (res && res.body && res.art) {
+      var old = res.tab === "video" ? res.art.video : res.art.mj, nb = res.body.indexOf(old) >= 0 ? res.body.replace(old, res.tab === "video" ? a.video : a.mj) : artInsert(res.body, a, res.tab);
+      res.body = nb; res.art = a; res.params = artNo(res.params); res.text = compose(res); try { S.api.current.setPrompt(res.text); } catch (e) {}
+    }
+    S.artLast = a.credit; save(); renderPanel(); toast("Art by", a.credit);
+  }
   function stampMJ(text, look) {
-    text = focusMJ(text, look);
+    text = noirMJ(focusMJ(text, look), look);
     var st = stampOf(look); if (!st) return text;
     // own segment right after his DNA chip, weighted under it (::1.5 < ::2) so his DNA still leads
     var k1 = text.indexOf("::2 "), k2 = k1 >= 0 ? text.indexOf("::2 ", k1 + 4) : -1, at = k2 >= 0 && k2 < 600 ? k2 + 4 : (k1 >= 0 ? k1 + 4 : 0);
@@ -452,7 +563,7 @@
     return out;
   }
   function stampVideo(text, look) {
-    text = focusVideo(text, look);
+    text = noirVideo(focusVideo(text, look), look);
     var st = stampOf(look); if (!st) return text;
     var w = "Look stamp (on top of the DNA above, never replaces cast, faces or style): " + stampFresh(st.video, text, "; ") + ".";
     var m = text.match(/^(Main action \(priority\):[^.]*\.\s*)?(FOCUS DNA [^:]*:[^.]*\.\s*)?(Core DNA \(priority\):[^.]*\.\s*)?/);
@@ -496,14 +607,17 @@
 
   // ---- Style presets (Remix matches Zig's examples). Adults 21+ only, every style, every heat. --------------
   // club = candid club DNA (above); contest = Nigerian twerk-contest audition; sync = five South Indian women in sync.
-  var STYLES = [["none", "None"], ["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync"], ["ny", "NY twerk"], ["duo", "Noir duo"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"]];
+  var STYLES = [["none", "None"], ["club", "Club candid"], ["contest", "Nigerian contest"], ["carib", "Caribbean contest"], ["sync", "South Indian sync"], ["ny", "NY twerk"], ["duo", "Noir duo"], ["rural", "Rural ebony"], ["tryouts", "Model tryouts"], ["sabaddie", "South African Baddie Walk"], ["roomwalk", "Room Walk Loop"]];
   function styleOf(look) {
     if (look && gearOf(look).kind === "virtual") return "club";
     var st = S.mash && S._mashPrimary ? S._mashPrimary : S.style;
-    return /^(contest|carib|sync|ny|duo|rural|tryouts)$/.test(st || "") ? st : "club";
+    if ((st === "sabaddie" || st === "roomwalk") && !isAdult()) return "club";   // 18+ mode only
+    return /^(contest|carib|sync|ny|duo|rural|tryouts|sabaddie|roomwalk)$/.test(st || "") ? st : "club";
   }
   // ---- Mash-up: each Remix picks one DNA as the base (cast, setting, params) and blends in 1-2 more as flavor lines.
   var MASH_FLAVOR = {
+    roomwalk: "slow sexy walk toward and away from a low handheld phone in a small warm-grey room, over-the-shoulder glance, twerk finale",
+    sabaddie: "South African baddie high-heels walk, asses pointed at the camera, rear-view follow, women only",
     club: "candid iPhone club snapshot feel, slight motion blur",
     contest: "twerking-contest audition energy for the judges, head-shot then full body, home amateur quality",
     carib: "bent over a chair in a deep twerk, heavy ass bouncing to contest music, looking back",
@@ -516,7 +630,7 @@
   function mashRoll() {
     S._mashPrimary = null; S._mashExtra = [];
     if (!S.mash) return;
-    var ids = STYLES.map(function (c) { return c[0]; }), out = [];
+    var ids = STYLES.map(function (c) { return c[0]; }).filter(function (k) { return k !== "none" && ((k !== "sabaddie" && k !== "roomwalk") || isAdult()); }), out = [];
     while (ids.length) out.push(ids.splice(Math.floor(rnd() * ids.length), 1)[0]);
     S._mashPrimary = out[0]; S._mashExtra = out.slice(1, 1 + (rnd() < 0.5 ? 1 : 2));
   }
@@ -588,6 +702,72 @@
     action: "enormous jiggling asses clapping, not in perfect sync, to thumping twerk music", skin: "sweat, oil and sand on glistening skin"
   };
   var GROUP_STYLES = { sync: SYNC, ny: NY };
+  // Style #1 from Zig: South African Baddie Walk. 18+ mode only. Women only (no men), every woman 28 (adults 21+),
+  // a staged, closed-off urban location with no bystanders. Kink props (nipple clamps, body chains) only at XXX.
+  var SABADDIE = {
+    regions: ["Johannesburg Zulu", "Durban Zulu", "Soweto Sotho", "Cape Town Xhosa", "Pretoria Tswana", "Eastern Cape Xhosa", "Limpopo Venda", "Polokwane Pedi", "Mpumalanga Swazi", "Cape Town Cape Malay", "Johannesburg Tsonga", "Durban Indian South African"],
+    tones: ["deep ebony", "dark brown", "warm mahogany", "rich copper", "caramel", "golden brown", "warm chestnut", "cool umber", "honey", "light tan", "bronze", "espresso"],
+    open: "photorealistic iPhone snapshot of {n} beautiful South African women, all adults aged 28, every one uniquely different in face, features, hair and build, voluptuous and thick but not fat, huge tits and big round asses, women only, no men",
+    openVideo: "Photorealistic iPhone video of {n} beautiful South African women, all adults aged 28, every one uniquely different in face, features, hair and build; voluptuous and thick but not fat, huge tits and big round asses; women only, no men",
+    face: "sharp cheekbones, intense gaze, stable facial structure, consistent expressive eyes with natural depth and catchlights",
+    sets: ["upscale urban street closed off for the shoot, staged location, no bystanders", "empty upscale city plaza at golden hour, closed set, no bystanders",
+      "urban pavilion walkway, staged location, nobody else around", "rooftop parking deck above the skyline, closed set, no bystanders", "empty luxury shopping arcade after hours, staged shoot"],
+    walk: "90s baddie high-heels walk in a line, slutty butt-forward strut with the asses pointed at the camera, the camera follows behind the asses in a low rear view",
+    heat: {
+      tease: "tight black micro bikinis and high heels, confident baddie strut",
+      spicy: "tight black micro bikinis and micro skirts, high heels, tits popping out and bouncing, jiggly tits, big ass cheeks clapping loud with every step",
+      xxx: "tight black micro bikinis pulled aside, tits out and bouncing hard, fat ass cheeks spreading and clapping loud with every step, silver nipple clamps and decorative body chains"
+    },
+    real: "realistic anatomy with natural proportions, authentic female form, natural hands, flat toned stomachs with no bloating, detailed skin texture with visible pores and subtle imperfections",
+    light: "cinematic lighting mixed with practical sources, psychological atmosphere, fashion-editorial yet raw authenticity",
+    cam: "shot on {iphone} main camera, photorealistic iPhone snapshot, natural Apple color science, no editing",
+    keys: {
+      tease: ["high heels walk", "camera follows the ass", "rear view walk", "micro skirt", "90s baddie vibes", "raw iPhone cam", "just girls", "busty"],
+      spicy: ["bouncing tits", "jiggly tits", "clapping cheeks", "loud cheeks", "tits popping out", "fat ass spread", "big tits", "rear view ass"],
+      xxx: ["nipple clamps", "body chains", "ass clap loud", "tits out bouncing", "fat ass spread", "clapping cheeks"]
+    },
+    bank: { ar: "--ar 9:16", v: "--v 6.1", stylize: "--stylize 250", style: "--style raw" },
+    no: STYLE_NO + ", men, male, bystanders, onlookers, crowd, bloated stomach, extra fingers, fused fingers, distorted hands",
+    who: "South African"
+  };
+  function sabKeys(heat) {
+    var K = SABADDIE.keys, pool = K.tease.concat(heat !== "tease" ? K.spicy : []).concat(heat === "xxx" ? K.xxx : []);
+    var out = []; for (var i = 0; i < 3 && pool.length; i++) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
+    return out;
+  }
+  // Style #2 from Zig: Room Walk Loop. 18+ mode only. ONE brand-new original woman per prompt (aged 22-28, adults 21+),
+  // heritage rolled across all major backgrounds with a matching natural skin tone; small empty warm-grey room.
+  var ROOMWALK = {
+    heritage: [["Albanian Gheg", ["porcelain", "fair olive", "light olive"]], ["South Sudanese-Ethiopian", ["espresso", "deep ebony", "dark brown"]], ["South Indian Tamil", ["deep warm brown", "rich brown"]],
+      ["South Indian Malayali", ["warm brown", "deep warm brown"]], ["Korean", ["fair porcelain", "light warm beige"]], ["Japanese", ["fair", "light neutral beige"]], ["Northern Chinese", ["fair", "light warm ivory"]],
+      ["Vietnamese", ["light golden", "warm tan"]], ["Filipina", ["warm golden tan", "honey"]], ["Mexican", ["warm caramel", "golden tan", "light olive"]], ["Colombian", ["golden tan", "caramel", "light olive"]],
+      ["Dominican", ["caramel", "warm chestnut", "golden brown"]], ["Puerto Rican", ["light olive", "golden tan", "caramel"]], ["Brazilian", ["bronze", "golden tan", "warm caramel"]], ["Nigerian Yoruba", ["deep ebony", "dark brown"]],
+      ["Ghanaian", ["dark brown", "rich mahogany"]], ["Kenyan", ["deep brown", "dark chocolate"]], ["Somali", ["warm brown", "rich bronze"]], ["Jamaican", ["dark brown", "warm mahogany", "caramel"]],
+      ["African American", ["deep brown", "caramel", "warm mahogany"]], ["Lebanese", ["light olive", "warm beige"]], ["Persian", ["light olive", "warm ivory"]], ["Turkish", ["olive", "light olive"]],
+      ["Moroccan", ["warm olive", "light caramel"]], ["Punjabi", ["warm wheatish", "light brown"]], ["Thai", ["warm golden", "light tan"]], ["Polynesian Samoan", ["warm bronze", "golden brown"]],
+      ["Ukrainian", ["fair", "porcelain"]], ["Irish", ["pale freckled", "fair rosy"]], ["Italian Sicilian", ["olive", "sun-kissed olive"]], ["Greek", ["olive", "warm beige"]], ["Swedish", ["fair", "porcelain"]]],
+    names: ["Lira", "Zuri", "Ananya", "Mei", "Valentina", "Amara", "Yuna", "Leila", "Ximena", "Nia", "Saanvi", "Hana", "Camila", "Adaeze", "Noor", "Ingrid", "Selin", "Kalani", "Thandi", "Isabela",
+      "Rin", "Meera", "Aaliyah", "Daria", "Esme", "Ayana", "Priya", "Sofia", "Kemi", "Lucia", "Jia", "Nadia", "Tala", "Zara", "Imani", "Freya", "Ines", "Keiko", "Marisol", "Ebony"],
+    build: ["voluptuous hourglass, heavy natural breasts, huge round ass, thick thighs, narrow waist", "pear-shaped and voluptuous, heavy natural breasts, huge round ass, thick thighs, snatched waist",
+      "thick hourglass, full heavy natural breasts, wide hips, huge round ass, narrow waist", "curvy pear build, heavy natural breasts, very wide hips, huge round ass, thick thighs"],
+    open: "ultra-realistic smartphone vertical video, 12-20 second seamless loop, subtle grain, candid unpolished feel, of one brand-new original woman, adult aged {age}",
+    set: "small empty room, neutral warm-grey walls, light-wood floor, no background distractions",
+    light: "slightly brighter soft lighting with a warm-natural balance, golden daylight through a sheer curtain mixing with a nearby lamp, skin glow enhanced without overexposure",
+    noir: "high-fashion fetish noir strut, noir cinematic lighting with deep shadows and a single hard key",
+    cam: "handheld {iphone} at a slightly low angle, full-body motion, natural phone color, no editing",
+    loop: "a slow, powerful, controlled sexy walk toward the camera on a 6-7 ft path, hips rolling, heels keeping a steady rhythm; a brief pause facing camera with intense eye contact and a confident smirk; a smooth turn, then walking away with her ass twitching and rippling; repeat as a seamless loop. Finale: she stops facing away, glances over her shoulder, laughs and bursts into fun energetic twerking",
+    heat: {
+      tease: "stringy slingshot micro bikini and high heels",
+      spicy: "stringy slingshot micro bikini that barely contains her, nipples slipping out with every step, the string vanishing between her cheeks, high heels",
+      xxx: "slingshot top slipping off fully, topless in tiny bikini bottoms and stilettos, bare breasts swaying with every step, explicit detail"
+    },
+    tone: "minimal, elevated, intimate; strength, softness, rhythm and visual clarity; a real 2026 private vertical clip you'd save and rewatch",
+    keys: ["slingshot bikini", "sexy walk toward and away", "ass twitch", "twerk finale", "low handheld angle", "warm lamp-daylight", "hip pops", "over-the-shoulder glance"],
+    bank: { ar: "--ar 9:16", v: "--v 6.1", stylize: "--stylize 150", style: "--style raw" },
+    no: STYLE_NO + ", men, male, second person, background people, clutter, furniture clutter, overexposed skin, extra fingers, fused fingers, distorted hands"
+  };
+  var ADULT_STYLES = { sabaddie: 1, roomwalk: 1 };
+  function rwKeys() { var pool = ROOMWALK.keys.slice(), out = []; for (var i = 0; i < 3; i++) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]); return out; }
   // Model tryouts: women only (no men), People 1-5, each a voluptuous hourglass adult model (21+); home amateur cameras.
   var TRYOUTS = {
     regions: null, tones: null,
@@ -663,9 +843,15 @@
     if (st === "club") return cast;
     if (st === "tryouts") { cast.forEach(function (r) { r.man = false; r.dna = false; r.build = pick(["voluptuous hourglass", "busty hourglass with wide hips", "slim-thick hourglass", "curvy hourglass with a tiny waist"]); if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "26-32", "26-32", "33-40"]); });
       distinctCast(cast, ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "hairTexture"]); return cast; }
+    if (st === "roomwalk") {   // exactly one brand-new woman, 22-28
+      var rw = cast[0], hp = pick(ROOMWALK.heritage); rw.man = false; rw.dna = false; rw.heritageRegion = hp[0]; rw.skinTone = pick(hp[1]);
+      rw.ageBand = String(22 + Math.floor(rnd() * 7)); rw.rwName = pick(ROOMWALK.names); rw.build = pick(ROOMWALK.build);
+      ["hairColor", "distinctiveFeature", "nails", "makeupLevel", "hairTexture"].forEach(function (k) { if (DNA.poolDrop[k] && DNA.poolDrop[k].test(rw[k] || "")) rw[k] = ""; });
+      distinctCast([rw], ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "hairTexture"]); return [rw];
+    }
     if (st === "rural") { cast.forEach(function (r, i) { r.man = false; r.dna = false; r.skinTone = "light-skinned ebony"; r.heritageRegion = "rural American"; r.ageBand = i ? pick(["33-40", "41-50"]) : "41-50"; if (!i) r.hairStyle = "long straight hair"; });
       if (cast.length > 1) distinctCast(cast.slice(1), ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle"]); return cast; }
-    var C = GROUP_STYLES[st] || (st === "duo" ? DUO : st === "carib" ? CARIB : CONTEST), regions = C.regions.slice(), tones = C.tones.slice();
+    var C = GROUP_STYLES[st] || (st === "duo" ? DUO : st === "carib" ? CARIB : st === "sabaddie" ? SABADDIE : CONTEST), regions = C.regions.slice(), tones = C.tones.slice();
     cast.forEach(function (r) {
       r.man = false; r.dna = false;
       if (!regions.length) regions = C.regions.slice(); if (!tones.length) tones = C.tones.slice();
@@ -674,6 +860,7 @@
       if (!MATURE_LOOKS[look.id]) r.ageBand = pick(["21-25", "21-25", "26-32", "26-32", "33-40"]);   // all 21+
       ["hairColor", "distinctiveFeature", "nails", "makeupLevel", "hairTexture"].forEach(function (k) { if (DNA.poolDrop[k] && DNA.poolDrop[k].test(r[k] || "")) r[k] = ""; });
     });
+    if (st === "sabaddie") cast.forEach(function (r) { r.ageBand = "28"; });
     if (st === "duo") cast.forEach(function (r, i) { if (i < 2) { r.hairStyle = i ? DUO.right.hair : DUO.left.hair; r.hairColor = i ? r.hairColor : "black"; r.hairTexture = i ? "curly" : ""; } });
     distinctCast(cast, st === "duo" ? ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones"] : ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "hairTexture"]);
     return cast;
@@ -685,6 +872,35 @@
   function duoFace(r) { return [r.skinTone + " " + r.heritageRegion + " unique face", r.faceShape, r.eyes, r.nose, r.lips, r.jawCheekbones, r.hairStyle, r.micro || "", "adult woman aged " + r.ageBand].filter(Boolean).join(", "); }
   function assembleStyle(look, idea, cast, heat, tab) {
     var st = styleOf(look), r = cast[0], out;
+    if (st === "roomwalk") {
+      var W = ROOMWALK, gW = garmentsOf(idea), wearW = gW.length ? wardrobeFor(idea, heat, r).text : W.heat[heat], noirW = rnd() < 0.2;
+      var camW = W.cam.replace("{iphone}", S.cam === "iphone" ? IPHONE_MODEL : "smartphone"), keysW = rwKeys();
+      var sheW = (r.rwName || "she") + ", " + faceShort(r) + ", " + r.build;
+      var openW = W.open.replace("{age}", r.ageBand);
+      if (tab === "video") {
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + openW.charAt(0).toUpperCase() + openW.slice(1) + "; women only, no one else in frame. She: " + sheW + ". Wardrobe: " + wearW + ". Action loop: " + W.loop +
+          ". Setting: " + W.set + ". Light: " + (noirW ? W.noir : W.light) + ". Camera: " + camW + ". Tone: " + W.tone + ". Keys: " + keysW.join("; ") + ". Aspect 9:16, motion high. adult 21+.";
+      } else {
+        out = (idea ? idea + "::2 " : "") + [openW.replace("vertical video, 12-20 second seamless loop", "vertical still from a seamless loop"), sheW, wearW, W.loop.split(";")[0], W.set, noirW ? W.noir : W.light, camW, W.tone, keysW.join(", "), "adult woman 21+"].join(", ");
+      }
+      out = scrubProse(out);
+      return /21\+/.test(out) ? out : out + ", adult 21+";
+    }
+    if (st === "sabaddie") {
+      var B = SABADDIE, nB = cast.length, nW = nB > 1 ? NUMW[nB] : "one", gB = garmentsOf(idea), wearB = gB.length ? wardrobeFor(idea, heat, r).text : B.heat[heat];
+      var camB = B.cam.replace("{iphone}", S.cam === "iphone" ? IPHONE_MODEL : "iPhone 16 Pro Max"), setB = pick(B.sets), keysB = sabKeys(heat);
+      var castB = cast.map(function (p, i) { return (nB > 1 ? castTag(i, nB, "women") : "she") + ": " + faceShort(p) + ", " + p.build; });
+      var openB = (tab === "video" ? B.openVideo : B.open).replace("{n}", nW);
+      if (nB === 1) openB = openB.replace("women, all adults aged 28, every one uniquely different in face, features, hair and build", "woman, adult aged 28, one-off face and build").replace("big round asses", "a big round ass");
+      if (tab === "video") {
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + openB + ". Faces: " + B.face + ". Cast: " + castB.join(". ") + ". Wardrobe: " + wearB + ". Action: " + B.walk +
+          ". Setting: " + setB + ". Keys: " + keysB.join("; ") + ". Body realism: " + B.real + ". Light: " + B.light + ". Camera: " + camB + ". Aspect 9:16, motion high. adult 21+.";
+      } else {
+        out = (idea ? idea + "::2 " : "") + [openB, B.face].concat(castB).concat([wearB, B.walk, setB, keysB.join(", "), B.real, B.light, camB, nB > 1 ? "adult women 21+" : "adult woman 21+"]).join(", ");
+      }
+      out = scrubProse(out);
+      return /21\+/.test(out) ? out : out + ", adult 21+";
+    }
     if (st === "tryouts") {
       var set = pick(TRYOUTS.set), act = ideaW ? ideaW + ", walking back and forth, stripping off at the end in heels" : TRYOUTS.heat[heat];
       var models = cast.map(function (p, i) { return (cast.length > 1 ? castTag(i, cast.length, "models") + ": " : "model: ") + faceShort(p) + ", " + p.build; });
@@ -788,8 +1004,8 @@
   }
   function styleBank(look, seed, tab) {
     var st = styleOf(look); if (st === "club") return null;
-    var C = GROUP_STYLES[st] || (st === "duo" ? DUO : st === "rural" ? RURAL : st === "carib" ? CARIB : st === "tryouts" ? TRYOUTS : CONTEST), b = C.bank;
-    var ar = ((st === "contest" || st === "carib" || st === "rural" || st === "tryouts") && tab === "video") ? "--ar 9:16" : (st === "duo" && tab === "video") ? "--ar 16:9" : b.ar;
+    var C = GROUP_STYLES[st] || (st === "sabaddie" ? SABADDIE : st === "roomwalk" ? ROOMWALK : st === "duo" ? DUO : st === "rural" ? RURAL : st === "carib" ? CARIB : st === "tryouts" ? TRYOUTS : CONTEST), b = C.bank;
+    var ar = ((st === "contest" || st === "carib" || st === "rural" || st === "tryouts" || st === "sabaddie" || st === "roomwalk") && tab === "video") ? "--ar 9:16" : (st === "duo" && tab === "video") ? "--ar 16:9" : b.ar;
     var no = "--no " + C.no + (cleanOn() ? ", " + CLEAN_SKIN_NO : "");
     return { ar: ar, v: b.v, stylize: b.stylize, chaos: b.chaos || "", weird: "", q: b.q || "", style: b.style || "", seed: "--seed " + seed, no: no, repeat: "", tile: false, realism: false };
   }
@@ -931,7 +1147,7 @@
     wardrobe: { tease: ["fitted black tee and tailored trousers", "open-collar white shirt", "black tailored suit, no tie"],
       spicy: ["shirtless in low-slung jeans", "open shirt, bare chest", "shirtless in tailored trousers"], xxx: ["shirtless", "nude"] }
   };
-  var ORD = ["", "first", "second", "third", "fourth", "fifth"];
+  var ORD = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"];
 
   var SPICY_WARDROBE = ["micro bikini", "string bikini", "sheer mesh bodysuit", "lace thong and cropped tank", "see-through lace lingerie set", "wet white tank top and thong", "cheeky micro shorts and bralette", "fishnet bodystocking", "sheer robe over a G-string", "strappy cut-out swimsuit"];
   var XXX_WARDROBE = ["fully nude", "topless, nude except heels", "topless, only a G-string", "nude except thigh-high stockings", "topless in only a thong", "fully nude with body chain", "topless, sheer open robe"];
@@ -1019,12 +1235,12 @@
   // ---- State ----------------------------------------------------------------------
   var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "none", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, eye: "regular", result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "noir", "psych", "anatomy", "dnaW", "artOn", "artCat", "artLast", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
-      S.people = Math.max(1, Math.min(5, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
+      S.people = Math.max(1, Math.min(PEOPLE_MAX, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ anatomy: anatomyOn(), dnaW: dnaW(), artOn: S.artOn === true, artCat: artCat(), artLast: S.artLast || "", psych: psychMood(), noir: false, group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -1040,8 +1256,18 @@
       fetch("./assets/data/variety.json?v=" + V).then(function (r) { if (!r.ok) throw new Error("variety " + r.status); return r.json(); })
     ]).then(function (a) { S.looks = a[0]; S.variety = a[1]; });
     // Focus DNA per platform (optional file; looks still work without it).
+    S.loadingArt = fetch("./assets/data/art-by.json?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { ART = j; }).catch(function () { ART = null; });
     S.loadingDNA = fetch("./assets/data/focus-dna.json?v=" + V).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { FOCUS_DNA = j || {}; }).catch(function () { FOCUS_DNA = {}; });
-    S.loading = Promise.all([S.loading, S.loadingDNA]).then(function () {});
+    var auraP = fetch("./assets/data/psych-aura-tags.json?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      var c = (j && j.colors) || {}; AURA_KEYS.forEach(function (k) { if (c[k]) PSYCH["aura-" + k].bank = c[k]; });
+    }).catch(function () {});
+    var colP = fetch("./assets/data/psych-colors-tags.json?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      var c = (j && j.colors) || {}; COLOR_KEYS.forEach(function (k) { if (c[k]) PSYCH[k].bank = c[k]; });
+    }).catch(function () {});
+    S.loadingNoir = Promise.all([auraP, colP].concat(["noir", "blanche"].map(function (k) {
+      return fetch("./assets/data/" + PSYCH[k].file + "?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { PSYCH[k].bank = j; }).catch(function () { PSYCH[k].bank = null; });
+    })));
+    S.loading = Promise.all([S.loading, S.loadingDNA, S.loadingNoir]).then(function () {});
     // Optional: Zig's liked prompts (never blocks loading).
     fetch("./assets/data/style-examples.json?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { S.examples = j; }).catch(function () {});
     return S.loading;
@@ -1206,7 +1432,7 @@
     var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
     var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
     if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
-    return stampMJ(chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look);
+    return artApply(stampMJ(chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "mj", look);
   }
   function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1253,7 +1479,7 @@
   function assembleVideo(look, idea, r, heat) {
     var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
     var extra = (twerkOn() ? " " + TWERK.video.replace("{crowd}", crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera") : "") + (crowdOn() && styleOf(look) !== "club" ? " Crowd: " + CROWD_LINE + "." : "") + mashLine("video") + (freshOn() ? " Faces: every woman has " + FRESH_FACE + ". Skin: " + FRESH_SKIN + "." : "");
-    return stampVideo(chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look);
+    return artApply(stampVideo(chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "video", look);
   }
   function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1320,6 +1546,7 @@
     if (!crowdOn()) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + NO_CROWD_NO : "--no " + NO_CROWD_NO;
     // a rotated Focus DNA lighting pick (e.g. softbox high-key) must not be negated by the look's own --no list
     if (dnaRich(look) && /softbox/i.test(S._dnaLast || "") && bk.no) bk.no = bk.no.replace(/,?\s*studio softbox/i, "");
+    if (anatomyOn()) { var hvA = String(bk.no || "").toLowerCase(), adA = ANATOMY_NO.filter(function (x) { return hvA.indexOf(x) < 0; }).join(", "); if (adA) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adA : "--no " + adA; }
     var stN = stampOf(look);
     if (stN) { var hv = String(bk.no || "").toLowerCase(), ad = uniqList(stN.no).filter(function (x) { return hv.indexOf(x.toLowerCase()) < 0; }).join(", "); if (ad) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + ad : "--no " + ad; }
     if (freshOn()) {
@@ -1561,7 +1788,7 @@
     P.appendChild(h("div", { cls: "pml-row", style: "margin-top:12px" }, [R.idea]));
     // People: 1-5 distinct adults per prompt (each rolls its own face, hair and outfit).
     var pr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-people", role: "radiogroup", "aria-label": "People in the prompt" }, [h("span", { cls: "pml-k", text: "People" })]);
-    [1, 2, 3, 4, 5].forEach(function (n) {
+    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (n) {
       pr.appendChild(h("button", { cls: "pml-btn pml-ppl" + (S.people === n ? " on" : ""), type: "button", role: "radio", "aria-checked": S.people === n ? "true" : "false", "data-people": String(n), text: String(n),
         title: n === 1 ? "One adult" : n + " distinct adults 21+", on: { click: function () { S.people = n; S.groupScene = n > 1; save(); renderPanel(); } } }));
     });
@@ -1645,11 +1872,11 @@
     var sr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-style", role: "radiogroup", "aria-label": "Style" }, [h("span", { cls: "pml-k", text: "Style" })]);
     STYLES.forEach(function (c) {
       var on = (S.style || "none") === c[0];
-      sr.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-style": c[0], text: c[1],
+      sr.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-style": c[0], text: c[1] + (ADULT_STYLES[c[0]] ? " 18+" : ""), disabled: ADULT_STYLES[c[0]] && !isAdult() ? true : null,
         title: c[0] === "none" ? "No style preset: the platform's focus DNA drives the look" : "Tap again to deselect (back to None)",
-        on: { click: function () { if (S.style === c[0] && c[0] !== "none") { S.style = "none"; save(); renderPanel(); return; } S.style = c[0]; var d = { sync: 5, ny: 5, duo: 2 }[c[0]]; if (d) { S.people = d; S.groupScene = true; } save(); renderPanel(); } } }));
+        on: { click: function () { if (S.style === c[0] && c[0] !== "none") { S.style = "none"; save(); renderPanel(); return; } S.style = c[0]; var d = { sync: 5, ny: 5, duo: 2, sabaddie: 5, roomwalk: 1 }[c[0]]; if (d) { S.people = d; S.groupScene = d > 1; } save(); renderPanel(); } } }));
     });
-    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "none" ? "no preset \u00b7 platform focus DNA drives the look" : S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : (S.people > 1 ? S.people + " women \u00b7 " : "1 woman \u00b7 ") + (S.style === "tryouts" ? "women only, slingshot walk + strip" : S.style === "carib" ? "Haitian / Jamaican / Dominican, chair twerk" : S.style === "rural" ? "locked lead character, random camera" : S.style === "duo" ? "cinematic noir, clothes falling off" : S.style === "ny" ? "NY women, loose sync, stylize 500" : S.style === "sync" ? "South Indian, in sync" : S.style === "contest" ? "head-shot + full body" : "packed venue \u00b7 candid iPhone") }));
+    sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "none" ? "no preset \u00b7 platform focus DNA drives the look" : S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : (S.people > 1 ? S.people + " women \u00b7 " : "1 woman \u00b7 ") + (S.style === "roomwalk" ? "one original woman, 22-28 \u00b7 seamless room walk loop" : S.style === "sabaddie" ? "South African women, all 28 \u00b7 rear-view walk" : S.style === "tryouts" ? "women only, slingshot walk + strip" : S.style === "carib" ? "Haitian / Jamaican / Dominican, chair twerk" : S.style === "rural" ? "locked lead character, random camera" : S.style === "duo" ? "cinematic noir, clothes falling off" : S.style === "ny" ? "NY women, loose sync, stylize 500" : S.style === "sync" ? "South Indian, in sync" : S.style === "contest" ? "head-shot + full body" : "packed venue \u00b7 candid iPhone") }));
     if (S.result && (S.result.style || "club") !== (S.style || "club")) sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(sr);
     var tw = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-twerk" }, [h("span", { cls: "pml-k", text: "Show" }),
@@ -1660,10 +1887,41 @@
       h("button", { cls: "pml-toggle pml-skin" + (S.mash ? " on" : ""), type: "button", "data-pm": "look-mash-toggle", "aria-pressed": S.mash ? "true" : "false",
         title: "Each Remix randomly blends 2-3 of Zig's style DNAs (one sets the cast and params, the others add flavor). Adults 21+ only",
         on: { click: function () { S.mash = !S.mash; save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Mash-up"]),
+      h("button", { cls: "pml-toggle pml-skin" + (anatomyOn() ? " on" : ""), type: "button", "data-pm": "look-anatomy-toggle", "aria-pressed": anatomyOn() ? "true" : "false",
+        title: "Correct hands (five fingers each), natural limbs, proportions, joints, feet, symmetrical eyes; bundled into the Focus DNA block with the same priority",
+        on: { click: function () { S.anatomy = !anatomyOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Perfect Anatomy"]),
+      h("button", { cls: "pml-toggle pml-skin" + (S.artOn === true ? " on" : ""), type: "button", "data-pm": "look-artby-toggle", "aria-pressed": S.artOn === true ? "true" : "false",
+        title: "Each Remix adds one subtle artist influence (lighting / composition / color / attitude). Influence only: stays photorealistic, Focus DNA stays in charge (MJ ::0.6)",
+        on: { click: function () { S.artOn = S.artOn !== true; save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Art by" + (S.artOn === true && S.artLast ? ": " + S.artLast : "")]),
+      h("button", { cls: "pml-btn", type: "button", "data-pm": "look-artby-dice", title: "Reroll just the artist", disabled: S.artOn === true && ART ? null : true, on: { click: artReroll } }, [h("span", { text: "\ud83c\udfb2" })]),
+      h("span", { cls: "pml-row", style: "display:inline-flex;gap:4px", "data-pm": "look-artby-cats", role: "radiogroup", "aria-label": "Art by category" }, ART_CATS.map(function (c) {
+        var on = artCat() === c[0], lock = c[0] === "adult" && !isAdult();
+        return h("button", { cls: "pml-btn pml-art-cat" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-artcat": c[0], text: c[1] + (c[0] === "adult" ? " 18+" : ""), disabled: lock ? true : null,
+          on: { click: function () { S.artCat = c[0]; save(); renderPanel(); } } });
+      })),
+      psychBtn("noir"), psychBtn("blanche"),
+
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em", "data-pm": "look-noir-note", text: noirOn() ? (S.result && S.result.noirWord ? "last: " + S.result.noirWord : "1 " + PSYCH[psychMood()].label + " accent each Remix") : "psych mood off" }),
       h("span", { cls: "pml-k", style: "letter-spacing:.12em", "data-pm": "look-mash-note", text: S.mash ? (S.result && S.result.mashMix ? "last: " + S.result.mashMix : "random blend each Remix") : "off" })]);
     var stL = stampOf(lookById(S.sel)); if (stL) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", "data-pm": "look-stamp", text: stL.name + " look stamp \u00b7 on top of your DNA every Remix" }));
     if (S.result && ((S.result.twerk === true) !== twerkOn() || (S.result.mash === true) !== (S.mash === true))) tw.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(tw);
+    var cr = h("div", { cls: "pml-row", style: "margin-top:8px;flex-wrap:wrap", role: "radiogroup", "aria-label": "Psych Mood colors", "data-pm": "look-psych-colors" }, [h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "Psych mood \u00b7 colors" })]);
+    COLOR_KEYS.concat(["psych-random"]).forEach(function (k) {
+      var on = psychMood() === k;
+      cr.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-pm": "look-psych-" + k,
+        title: k === "psych-random" ? "Any color mood each Remix (Noir, Blanche, colors or Aura)" : PSYCH[k].label + " mood accent: light and mood only, never skin. Tap again to turn off",
+        text: PSYCH[k].label, on: { click: function () { S.psych = on ? "" : k; S.noir = false; save(); renderPanel(); } } }));
+    });
+    P.appendChild(cr);
+    var ar = h("div", { cls: "pml-row", style: "margin-top:8px;flex-wrap:wrap", role: "radiogroup", "aria-label": "Aura", "data-pm": "look-aura" }, [h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "Aura \u00b7 chakra light" })]);
+    AURA_KEYS.concat(["random"]).forEach(function (k) {
+      var id = "aura-" + k, on = psychMood() === id;
+      ar.appendChild(h("button", { cls: "pml-btn pml-style" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-pm": "look-psych-" + id,
+        title: "Aura mood accent: light, glow and atmosphere only (never skin tone or ethnicity; cast stays as rolled). Tap again to turn off",
+        text: PSYCH[id].label, on: { click: function () { S.psych = on ? "" : id; S.noir = false; save(); renderPanel(); } } }));
+    });
+    P.appendChild(ar);
     var g = gearOf(l), gl = camLine(l, S.tab) || "rendered look \u00b7 virtual camera";
     P.appendChild(h("div", { cls: "pml-gear", "data-pm": "look-gear" }, [gl, S.cam === "iphone" ? null : h("span", { cls: "pml-conf pml-conf-" + g.confidence, title: g.basis || "", text: g.confidence })]));
     P.appendChild(renderDnaRow(l));
@@ -1699,13 +1957,23 @@
     }
   }
   // Focus DNA chips: tap x to drop a key, type + Enter to add one, Reset restores the platform defaults.
+  function psychBtn(k) {
+    var on = psychMood() === k;
+    return h("button", { cls: "pml-toggle pml-skin" + (on ? " on" : ""), type: "button", "data-pm": "look-psych-" + k, "aria-pressed": on ? "true" : "false",
+      title: "Each Remix adds ONE random phrase from the " + PSYCH[k].label + " bank as a light mood accent (never overrides the Focus DNA). Seductive ones only in 18+ mode. Adults 21+ only. Tap again to turn off",
+      on: { click: function () { S.psych = on ? "" : k; S.noir = false; save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), PSYCH[k].label]);
+  }
   function renderDnaRow(l) {
     var box = h("div", { cls: "pml-dna", "data-pm": "look-focus-dna" });
     var dna = focusDna(l), edited = dnaEdited(l);
     box.appendChild(h("div", { cls: "pml-row", style: "justify-content:space-between;margin-bottom:6px" }, [
-      h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", text: "Focus DNA \u00b7 " + lookName(l) + (S.tab === "video" ? " \u00b7 front-loaded + recap" : " \u00b7 weighted ::2.5") + (edited ? " \u00b7 edited" : "") }),
+      h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", text: "Focus DNA \u00b7 " + lookName(l) + (S.tab === "video" ? " \u00b7 front-loaded" + (dnaW() === "light" ? "" : " + recap") : " \u00b7 weighted ::" + DNA_W[dnaW()]) + (edited ? " \u00b7 edited" : "") }),
       edited ? h("button", { cls: "pml-btn", type: "button", "data-pm": "look-dna-reset", text: "Reset", on: { click: function () { delete dnaEdits()[l.id]; saveDnaEdits(); renderPanel(); } } }) : null
     ]));
+    var wr = h("div", { cls: "pml-row", style: "margin-bottom:8px", role: "radiogroup", "aria-label": "Focus DNA weight", "data-pm": "look-dna-weight" }, [h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "Weight" })]);
+    DNA_W_LABEL.forEach(function (o) { var on = dnaW() === o[0]; wr.appendChild(h("button", { cls: "pml-btn pml-cam" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-dnaw": o[0], text: o[1] + (S.tab === "video" ? "" : " ::" + DNA_W[o[0]]), on: { click: function () { S.dnaW = o[0]; save(); renderPanel(); } } })); });
+    if (anatomyOn()) wr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em;color:#fde68a", text: "+ perfect anatomy" }));
+    box.appendChild(wr);
     var row = h("div", { cls: "pml-dna-chips" });
     var setList = function (list) { dnaEdits()[l.id] = list; saveDnaEdits(); renderPanel(); };
     focusDnaRaw(l).forEach(function (t, i) {
@@ -1751,12 +2019,14 @@
     var heat = heatFor(l);
     mashRoll();
     var cast = rollCast(l), r = cast[0], seed = seed32(), body;
+    S._noirUsed = "";
     if (S.tab === "video") body = assembleVideo(l, idea, cast, heat);
     else body = assembleMJ(l, idea, cast, seed, heat);
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
     var tags = tagsFor(l, heat, idea, r, cast.length);
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), eye: eyeMode(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { noirWord: noirOn() ? S._noirUsed || "" : "", body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), eye: eyeMode(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result.art = S._artUsed || null; if (S._artUsed) S.artLast = S._artUsed.credit; if (S._artUsed) S.result.params = artNo(S.result.params);
     S.result.text = compose(S.result);
     save();
     try { S.api.current.setPrompt(S.result.text); } catch (e) {}
@@ -1804,15 +2074,15 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; mashRoll();
-      S.people = Math.max(1, Math.min(5, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye, S.noir, S.psych, S.anatomy, S.dnaW];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; S.noir = false; S.psych = o.psych || (o.noir ? "noir" : ""); S.anatomy = o.anatomy !== false; S.dnaW = o.weight || "normal"; S._noirUsed = ""; var keepArt = [S.artOn, S.artCat]; S.artOn = !!o.art; S.artCat = o.artCat || "all"; mashRoll();
+      S.people = Math.max(1, Math.min(PEOPLE_MAX, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
-      var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags };
+      var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags }; if (S._artUsed) res.params = artNo(res.params);
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S._mashPrimary = null;
-      return o.full ? { text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
+      return o.full ? { art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
     }
   };
   window.addEventListener("pm:clear-all", onClearAll);
