@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261015a";
+  var V = "20261015b";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -478,6 +478,51 @@
     var w = " Mood accent (light touch, never overrides the Focus DNA" + (S._auraColor ? "; " + S._auraColor + " aura as light and atmosphere only, cast unchanged" : "") + "): " + a + ".";
     var m = text.match(/FOCUS DNA [^:]*:[^.]*\./);
     return m ? text.replace(m[0], m[0] + w) : w.trim() + " " + text;
+  }
+  // ---- No AI Look (default ON) + Real Porn Look (default ON, 18+ mode only), both saved per device (Zig).
+  // Negatives only target the generic "AI image" look. They NEVER negate realistic camera cues (iPhone / phone footage,
+  // 90s / camcorder, 50mm, film grain, handheld, flash, noise...): no grain / blur / flash / phone / vintage / low quality
+  // terms here, and noConflict() drops any term whose key word already appears in this prompt's positive text.
+  // Real Porn Look adds realism only: Focus DNA keeps priority and the rotated lighting is never replaced. Adults 21+ only.
+  var NOAI_NO = ["plastic skin", "airbrushed", "waxy skin", "uncanny valley", "CGI", "3D render", "concept art", "oversharpened", "AI-generated look", "doll face", "beauty filter", "stock photo", "AI sheen", "over-processed", "video game render"];
+  var NOAI_MJ = "natural skin texture, visible pores, real camera sensor noise, true-to-life";
+  var NOAI_VIDEO = "Realism: natural skin texture with visible pores, real camera sensor noise, true-to-life (keeps the camera look above).";
+  var REALP_NO = ["synthetic AI look", "hentai", "anime", "rendered", "fake-looking body", "mannequin", "plastic", "overly idealized body"];
+  var REALP_MJ = "real adult production footage, amateur camcorder or phone authenticity, practical on-set lighting as set for this shot, natural real bodies, real skin, candid unposed moments, behind-the-scenes realism, adult performers 21+";
+  var REALP_VIDEO = "Real adult-industry look (realism only, never overrides the Focus DNA or this shot's lighting): real adult production footage with amateur camcorder or phone authenticity, practical on-set lighting as set above, natural real bodies and real skin, candid unposed moments, behind-the-scenes realism; adult performers 21+.";
+  var NOAI_STOP = /^(skin|look|face|body|ai|ai-generated|over|real|-)$/i;
+  function noAiOn() { return S.noAi !== false; }
+  function realPornOn() { return S.realPorn !== false; }
+  function realLook(look) { return !!look && gearOf(look).kind !== "virtual"; }
+  function realPornActive(look) { return realPornOn() && isAdult() && realLook(look); }
+  function noConflict(terms, body) {
+    var b = " " + String(body || "").toLowerCase().replace(/[^a-z0-9+]+/g, " ") + " ";
+    return terms.filter(function (t) {
+      return !t.toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w && !NOAI_STOP.test(w); }).some(function (w) { return b.indexOf(" " + w + " ") >= 0; });
+    });
+  }
+  function realNoTerms(look, body) {
+    if (!realLook(look)) return [];
+    var t = (noAiOn() ? NOAI_NO : []).concat(realPornActive(look) ? REALP_NO : []);
+    return noConflict(t, body);
+  }
+  function realMJ(text, look) {
+    S._lastBody = text; if (!realLook(look)) return text;
+    var add = (noAiOn() ? [NOAI_MJ] : []).concat(realPornActive(look) ? [REALP_MJ] : []);
+    if (!add.length) return text;
+    var m = text.match(/::[0-9.]+\s*$/);
+    var out = m ? text.slice(0, m.index) + ", " + add.join(", ") + m[0] : text.replace(/[,\s]+$/, "") + ", " + add.join(", ");
+    S._lastBody = out; return out;
+  }
+  function realVideo(text, look) {
+    S._lastBody = text; if (!realLook(look)) return text;
+    var add = (noAiOn() ? [NOAI_VIDEO] : []).concat(realPornActive(look) ? [REALP_VIDEO] : []);
+    var no = realNoTerms(look, text + " " + add.join(" "));
+    S._lastBody = text + " " + add.join(" ");   // positives only, so the --no params get the same terms as the Avoid line
+    if (no.length) add.push("Avoid: " + no.join(", ") + ".");
+    if (!add.length) return text;
+    var tail = /\s*adult 21\+\.?\s*$/;
+    return tail.test(text) ? text.replace(tail, " " + add.join(" ") + " adult 21+.") : text + " " + add.join(" ");
   }
   // ---- Perfect Anatomy (default ON) + Focus DNA weight (Light / Normal / Strong / Max), both saved per device.
   var ANATOMY_MJ = "perfect anatomy, correct hands five fingers, natural proportions";
@@ -1235,12 +1280,12 @@
   // ---- State ----------------------------------------------------------------------
   var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "none", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, eye: "regular", result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "noir", "psych", "anatomy", "dnaW", "artOn", "artCat", "artLast", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "noir", "psych", "anatomy", "noAi", "realPorn", "dnaW", "artOn", "artCat", "artLast", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(PEOPLE_MAX, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ anatomy: anatomyOn(), dnaW: dnaW(), artOn: S.artOn === true, artCat: artCat(), artLast: S.artLast || "", psych: psychMood(), noir: false, group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ anatomy: anatomyOn(), noAi: noAiOn(), realPorn: realPornOn(), dnaW: dnaW(), artOn: S.artOn === true, artCat: artCat(), artLast: S.artLast || "", psych: psychMood(), noir: false, group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -1432,7 +1477,7 @@
     var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
     var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
     if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
-    return artApply(stampMJ(chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "mj", look);
+    return realMJ(artApply(stampMJ(chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "mj", look), look);
   }
   function assembleMJ0(look, idea, r, seed, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1479,7 +1524,7 @@
   function assembleVideo(look, idea, r, heat) {
     var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
     var extra = (twerkOn() ? " " + TWERK.video.replace("{crowd}", crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera") : "") + (crowdOn() && styleOf(look) !== "club" ? " Crowd: " + CROWD_LINE + "." : "") + mashLine("video") + (freshOn() ? " Faces: every woman has " + FRESH_FACE + ". Skin: " + FRESH_SKIN + "." : "");
-    return artApply(stampVideo(chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "video", look);
+    return realVideo(artApply(stampVideo(chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "video", look), look);
   }
   function assembleVideo0(look, idea, r, heat) {
     heat = heat || "tease"; S._heatNow = heat;
@@ -1547,6 +1592,8 @@
     // a rotated Focus DNA lighting pick (e.g. softbox high-key) must not be negated by the look's own --no list
     if (dnaRich(look) && /softbox/i.test(S._dnaLast || "") && bk.no) bk.no = bk.no.replace(/,?\s*studio softbox/i, "");
     if (anatomyOn()) { var hvA = String(bk.no || "").toLowerCase(), adA = ANATOMY_NO.filter(function (x) { return hvA.indexOf(x) < 0; }).join(", "); if (adA) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adA : "--no " + adA; }
+    var rN = realNoTerms(look, S._lastBody);
+    if (rN.length) { var hvR = String(bk.no || "").toLowerCase(), adR = rN.filter(function (x) { return hvR.indexOf(x.toLowerCase()) < 0; }).join(", "); if (adR) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adR : "--no " + adR; }
     var stN = stampOf(look);
     if (stN) { var hv = String(bk.no || "").toLowerCase(), ad = uniqList(stN.no).filter(function (x) { return hv.indexOf(x.toLowerCase()) < 0; }).join(", "); if (ad) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + ad : "--no " + ad; }
     if (freshOn()) {
@@ -1890,6 +1937,12 @@
       h("button", { cls: "pml-toggle pml-skin" + (anatomyOn() ? " on" : ""), type: "button", "data-pm": "look-anatomy-toggle", "aria-pressed": anatomyOn() ? "true" : "false",
         title: "Correct hands (five fingers each), natural limbs, proportions, joints, feet, symmetrical eyes; bundled into the Focus DNA block with the same priority",
         on: { click: function () { S.anatomy = !anatomyOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Perfect Anatomy"]),
+      h("button", { cls: "pml-toggle pml-skin" + (noAiOn() ? " on" : ""), type: "button", "data-pm": "look-noai-toggle", "aria-pressed": noAiOn() ? "true" : "false",
+        title: "Adds anti-AI negatives (plastic / waxy skin, CGI, 3D render, beauty filter, stock photo...) plus natural skin texture, pores and real sensor noise. Never negates the camera look (phone, grain, flash, handheld, 50mm, 90s stay)",
+        on: { click: function () { S.noAi = !noAiOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "No AI Look"]),
+      isAdult() ? h("button", { cls: "pml-toggle pml-skin" + (realPornOn() ? " on" : ""), type: "button", "data-pm": "look-realporn-toggle", "aria-pressed": realPornOn() ? "true" : "false",
+        title: "18+ mode only: real adult-production / amateur footage realism (practical on-set light, real bodies and skin, candid moments). Never overrides Focus DNA or the lighting rotation. Adults 21+ only",
+        on: { click: function () { S.realPorn = !realPornOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Real Porn Look"]) : null,
       h("button", { cls: "pml-toggle pml-skin" + (S.artOn === true ? " on" : ""), type: "button", "data-pm": "look-artby-toggle", "aria-pressed": S.artOn === true ? "true" : "false",
         title: "Each Remix adds one subtle artist influence (lighting / composition / color / attitude). Influence only: stays photorealistic, Focus DNA stays in charge (MJ ::0.6)",
         on: { click: function () { S.artOn = S.artOn !== true; save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Art by" + (S.artOn === true && S.artLast ? ": " + S.artLast : "")]),
@@ -2074,14 +2127,14 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye, S.noir, S.psych, S.anatomy, S.dnaW];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; S.noir = false; S.psych = o.psych || (o.noir ? "noir" : ""); S.anatomy = o.anatomy !== false; S.dnaW = o.weight || "normal"; S._noirUsed = ""; var keepArt = [S.artOn, S.artCat]; S.artOn = !!o.art; S.artCat = o.artCat || "all"; mashRoll();
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye, S.noir, S.psych, S.anatomy, S.dnaW, S.noAi, S.realPorn];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; S.noir = false; S.psych = o.psych || (o.noir ? "noir" : ""); S.anatomy = o.anatomy !== false; S.noAi = o.noAi !== false; S.realPorn = o.realPorn !== false; S.dnaW = o.weight || "normal"; S._noirUsed = ""; var keepArt = [S.artOn, S.artCat]; S.artOn = !!o.art; S.artCat = o.artCat || "all"; mashRoll();
       S.people = Math.max(1, Math.min(PEOPLE_MAX, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags }; if (S._artUsed) res.params = artNo(res.params);
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S.noAi = keep[19]; S.realPorn = keep[20]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
       return o.full ? { art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
     }
   };
