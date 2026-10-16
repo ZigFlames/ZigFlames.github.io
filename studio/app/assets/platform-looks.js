@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261015c";
+  var V = "20261015b";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -40,10 +40,6 @@
   var HEAD_WARDROBE_RE = /\b(clothes|clothing|outfits?|wear|wardrobe|loungewear|streetwear|swimwear|sportswear|athleisure|tees?|hoodies?|sweat\w*|pajamas?|jeans|denim|cut-offs|blouses?|dress(?:es)?|sundress(?:es)?|lingerie|underwear|bras?|bikinis?|sets|cardigan|linen|cashmere|robes?|costumes?|costumey|armor|uniforms?|stilettos|heels|jewelry|silk|attire)\b/i;
   // Clean-leaning mood words that water down Spicy / XXX.
   var CLEAN_RE = /\b(goofy|comedic|comedy|sitcom|wholesome|homey|cozy|laugh|laughing|banter|gentle|reaction|costume props|travel vlog|casual chatting|bright mood|casual mood|documentary|soft fill|rowdy energy)\b/i;
-  // Idea names an outfit (Zig): the idea's outfit wins, the look's rotated / pooled wardrobe is dropped everywhere.
-  var OUTFIT_RE = /((?:[\w'\u2019&-]+\s+){0,2})(uniforms?|dress(?:es)?|outfits?|shirts?|t-shirts?|tees?|blouses?|jeans|denim|lingerie|bikinis?|suits?|costumes?|hoodies?|skirts?|aprons?|scrubs|overalls|jumpsuits?|leggings|shorts|sweaters?|jackets?|coats?|robes?|gowns?|corsets?|bodysuits?|swimsuits?|tracksuits?|pajamas?|onesies?|jerseys?|kimonos?|saris?|tops?|blazers?|vests?|leotards?|catsuits?|cosplay)\b/i;
-  function ideaOutfit(idea) { return OUTFIT_RE.test(String(idea || "")) || garmentsOf(idea).length > 0; }
-  function outfitPhrase(idea) { var m = String(idea || "").match(OUTFIT_RE); return m ? (m[1] + m[2]).trim() : ""; }
   function garmentsOf(idea) {
     var out = []; GARMENT_RE.lastIndex = 0; var m;
     while ((m = GARMENT_RE.exec(String(idea || "")))) { if (out.map(function (x) { return x.toLowerCase(); }).indexOf(m[0].toLowerCase()) < 0) out.push(m[0]); }
@@ -415,8 +411,7 @@
     if (!dnaRich(look)) return [];
     var rot = dnaEntry(look).rotate || {}, heat = heatFor(look), out = [];
     var sabOn = walkStyle(look);   // the style owns set + wardrobe
-    var ideaFit = ideaOutfit(S._ideaNow);
-    Object.keys(rot).forEach(function (k) { if (sabOn && /^(location|wardrobe|setting|outfit)$/.test(k)) return; if (ideaFit && /^(wardrobe|outfit|styling)$/.test(k)) return; var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (k === "location" && t) S._dnaLoc = t; if (t && !(sabOn && walkMuted(t))) out.push(t); });
+    Object.keys(rot).forEach(function (k) { if (sabOn && /^(location|wardrobe|setting|outfit)$/.test(k)) return; var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (t && !(sabOn && walkMuted(t))) out.push(t); });
     S._dnaLast = out.join(", ");
     return out;
   }
@@ -484,55 +479,6 @@
     var m = text.match(/FOCUS DNA [^:]*:[^.]*\./);
     return m ? text.replace(m[0], m[0] + w) : w.trim() + " " + text;
   }
-  // ---- Neon Color (Brand / Rotate (default) / Pick) + Room (Messy / Clean / Random (default)), saved per device (Zig).
-  // Orange came from the Rural ebony (masked) style's "neon orange grid room"; this pass rewrites only the neon / LED
-  // COLOR word in the final prompt, so the lighting rotation and Focus DNA stay as they were. Brand keeps the orange.
-  // Room: messy wording came from Focus DNA (xvideos "real cluttered bedroom, unmade sheets", "lived-in" sets), looks.json
-  // sets ("lived-in apartment, unmade bed, real clutter") and venue banks ("rumpled sheets"). Walk styles keep their room.
-  var NEON_PALETTE = ["hot pink", "magenta", "electric blue", "cyan", "ice blue", "purple", "violet", "UV blacklight", "emerald green", "lime green", "blood red", "crimson", "amber", "gold", "teal",
-    "pink and blue two-tone", "purple and teal two-tone", "red and blue cop-light two-tone", "magenta and cyan two-tone", "orange"];
-  var NEON_MODES = [["brand", "ZigFlames brand"], ["rotate", "Rotate"], ["pick", "Pick"]];
-  var ROOM_MODES = [["random", "Random"], ["messy", "Messy"], ["clean", "Clean"]];
-  function neonMode() { return S.neon === "brand" || S.neon === "pick" ? S.neon : "rotate"; }
-  function neonPick() { return NEON_PALETTE.indexOf(S.neonPick) >= 0 ? S.neonPick : "hot pink"; }
-  function roomMode() { return S.room === "messy" || S.room === "clean" ? S.room : "random"; }
-  function rollNeon() {
-    var m = neonMode();
-    S._neonUsed = m === "brand" ? "" : m === "pick" ? neonPick() : pick(NEON_PALETTE, S._neonUsed ? [S._neonUsed] : []);
-    S._roomUsed = roomMode() === "random" ? (Math.random() < 0.5 ? "messy" : "clean") : roomMode();
-  }
-  var NEON_NOUN = "(signs?|night signs|grid room|grid|glow|lights?|light strips?|tubes?|reflections|accents?|underglow|wash)";
-  function neonText(text) {
-    var c = S._neonUsed; if (!c) return text;
-    var cw = c.replace(/ two-tone$/, "");
-    text = text.replace(/\bneon (orange|amber|flame[- ]orange|fire[- ]orange)\b/gi, "neon " + cw);
-    text = text.replace(/\bcolou?red LED\b/gi, cw + " LED");
-    text = text.replace(new RegExp("(^|[\\s,(;:])(neon " + NEON_NOUN + ")\\b", "gi"), function (all, pre, ph, noun, offs, str) {
-      var before = str.slice(Math.max(0, offs - 30), offs + pre.length).toLowerCase();
-      return before.indexOf(cw.toLowerCase()) >= 0 ? all : pre + cw + " " + ph;
-    });
-    return text;
-  }
-  var CLEAN_SWAP = [[/\breal cluttered bedroom, unmade sheets\b/gi, "real tidy bedroom, neatly made sheets"], [/\blived-in apartment, unmade bed, real clutter\b/gi, "tidy apartment, neatly made bed, clear surfaces"],
-    [/\breal clutter\b/gi, "clear surfaces"], [/\bcluttered\b/gi, "tidy"], [/\bmessy (apartment|room|bedroom|house|kitchen|motel room|dorm)\b/gi, "tidy $1"],
-    [/\bunmade (bed|sheets)\b/gi, "neatly made $1"], [/\brumpled (sheets|linen|bed)\b/gi, "crisp fresh $1"], [/\blived-in\b/gi, "tidy, styled"], [/\bgritty and tidy, styled\b/gi, "gritty and tidy"]];
-  var MESSY_RE = /\b(messy (apartment|room|bedroom|house|kitchen|motel room|dorm)|cluttered|real clutter|unmade (bed|sheets)|rumpled (sheets|linen|bed)|lived-in|clothes on the floor)\b/i;
-  var INDOOR_RE = /\b(bedroom|apartment|hotel room|motel|dorm|living room|couch|bed|kitchen)\b/i;
-  var MESSY_MJ = "messy lived-in room, unmade bed, clothes on the floor";
-  var MESSY_VIDEO = "Room: messy lived-in room, unmade bed, clothes on the floor.";
-  function roomText(text, look, tab) {
-    if (walkStyle(look) || S.style === "sabaddie" || S.style === "roomwalk") return text;
-    if (S._roomUsed === "clean") { CLEAN_SWAP.forEach(function (x) { text = text.replace(x[0], x[1]); }); return text; }
-    // indoor check only on the ROLLED scene (rotated DNA location > venue / Setting), never the look's whole set list
-    var scene = (dnaRich(look) && S._dnaLoc) || (tab === "video" && (text.match(/\bSetting: ([^.]*)/) || [])[1]) || S._venueNow || "";
-    if (S._roomUsed === "messy" && INDOOR_RE.test(scene) && !MESSY_RE.test(text)) {
-      if (tab === "video") { var tail = /\s*adult 21\+\.?\s*$/; return tail.test(text) ? text.replace(tail, " " + MESSY_VIDEO + " adult 21+.") : text + " " + MESSY_VIDEO; }
-      var m = text.match(/::[0-9.]+\s*$/);
-      return m ? text.slice(0, m.index) + ", " + MESSY_MJ + m[0] : text.replace(/[,\s]+$/, "") + ", " + MESSY_MJ;
-    }
-    return text;
-  }
-  function neonRoom(text, look, tab) { rollNeon(); return roomText(neonText(text), look, tab); }
   // ---- No AI Look (default ON) + Real Porn Look (default ON, 18+ mode only), both saved per device (Zig).
   // Negatives only target the generic "AI image" look. They NEVER negate realistic camera cues (iPhone / phone footage,
   // 90s / camcorder, 50mm, film grain, handheld, flash, noise...): no grain / blur / flash / phone / vintage / low quality
@@ -555,77 +501,13 @@
       return !t.toLowerCase().split(/[^a-z0-9]+/).filter(function (w) { return w && !NOAI_STOP.test(w); }).some(function (w) { return b.indexOf(" " + w + " ") >= 0; });
     });
   }
-  // ---- Anti-Generic Prime (default ON, SFW and 18+, saved per device): front-loads the must-haves (idea box + the look's
-  // top Focus DNA traits) at the Focus DNA weight, adds 1-2 oddly specific real-life micro details per Remix, and
-  // anti-generic negatives (same conflict filter as above). Adult-only details; clutter details skipped on Room=Clean
-  // and on walk styles (their empty room stays empty).
-  var AG_NO = ["generic", "stock pose", "cliché", "basic composition", "centered portrait", "default AI face", "same-face", "bland", "cookie-cutter", "overused pose"];
-  var AG_DETAILS = ["chipped nail polish on one nail", "sweat on the upper lip", "hair tie on her wrist", "slightly smudged mascara", "faint tan line at the shoulder", "wrinkled shirt hem", "a stray hair across her cheek",
-    "lip balm shine slightly uneven", "a small healed scar on the knee", "freckles across the nose", "a bra strap mark on the shoulder", "goosebumps on the forearms", "a loose thread on the sleeve", "faint crease lines from a pillow on the cheek",
-    "one earring slightly crooked", "a ring on the thumb", "a smartwatch with a scratched face", "a thin gold anklet", "flyaway baby hairs at the hairline", "a faint sock-line mark on the ankles",
-    "a tiny nick from shaving on the shin", "lipstick slightly worn off the center of the lips", "a faded stamp from a club on the back of the hand", "a hair clip holding back one side", "a visible vaccination mark on the upper arm",
-    "slightly frizzy ends from humidity", "a shiny forehead from heat", "a crease in the waistband", "a sticker-shaped tan line on the hip", "a smudge of foundation on the collar", "a stretched-out neckline", "nails painted two slightly different shades",
-    "a loose eyelash on the cheek", "dewy sweat at the collarbone", "a faint watch tan on the wrist", "a pen mark on the palm", "a bobby pin sliding out of the hair", "a half-peeled gel nail", "a slightly crooked collar",
-    "a smear of lip gloss on a cup rim", "car keys clipped to a lanyard", "a cracked phone screen protector", "a coffee cup with a lipstick mark", "a crumpled receipt", "a half-drunk water bottle with condensation", "a phone with a chunky case",
-    "a hoodie string chewed at the end", "a tote bag slumped by the door", "sunglasses pushed up into the hair", "a bandage on one finger", "a hair strand stuck to lip gloss", "a small tattoo slightly faded", "shoe straps leaving a mark on the ankle",
-    "a dusting of glitter left on the cheekbone", "a damp towel over the shoulder", "an iced coffee sweating a ring onto the surface", "headphones around the neck", "a tangle of necklaces", "a phone in the back pocket",
-    "socks with a hole at the toe", "a sunburn line on the nose", "a slightly uneven eyeliner wing", "a tiny chip in a front-tooth veneer", "a jacket slipping off one shoulder", "a lighter and keys on a ledge", "a takeout cup with a bent straw"];
-  var AG_CLUTTER = ["a phone charger cable on the floor", "a receipt on the dresser", "an open makeup bag spilling onto the counter", "a pile of clothes on a chair", "a half-eaten snack bag on the bed", "an empty energy drink can on the nightstand",
-    "a hairbrush with hair in it on the counter", "a tangle of cables behind the TV", "shoes kicked off by the door", "an overflowing laundry basket", "a crumpled bedsheet corner", "takeout boxes on the table", "a bobby-pin dish knocked over",
-    "sticky notes on the mirror", "a ring light cable taped to the floor", "a used towel on the bathroom floor"];
-  var AG_HOLD = [];
-  function agOn() { return S.antiGeneric !== false; }
-  function agCleanRoom(look) { return S._roomUsed === "clean" || walkStyle(look) || S.style === "sabaddie" || S.style === "roomwalk"; }
-  function agDetails(look) {
-    var pool = AG_DETAILS.concat(agCleanRoom(look) ? [] : AG_CLUTTER), out = [], n = Math.random() < 0.5 ? 1 : 2;
-    if (ideaOutfit(S._ideaNow)) pool = pool.filter(function (d) { return !new RegExp("\\b" + OTHER_GARMENT + "\\b|\\b(bra strap|jacket|socks|hoodie)\\b", "i").test(d); });   // idea outfit: no other garments
-    while (out.length < n) { var d = pick(pool, AG_HOLD.concat(out)); if (out.indexOf(d) < 0) out.push(d); }
-    AG_HOLD = out.concat(AG_HOLD).slice(0, 12); S._agUsed = out; return out;
-  }
-  function agMust(look) {
-    var idea = String(S._ideaNow || "").trim(), dna = focusDnaRaw(look).map(cleanDnaToken).filter(Boolean).slice(0, 3);
-    if (S._roomUsed === "clean" && !agCleanRoomWalk(look)) dna = dna.map(function (t) { CLEAN_SWAP.forEach(function (x) { t = t.replace(x[0], x[1]); }); return t; });
-    return (idea ? [idea] : []).concat(dna);
-  }
-  function agCleanRoomWalk(look) { return walkStyle(look) || S.style === "sabaddie" || S.style === "roomwalk"; }
-  function agMJ(text, look) {
-    if (!agOn()) return guardIdea(text, "mj");
-    var must = agMust(look), det = agDetails(look);
-    if (must.length) text = must.join(", ") + "::" + (typeof DNA_W !== "undefined" ? DNA_W[dnaW()] : "2") + " " + text;
-    var m = text.match(/::[0-9.]+\s*$/);
-    return m ? text.slice(0, m.index) + ", " + det.join(", ") + m[0] : text.replace(/[,\s]+$/, "") + ", " + det.join(", ");
-  }
-  function agVideo(text, look) {
-    if (!agOn()) return guardIdea(text, "video");
-    var must = agMust(look), det = agDetails(look);
-    if (must.length) text = "Must show: " + must.join("; ") + ". " + text;
-    var add = "Real-life details: " + det.join(", ") + ".", tail = /\s*adult 21\+\.?\s*$/;
-    return tail.test(text) ? text.replace(tail, " " + add + " adult 21+.") : text + " " + add;
-  }
-  // the idea box text must be in every prompt; if a style or DNA pass ever drops it, it goes back up front
-  function guardIdea(text, tab) {
-    var idea = String(S._ideaNow || "").trim(); if (!idea || text.toLowerCase().indexOf(idea.toLowerCase()) >= 0) return text;
-    return tab === "video" ? "Must show: " + idea + ". " + text : idea + "::2 " + text;
-  }
-  // Idea names an outfit: drop any other garment phrase (style / DNA / cast wardrobe) from the positive text so nothing
-  // contradicts it. Phrases that contain the idea's own outfit (or its garments) stay; negatives are never touched.
-  var OTHER_GARMENT = "(?:micro[\\s-]?bikinis?|bikinis?|lingerie|(?:mini |slip |bodycon |sundress|maxi )?dress(?:es)?|bodysuits?|bodystockings?|robes?|g[\\s-]?strings?|thongs?|jeans|denim|skirts?|t-shirts?|tees|hoodies?|cosplay|swimsuits?|swimwear|crop tops?|tank tops?|booty shorts|micro shorts|shorts|corsets?|stockings|fishnets?|bralettes?|bras?|leggings|mock-neck top|blazers?|kimonos?|panties|lace bodysuit|sweatpants|sweater|cardigan|jersey|catsuit|leotard|teddy|babydoll|designer wardrobe)";
-  var OTHER_GARMENT_RE = new RegExp("(,|;|(?<!:):(?!:))(\\s*)([^,;.:]*?\\b" + OTHER_GARMENT + "\\b[^,;.:]*)", "gi");
-  function ideaOutfitScrub(text) {
-    var idea = S._ideaNow; if (!ideaOutfit(idea)) return text;
-    var keep = [outfitPhrase(idea)].concat(garmentsOf(idea)).filter(Boolean).map(function (x) { return x.toLowerCase(); });
-    var out = text.replace(OTHER_GARMENT_RE, function (all, sep, sp, seg) {
-      var l = seg.toLowerCase(); if (keep.some(function (k) { return l.indexOf(k) >= 0; })) return all;
-      return sep === ":" ? ":" : "";
-    });
-    return out.replace(/:\s*,\s*/g, ": ").replace(/,\s*,/g, ",").replace(/:\s*\./g, ".").replace(/\s+,/g, ",").replace(/ {2,}/g, " ");
-  }
   function realNoTerms(look, body) {
-    var t = (realLook(look) && noAiOn() ? NOAI_NO : []).concat(realPornActive(look) ? REALP_NO : []).concat(agOn() ? AG_NO : []);
+    if (!realLook(look)) return [];
+    var t = (noAiOn() ? NOAI_NO : []).concat(realPornActive(look) ? REALP_NO : []);
     return noConflict(t, body);
   }
   function realMJ(text, look) {
-    text = agMJ(ideaOutfitScrub(neonRoom(text, look, "mj")), look); S._lastBody = text; if (!realLook(look)) return text;
+    S._lastBody = text; if (!realLook(look)) return text;
     var add = (noAiOn() ? [NOAI_MJ] : []).concat(realPornActive(look) ? [REALP_MJ] : []);
     if (!add.length) return text;
     var m = text.match(/::[0-9.]+\s*$/);
@@ -633,8 +515,8 @@
     S._lastBody = out; return out;
   }
   function realVideo(text, look) {
-    text = agVideo(ideaOutfitScrub(neonRoom(text, look, "video")), look); S._lastBody = text;
-    var add = realLook(look) ? (noAiOn() ? [NOAI_VIDEO] : []).concat(realPornActive(look) ? [REALP_VIDEO] : []) : [];
+    S._lastBody = text; if (!realLook(look)) return text;
+    var add = (noAiOn() ? [NOAI_VIDEO] : []).concat(realPornActive(look) ? [REALP_VIDEO] : []);
     var no = realNoTerms(look, text + " " + add.join(" "));
     S._lastBody = text + " " + add.join(" ");   // positives only, so the --no params get the same terms as the Avoid line
     if (no.length) add.push("Avoid: " + no.join(", ") + ".");
@@ -1036,7 +918,7 @@
   function assembleStyle(look, idea, cast, heat, tab) {
     var st = styleOf(look), r = cast[0], out;
     if (st === "roomwalk") {
-      var W = ROOMWALK, gW = ideaOutfit(idea), wearW = gW ? wardrobeFor(idea, heat, r).text : W.heat[heat], noirW = rnd() < 0.2;
+      var W = ROOMWALK, gW = garmentsOf(idea), wearW = gW.length ? wardrobeFor(idea, heat, r).text : W.heat[heat], noirW = rnd() < 0.2;
       var camW = W.cam.replace("{iphone}", S.cam === "iphone" ? IPHONE_MODEL : "smartphone"), keysW = rwKeys();
       var sheW = (r.rwName || "she") + ", " + faceShort(r) + ", " + r.build;
       var openW = W.open.replace("{age}", r.ageBand);
@@ -1050,7 +932,7 @@
       return /21\+/.test(out) ? out : out + ", adult 21+";
     }
     if (st === "sabaddie") {
-      var B = SABADDIE, nB = cast.length, nW = nB > 1 ? NUMW[nB] : "one", gB = ideaOutfit(idea), wearB = gB ? wardrobeFor(idea, heat, r).text : B.heat[heat];
+      var B = SABADDIE, nB = cast.length, nW = nB > 1 ? NUMW[nB] : "one", gB = garmentsOf(idea), wearB = gB.length ? wardrobeFor(idea, heat, r).text : B.heat[heat];
       var camB = B.cam.replace("{iphone}", S.cam === "iphone" ? IPHONE_MODEL : "iPhone 16 Pro Max"), setB = pick(B.sets), keysB = sabKeys(heat);
       var castB = cast.map(function (p, i) { return (nB > 1 ? castTag(i, nB, "women") : "she") + ": " + faceShort(p) + ", " + p.build; });
       var openB = (tab === "video" ? B.openVideo : B.open).replace("{n}", nW);
@@ -1064,9 +946,8 @@
       out = scrubProse(out);
       return /21\+/.test(out) ? out : out + ", adult 21+";
     }
-    var ideaW = ideaOutfit(idea) ? wardrobeFor(idea, heat, cast[0]).text : "";   // idea outfit wins for tryouts / rural / contest
     if (st === "tryouts") {
-      var set = pick(TRYOUTS.set); S._venueNow = set; var act = ideaW ? ideaW + ", walking back and forth, stripping off at the end in heels" : TRYOUTS.heat[heat];
+      var set = pick(TRYOUTS.set), act = ideaW ? ideaW + ", walking back and forth, stripping off at the end in heels" : TRYOUTS.heat[heat];
       var models = cast.map(function (p, i) { return (cast.length > 1 ? castTag(i, cast.length, "models") + ": " : "model: ") + faceShort(p) + ", " + p.build; });
       if (tab === "video") {
         out = (idea ? "Main action (priority): " + idea + ". " : "") + "Video: " + TRYOUTS.open + ". " + (cast.length > 1 ? cast.length + " different women, each with a unique face. " : "") +
@@ -1114,9 +995,10 @@
       out = scrubProse(out);
       return /21\+/.test(out) ? out : out + ", adult 21+";
     }
+    var g = garmentsOf(idea), ideaW = g.length ? wardrobeFor(idea, heat, r).text : "";
     if (st === "contest" || st === "carib") {
       var K = st === "carib" ? CARIB : CONTEST, nat = st === "carib" ? r.heritageRegion : "Nigerian", fin = K.finish ? ", " + K.finish : "";
-      var venue = pick(K.venues); S._venueNow = venue; var act = ideaW ? ideaW + ", dancing wild" : K.heat[heat], nC = cast.length;
+      var venue = pick(K.venues), act = ideaW ? ideaW + ", dancing wild" : K.heat[heat], nC = cast.length;
       if (nC > 1) {
         var natC = multiOn() ? "mixed-heritage" : st === "carib" ? "Caribbean" : "Nigerian";
         var whoC = cast.map(function (p, i) { return castTag(i, nC, "women") + ": " + faceShort(p); });
@@ -1398,12 +1280,12 @@
   // ---- State ----------------------------------------------------------------------
   var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "none", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, eye: "regular", result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "noir", "psych", "anatomy", "noAi", "realPorn", "neon", "neonPick", "room", "antiGeneric", "dnaW", "artOn", "artCat", "artLast", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "noir", "psych", "anatomy", "noAi", "realPorn", "dnaW", "artOn", "artCat", "artLast", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(PEOPLE_MAX, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ anatomy: anatomyOn(), noAi: noAiOn(), realPorn: realPornOn(), neon: neonMode(), neonPick: neonPick(), room: roomMode(), antiGeneric: agOn(), dnaW: dnaW(), artOn: S.artOn === true, artCat: artCat(), artLast: S.artLast || "", psych: psychMood(), noir: false, group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ anatomy: anatomyOn(), noAi: noAiOn(), realPorn: realPornOn(), dnaW: dnaW(), artOn: S.artOn === true, artCat: artCat(), artLast: S.artLast || "", psych: psychMood(), noir: false, group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -1503,11 +1385,7 @@
   }
   // Wardrobe for this roll: idea clothing > heat wardrobe > look/pool wardrobe.
   function wardrobeFor(idea, heat, r) {
-    var g = garmentsOf(idea), ph = outfitPhrase(idea);
-    if (ph && !g.some(function (x) { return ph.toLowerCase().indexOf(x.toLowerCase()) >= 0; })) {
-      var lead = heat === "xxx" ? "topless, wearing only an opened-up " + ph : heat === "spicy" ? "wearing a tight, revealing " + ph : "wearing a " + ph;
-      return { text: lead + ", " + ph + " in clear focus", fromIdea: true };
-    }
+    var g = garmentsOf(idea);
     if (g.length) {
       var clothes = g.filter(function (x) { return !NUDE_RE.test(x); }), nude = g.filter(function (x) { return NUDE_RE.test(x); });
       var outfit = clothes.join(" and ");
@@ -1554,8 +1432,6 @@
           r.brows = "thick straight brows"; r.nose = pick(["strong straight nose", "classic straight nose", "broad strong nose"]); r.lips = "full defined lips";
           r.jawCheekbones = "sharp jawline"; r.complexionDetail = "healthy glowing skin"; r.distinctiveFeature = "confident smile"; r.heightFeel = pick(["tall", "6'2\" tall", "tall and broad"]); }
         ["mHair", "mFace", "mBuild"].forEach(function (k) { remember(k, r[k]); }); }
-      if (ideaOutfit(S._ideaNow)) { var phC = outfitPhrase(S._ideaNow) || garmentsOf(S._ideaNow).join(" and ");   // idea outfit wins for every cast member
-        r.wardrobe = phC; r.spicyWardrobe = "tight, revealing " + phC; r.xxxWardrobe = "opened-up " + phC + ", topless"; r.dnaWardrobe = null; }
       cast.push(r);
     }
     styleCast(look, cast);
@@ -1598,7 +1474,6 @@
   }
 
   function assembleMJ(look, idea, r, seed, heat) {
-    var c0_ = Array.isArray(r) ? r[0] : r; S._venueNow = (c0_ && c0_.venue) || ""; S._dnaLoc = "";
     var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
     var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
     if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
@@ -1609,7 +1484,7 @@
     if (styleOf(look) !== "club") return assembleStyle(look, idea, Array.isArray(r) ? r : [r], heat, "mj");
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
-    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r); S._venueNow = r.venue || "";
+    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r);
     var w = wardrobeFor(idea, heat, r);
     var heritage = fill(V2.heritageFace, r), bodyTxt = bodyOf(V2, r);
     var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() && !dna ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
@@ -1647,7 +1522,6 @@
     return lead + body;  // params are added by compose(), always last
   }
   function assembleVideo(look, idea, r, heat) {
-    var c0_ = Array.isArray(r) ? r[0] : r; S._venueNow = (c0_ && c0_.venue) || ""; S._dnaLoc = "";
     var o = assembleVideo0(look, twerkOn() ? twerkIdea(idea) : idea, r, heat);
     var extra = (twerkOn() ? " " + TWERK.video.replace("{crowd}", crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera") : "") + (crowdOn() && styleOf(look) !== "club" ? " Crowd: " + CROWD_LINE + "." : "") + mashLine("video") + (freshOn() ? " Faces: every woman has " + FRESH_FACE + ". Skin: " + FRESH_SKIN + "." : "");
     return realVideo(artApply(stampVideo(chipVideo(pluralCast(noCrowdProse(extra ? o.replace(/\s*adult 21\+\.?\s*$/, "") + extra + " adult 21+." : o), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "video", look), look);
@@ -1657,7 +1531,7 @@
     if (styleOf(look) !== "club") return assembleStyle(look, idea, Array.isArray(r) ? r : [r], heat, "video");
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
-    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r); S._venueNow = r.venue || "";
+    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r);
     var w = wardrobeFor(idea, heat, r);
     // Scrub only the look's own text; the idea is added afterwards so no filter can ever drop it.
     var rest = String(look.promptTemplate || "").replace(/^\{idea\}\s*[\u2014-]\s*/, "").replace(/\{idea\}/g, "");
@@ -1718,7 +1592,6 @@
     // a rotated Focus DNA lighting pick (e.g. softbox high-key) must not be negated by the look's own --no list
     if (dnaRich(look) && /softbox/i.test(S._dnaLast || "") && bk.no) bk.no = bk.no.replace(/,?\s*studio softbox/i, "");
     if (anatomyOn()) { var hvA = String(bk.no || "").toLowerCase(), adA = ANATOMY_NO.filter(function (x) { return hvA.indexOf(x) < 0; }).join(", "); if (adA) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adA : "--no " + adA; }
-    if (S._roomUsed === "clean" && !walkStyle(look) && S.style !== "sabaddie" && S.style !== "roomwalk") { var hvC = String(bk.no || "").toLowerCase(), adC = ["messy room", "unmade bed", "trash on the floor"].filter(function (x) { return hvC.indexOf(x) < 0; }).join(", "); if (adC) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adC : "--no " + adC; }
     var rN = realNoTerms(look, S._lastBody);
     if (rN.length) { var hvR = String(bk.no || "").toLowerCase(), adR = rN.filter(function (x) { return hvR.indexOf(x.toLowerCase()) < 0; }).join(", "); if (adR) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adR : "--no " + adR; }
     var stN = stampOf(look);
@@ -2053,19 +1926,6 @@
     sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: S.style === "none" ? "no preset \u00b7 platform focus DNA drives the look" : S.style === "club" || !S.style ? (crowdOn() ? "packed venue \u00b7 candid iPhone" : "empty venue \u00b7 candid iPhone") : (S.people > 1 ? S.people + " women \u00b7 " : "1 woman \u00b7 ") + (S.style === "roomwalk" ? "one original woman, 22-28 \u00b7 seamless room walk loop" : S.style === "sabaddie" ? "South African women, all 28 \u00b7 rear-view walk" : S.style === "tryouts" ? "women only, slingshot walk + strip" : S.style === "carib" ? "Haitian / Jamaican / Dominican, chair twerk" : S.style === "rural" ? "locked lead character, random camera" : S.style === "duo" ? "cinematic noir, clothes falling off" : S.style === "ny" ? "NY women, loose sync, stylize 500" : S.style === "sync" ? "South Indian, in sync" : S.style === "contest" ? "head-shot + full body" : "packed venue \u00b7 candid iPhone") }));
     if (S.result && (S.result.style || "club") !== (S.style || "club")) sr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
     P.appendChild(sr);
-    var nr = h("div", { cls: "pml-row", style: "margin-top:10px", role: "radiogroup", "aria-label": "Neon color", "data-pm": "look-neon" }, [h("span", { cls: "pml-k", text: "Neon" })]);
-    NEON_MODES.forEach(function (o) { var on = neonMode() === o[0]; nr.appendChild(h("button", { cls: "pml-btn pml-cam" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-neon": o[0], text: o[1],
-      title: o[0] === "brand" ? "Keep the ZigFlames orange / flame neon" : o[0] === "rotate" ? "New neon / LED color every Remix (pinks, blues, purples, UV, greens, reds, two-tones, orange now and then)" : "Always use the color you pick",
-      on: { click: function () { S.neon = o[0]; save(); renderPanel(); } } })); });
-    if (neonMode() === "pick") { var sel = h("select", { cls: "pml-btn", "data-pm": "look-neon-pick", "aria-label": "Neon color pick", on: { change: function (e) { S.neonPick = e.target.value; save(); renderPanel(); } } }, NEON_PALETTE.map(function (c) { return h("option", { value: c, text: c }); })); sel.value = neonPick(); nr.appendChild(sel); }
-    nr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: neonMode() === "brand" ? "orange \u00b7 flame" : neonMode() === "pick" ? neonPick() : "random each remix" + (S._neonUsed ? " \u00b7 last: " + S._neonUsed : "") }));
-    P.appendChild(nr);
-    var rr = h("div", { cls: "pml-row", style: "margin-top:10px", role: "radiogroup", "aria-label": "Room", "data-pm": "look-room" }, [h("span", { cls: "pml-k", text: "Room" })]);
-    ROOM_MODES.forEach(function (o) { var on = roomMode() === o[0]; rr.appendChild(h("button", { cls: "pml-btn pml-cam" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-room": o[0], text: o[1],
-      title: o[0] === "random" ? "About half messy, half clean, rolled each Remix" : o[0] === "messy" ? "Messy lived-in room: unmade bed, clothes on the floor" : "Tidy, staged room: made bed, clear surfaces",
-      on: { click: function () { S.room = o[0]; save(); renderPanel(); } } })); });
-    rr.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: (roomMode() === "random" ? "50/50 each remix" : roomMode()) + " \u00b7 walk styles keep their own room" }));
-    P.appendChild(rr);
     var tw = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-twerk" }, [h("span", { cls: "pml-k", text: "Show" }),
       h("button", { cls: "pml-toggle pml-skin" + (twerkOn() ? " on" : ""), type: "button", "data-pm": "look-twerk-toggle", "aria-pressed": twerkOn() ? "true" : "false",
         title: "One tap: every Remix becomes a twerk show (amateur jiggle, motion, ass to camera, crowd or judges). Adults 21+ only",
@@ -2080,9 +1940,6 @@
       h("button", { cls: "pml-toggle pml-skin" + (noAiOn() ? " on" : ""), type: "button", "data-pm": "look-noai-toggle", "aria-pressed": noAiOn() ? "true" : "false",
         title: "Adds anti-AI negatives (plastic / waxy skin, CGI, 3D render, beauty filter, stock photo...) plus natural skin texture, pores and real sensor noise. Never negates the camera look (phone, grain, flash, handheld, 50mm, 90s stay)",
         on: { click: function () { S.noAi = !noAiOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "No AI Look"]),
-      h("button", { cls: "pml-toggle pml-skin" + (agOn() ? " on" : ""), type: "button", "data-pm": "look-antigeneric-toggle", "aria-pressed": agOn() ? "true" : "false",
-        title: "Anti-Generic Prime: your idea + the look's signature DNA go first at the Focus DNA weight (Video opens with 'Must show'), 1-2 oddly specific real-life details each Remix, and anti-generic negatives. Adults 21+",
-        on: { click: function () { S.antiGeneric = !agOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Anti-Generic Prime"]),
       isAdult() ? h("button", { cls: "pml-toggle pml-skin" + (realPornOn() ? " on" : ""), type: "button", "data-pm": "look-realporn-toggle", "aria-pressed": realPornOn() ? "true" : "false",
         title: "18+ mode only: real adult-production / amateur footage realism (practical on-set light, real bodies and skin, candid moments). Never overrides Focus DNA or the lighting rotation. Adults 21+ only",
         on: { click: function () { S.realPorn = !realPornOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Real Porn Look"]) : null,
@@ -2211,7 +2068,7 @@
     if (cleaned.removed.length) msg = "Adults 21+ only — removed: " + cleaned.removed.join(", ") + ".";
     var banned = reuseBannedMinor(idea);
     if (banned) { setNotice("Adults 21+ only. " + banned); return; }
-    S.idea = idea; S._ideaNow = idea; if (R.idea) R.idea.value = idea;
+    S.idea = idea; if (R.idea) R.idea.value = idea;
     var heat = heatFor(l);
     mashRoll();
     var cast = rollCast(l), r = cast[0], seed = seed32(), body;
@@ -2270,15 +2127,15 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye, S.noir, S.psych, S.anatomy, S.dnaW, S.noAi, S.realPorn, S.neon, S.neonPick, S.room, S.antiGeneric];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; S.noir = false; S.psych = o.psych || (o.noir ? "noir" : ""); S.anatomy = o.anatomy !== false; S.noAi = o.noAi !== false; S.realPorn = o.realPorn !== false; S.neon = o.neon || "rotate"; S.neonPick = o.neonPick || "hot pink"; S.room = o.room || "random"; S.antiGeneric = o.antiGeneric !== false; S.dnaW = o.weight || "normal"; S._noirUsed = ""; var keepArt = [S.artOn, S.artCat]; S.artOn = !!o.art; S.artCat = o.artCat || "all"; mashRoll();
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye, S.noir, S.psych, S.anatomy, S.dnaW, S.noAi, S.realPorn];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; S.noir = false; S.psych = o.psych || (o.noir ? "noir" : ""); S.anatomy = o.anatomy !== false; S.noAi = o.noAi !== false; S.realPorn = o.realPorn !== false; S.dnaW = o.weight || "normal"; S._noirUsed = ""; var keepArt = [S.artOn, S.artCat]; S.artOn = !!o.art; S.artCat = o.artCat || "all"; mashRoll();
       S.people = Math.max(1, Math.min(PEOPLE_MAX, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
-      var i = sanitizeIdea(stripBlocked(idea).text); S._ideaNow = i; var heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
+      var i = sanitizeIdea(stripBlocked(idea).text), heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags }; if (S._artUsed) res.params = artNo(res.params);
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S.noAi = keep[19]; S.realPorn = keep[20]; S.neon = keep[21]; S.neonPick = keep[22]; S.room = keep[23]; S.antiGeneric = keep[24]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
-      return o.full ? { details: (S._agUsed || []).slice(), neon: S._neonUsed || "brand", room: S._roomUsed || "", art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S.noAi = keep[19]; S.realPorn = keep[20]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
+      return o.full ? { art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
     }
   };
   window.addEventListener("pm:clear-all", onClearAll);
