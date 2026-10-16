@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261015d";
+  var V = "20261015c";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -135,13 +135,13 @@
     faceShape: ["oval face", "heart-shaped face", "diamond face", "V-line face", "softly symmetrical face", "high-cheekboned oval face"],
     eyes: ["captivating almond eyes with long lashes", "sultry hooded hazel eyes", "big bright doe eyes", "green cat eyes", "smoldering dark brown eyes", "amber fox eyes", "bright blue eyes with lush lashes", "monolid eyes with sharp winged liner", "deep brown bedroom eyes", "grey-green almond eyes"],
     brows: ["sleek arched brows", "brushed-up full brows", "sculpted brows", "laminated fluffy brows", "softly arched defined brows"],
-    nose: ["delicate straight nose", "small refined nose", "softly upturned nose", "elegant narrow nose", "neat straight nose", "elegant broad nose with a soft rounded tip"],
+    nose: ["delicate straight nose", "small refined nose", "softly upturned nose", "elegant narrow nose", "cute button nose", "elegant broad nose with a soft rounded tip"],
     lips: ["full plump lips", "glossy pouty lips", "heart-shaped lips", "defined cupid's bow", "full lower lip", "full lips with a dimpled smile"],
     jawCheekbones: ["high sharp cheekbones", "sculpted cheekbones and a tapered chin", "defined jawline", "V-shaped jaw and lifted cheekbones", "chiseled cheekbones"],
     complexionDetail: ["radiant glowing skin", "dewy luminous skin", "sun-kissed glow", "satin-smooth skin with a soft highlight", "natural skin texture with a healthy glow"],
     distinctiveFeature: ["tiny beauty mark above the lip", "deep dimples", "elegant collarbones", "striking smile", "long fluttery lashes", "hourglass waist", "toned midriff", "flirty knowing smile"],
     build: ["curvy hourglass figure", "slim toned figure", "athletic toned body", "thick thighs and a snatched waist", "slim-thick figure", "voluptuous hourglass curves", "long-legged slender figure", "fit body with toned abs", "busty hourglass figure", "sculpted fitness-model body"],
-    heightFeel: ["tall", "long-legged", "statuesque", "model height", "towering in heels", "slim and perfectly proportioned"],
+    heightFeel: ["tall", "long-legged", "statuesque", "model height", "towering in heels", "petite and perfectly proportioned"],
     makeupLevel: ["natural glam", "smoky eye", "bold red lip", "sharp winged liner", "glossy lip and highlighter", "full beat glam", "soft bronzed glam", "sultry smoky eye and nude gloss", "lash-heavy glam with glossy lips"],
     nails: ["long glossy almond nails", "red stiletto nails", "French-tip coffin nails", "nude glossy nails", "chrome nails", "black almond nails"],
     hairExtra: ["bombshell curls", "Hollywood waves", "voluminous blowout", "knotless braids", "sleek wet look", "long glossy waves", "high snatched ponytail", "waist-length straight hair"],
@@ -256,61 +256,6 @@
       ut[r.skinTone] = 1; ur[r.heritageRegion] = 1;
     });
   }
-  // ---- Unique Faces (default ON, saved per device; Zig): combinatorial Face Builder from data/faces.json. Every person in the
-  // cast gets shape, eyes (shape + heritage-matched color), brows, nose, lips, jaw plus 4-6 extra traits (eye detail,
-  // cheekbones, 1-2 distinctive marks, skin texture, expression, hairline), never repeating a face within the last 20
-  // Remixes. Adult-coded wording only; adults 21+. Eye color: the rolled heritage wins unless Zig explicitly picked an Eyes
-  // button (then the chip wins). Focus DNA / lighting are untouched (face slots only).
-  var FACES = null, FACE_HIST = [], FACE_HIST_N = 20;
-  var FACE_YOUTH_RE = /\b(youth\w*|young\w*|baby|child\w*|girlish|petite|teen\w*|innocent|cute|doll\w*)\b/i;
-  var LIGHT_EYE_RE = /\b(Ukrainian|Irish|Swedish|Norwegian|Danish|Finnish|Icelandic|Scottish|English|Dutch|German|Polish|Russian|Lithuanian|Latvian|Estonian|Czech|Slovak|Belarusian|Scandinavian|Nordic|Baltic|Albanian|Croatian|Serbian|Slovenian|Hungarian|Austrian|Swiss|Welsh|French|Australian|Canadian|Eastern European|Northern European)\b/i;
-  var WARM_EYE_RE = /\b(Lebanese|Persian|Iranian|Turkish|Moroccan|Italian|Sicilian|Greek|Spanish|Portuguese|Brazilian|Argentin\w*|Puerto Rican|Colombian|Mexican|Dominican|Cuban|Venezuelan|Chilean|Punjabi|Pakistani|Afghan|Kurdish|Armenian|Georgian|Syrian|Israeli|Egyptian|Algerian|Tunisian|Romanian|Bulgarian|Latina?|Middle Eastern|Mediterranean)\b/i;
-  function uniqueOn() { return S.uniqueFaces !== false; }
-  function eyeExplicit() { return S.eyeSet === true; }
-  function eyeFamily(r) {
-    var h = String((r && r.heritageRegion) || ""), t = String((r && r.skinTone) || "");
-    if (/\b(Nigerian|Yoruba|Igbo|Ghanaian|Kenyan|Somali|Ethiopian|Eritrean|Sudanese|Senegalese|Congolese|Zulu|Xhosa|Swazi|South African|Jamaican|Haitian|African\w*|Korean|Japanese|Chinese|Vietnamese|Thai|Filipina|Indonesian|Malaysian|Tamil|Malayali|Indian|Bengali|Sri Lankan|Nepali|Samoan|Polynesian|Tongan|Hawaiian|Aboriginal)\b/i.test(h)) return "brown";
-    if (LIGHT_EYE_RE.test(h) || /\b(pale|fair|porcelain|freckled|rosy)\b/i.test(t) && !/\b(Korean|Japanese|Chinese|Vietnamese|Thai|Filipina)\b/i.test(h)) return "light";
-    if (WARM_EYE_RE.test(h) || /\bolive\b/i.test(t)) return "warm";
-    return "brown";
-  }
-  function faceSig(r) { return [r.faceShape, r._eyeShape, r.brows, r.nose, r.lips, r._jaw].join("|"); }
-  function faceRecent() { var o = {}; FACE_HIST.forEach(function (rm) { rm.forEach(function (sg) { o[sg] = 1; }); }); return o; }
-  function facePick(arr, avoid) { var a = (arr || []).filter(function (x) { return !FACE_YOUTH_RE.test(x); }); return pick(a, avoid || []); }
-  function buildFace(r, used, recent) {
-    var F = FACES, man = !!r.man, clean = cleanOn();
-    for (var tries = 0; tries < 12; tries++) {
-      r.faceShape = facePick(man && F.male ? F.male.faceShape : F.faceShape, used.faceShape);
-      r._eyeShape = facePick(F.eyeShape, used.eyeShape);
-      var fam = F.eyeColor[eyeFamily(r)] || F.eyeColor.brown, col = facePick(fam);
-      r.eyes = r._eyeShape + " " + col + " eyes"; r.eyeTint = col;
-      r.brows = facePick(F.brows, used.brows); r.nose = facePick(F.nose, used.nose); r.lips = facePick(F.lips, used.lips);
-      r._jaw = facePick(F.jaw, used.jaw);
-      var sig = faceSig(r); if (!recent[sig] && used.sigs.indexOf(sig) < 0) break;
-    }
-    // 4-6 extra traits; always 1-2 distinctive marks (Clean skin keeps marks that don't fight its negatives)
-    var marks = (F.marks || []).filter(function (m) { return !clean || !/birthmark|vitiligo|blotch|patch|depigment|hyperpigment|rosacea/i.test(m); });
-    var ex = [], nM = rnd() < 0.5 ? 1 : 2, m1 = facePick(marks, used.marks); ex.push(m1); if (nM > 1) ex.push(facePick(marks, used.marks.concat([m1])));
-    var opt = [["cheek", F.cheekbones], ["eyeD", F.eyeDetail], ["skin", F.skinTexture], ["expr", F.expression], ["hair", F.hairline]];
-    if (man && F.male) opt.push(["male", F.male.extra]);
-    opt = shuffled(opt); var nX = 4 + Math.floor(rnd() * 3) - ex.length;
-    var got = {}; opt.slice(0, Math.max(2, nX)).forEach(function (o) { got[o[0]] = facePick(o[1], used[o[0]] || []); });
-    r.jawCheekbones = r._jaw + (got.cheek ? ", " + got.cheek : "");
-    if (got.eyeD) r.eyes += ", " + got.eyeD;
-    r.complexionDetail = got.skin || r.complexionDetail;
-    r.distinctiveFeature = ex.join(", ");
-    r.micro = [ex.join(", "), got.expr, got.hair, got.male].filter(Boolean).join(", ");
-    r._faceSig = faceSig(r);
-    ["faceShape", "brows", "nose", "lips"].forEach(function (k) { used[k].push(r[k]); }); used.eyeShape.push(r._eyeShape); used.jaw.push(r._jaw);
-    used.marks = used.marks.concat(ex); used.sigs.push(r._faceSig);
-  }
-  function faceCast(look, cast) {
-    if (!uniqueOn() || !FACES || !FACES.faceShape) return;
-    if (styleOf(look) === "rural") return;   // the masked Rural ebony face is fixed by design
-    var recent = faceRecent(), used = { faceShape: [], eyeShape: [], brows: [], nose: [], lips: [], jaw: [], marks: [], sigs: [] };
-    cast.forEach(function (r) { buildFace(r, used, recent); });
-    FACE_HIST.unshift(used.sigs.slice()); FACE_HIST = FACE_HIST.slice(0, FACE_HIST_N);
-  }
   // ---- Eye color quick switch (default Regular = brown / dark brown, the most common). Exotic = the old random mix. ----
   var EYES = [["regular", "Regular"], ["hazel", "Hazel"], ["green", "Green"], ["blue", "Blue"], ["gray", "Gray"], ["hetero", "Heterochromia"], ["exotic", "Exotic"]];
   var EYE_SHADES = { regular: ["dark brown", "brown", "deep brown", "warm brown", "chocolate brown", "dark espresso brown"], hazel: ["hazel", "light hazel", "golden hazel", "green-flecked hazel"],
@@ -324,7 +269,6 @@
   }
   function eyeCast(look, cast) {
     var mode = eyeMode(); if (mode === "exotic") return;
-    if (uniqueOn() && FACES && !eyeExplicit()) return;   // rolled heritage-matched color wins
     var used = {};
     cast.forEach(function (r, i) {
       if (r.man) return;
@@ -361,7 +305,7 @@
     if (twerkOn()) c.push("twerk show, extreme jiggle physics");
     if (freshOn()) c.push(n > 1 ? "brand-new unique faces, real pores" : "brand-new unique face, real pores");
     if (crowdOn()) c.push("packed crowd");
-    if (EYE_CHIP[eyeMode()] && !(uniqueOn() && FACES && !eyeExplicit())) c.push(EYE_CHIP[eyeMode()]);
+    if (EYE_CHIP[eyeMode()]) c.push(EYE_CHIP[eyeMode()]);
     c.push(n > 1 ? "adults 21+" : "adult 21+");
     return c;
   }
@@ -618,7 +562,7 @@
   var AG_NO = ["generic", "stock pose", "cliché", "basic composition", "centered portrait", "default AI face", "same-face", "bland", "cookie-cutter", "overused pose"];
   var AG_DETAILS = ["chipped nail polish on one nail", "sweat on the upper lip", "hair tie on her wrist", "slightly smudged mascara", "faint tan line at the shoulder", "wrinkled shirt hem", "a stray hair across her cheek",
     "lip balm shine slightly uneven", "a small healed scar on the knee", "freckles across the nose", "a bra strap mark on the shoulder", "goosebumps on the forearms", "a loose thread on the sleeve", "faint crease lines from a pillow on the cheek",
-    "one earring slightly crooked", "a ring on the thumb", "a smartwatch with a scratched face", "a thin gold anklet", "flyaway fine hairs at the hairline", "a faint sock-line mark on the ankles",
+    "one earring slightly crooked", "a ring on the thumb", "a smartwatch with a scratched face", "a thin gold anklet", "flyaway baby hairs at the hairline", "a faint sock-line mark on the ankles",
     "a tiny nick from shaving on the shin", "lipstick slightly worn off the center of the lips", "a faded stamp from a club on the back of the hand", "a hair clip holding back one side", "a visible vaccination mark on the upper arm",
     "slightly frizzy ends from humidity", "a shiny forehead from heat", "a crease in the waistband", "a sticker-shaped tan line on the hip", "a smudge of foundation on the collar", "a stretched-out neckline", "nails painted two slightly different shades",
     "a loose eyelash on the cheek", "dewy sweat at the collarbone", "a faint watch tan on the wrist", "a pen mark on the palm", "a bobby pin sliding out of the hair", "a half-peeled gel nail", "a slightly crooked collar",
@@ -677,7 +621,7 @@
     return out.replace(/:\s*,\s*/g, ": ").replace(/,\s*,/g, ",").replace(/:\s*\./g, ".").replace(/\s+,/g, ",").replace(/ {2,}/g, " ");
   }
   function realNoTerms(look, body) {
-    var t = (realLook(look) && noAiOn() ? NOAI_NO : []).concat(realPornActive(look) ? REALP_NO : []).concat(agOn() ? AG_NO : []).concat(uniqueOn() ? ["same face", "generic face", "cloned faces"] : []);
+    var t = (realLook(look) && noAiOn() ? NOAI_NO : []).concat(realPornActive(look) ? REALP_NO : []).concat(agOn() ? AG_NO : []);
     return noConflict(t, body);
   }
   function realMJ(text, look) {
@@ -1454,12 +1398,12 @@
   // ---- State ----------------------------------------------------------------------
   var S = { looks: null, variety: null, loading: null, el: null, api: null, q: "", group: "All", sel: null, idea: "", groupScene: false, people: 1, castMix: "women", tab: "mj", heat: "tease", cam: "platform", cleanSkin: true, beauty: false, style: "none", twerk: false, mash: false, fresh: false, crowd: false, multitone: false, eye: "regular", result: null, last: {}, notice: "", _forceAdult: null, examples: null };
   function load() {
-    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "noir", "psych", "anatomy", "noAi", "realPorn", "neon", "neonPick", "room", "antiGeneric", "uniqueFaces", "eyeSet", "dnaW", "artOn", "artCat", "artLast", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
+    try { var j = JSON.parse(localStorage.getItem(STORE) || "{}"); ["group", "sel", "idea", "groupScene", "people", "castMix", "tab", "heat", "cam", "cleanSkin", "beauty", "style", "twerk", "mash", "fresh", "crowd", "multitone", "eye", "noir", "psych", "anatomy", "noAi", "realPorn", "neon", "neonPick", "room", "antiGeneric", "dnaW", "artOn", "artCat", "artLast", "result"].forEach(function (k) { if (j[k] !== undefined) S[k] = j[k]; });
       if (j.people === undefined && j.groupScene) S.people = 2;
       S.people = Math.max(1, Math.min(PEOPLE_MAX, parseInt(S.people, 10) || 1)); S.groupScene = S.people > 1; } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ anatomy: anatomyOn(), noAi: noAiOn(), realPorn: realPornOn(), neon: neonMode(), neonPick: neonPick(), room: roomMode(), antiGeneric: agOn(), uniqueFaces: uniqueOn(), eyeSet: eyeExplicit(), dnaW: dnaW(), artOn: S.artOn === true, artCat: artCat(), artLast: S.artLast || "", psych: psychMood(), noir: false, group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ anatomy: anatomyOn(), noAi: noAiOn(), realPorn: realPornOn(), neon: neonMode(), neonPick: neonPick(), room: roomMode(), antiGeneric: agOn(), dnaW: dnaW(), artOn: S.artOn === true, artCat: artCat(), artLast: S.artLast || "", psych: psychMood(), noir: false, group: S.group, sel: S.sel, idea: S.idea, groupScene: S.groupScene, people: S.people, castMix: S.castMix, tab: S.tab, heat: S.heat, cam: S.cam, cleanSkin: S.cleanSkin !== false, beauty: S.beauty === true, style: S.style, twerk: S.twerk === true, mash: S.mash === true, fresh: S.fresh === true, crowd: S.crowd === true, multitone: S.multitone === true, eye: eyeMode(), result: S.result })); } catch (e) {}
   }
   function isAdult() { if (S._forceAdult != null) return !!S._forceAdult; try { return !!(S.api && S.api.current && S.api.current.isAdult); } catch (e) { return false; } }
   function lookById(id) { return (S.looks || []).find(function (l) { return l.id === id; }) || null; }
@@ -1473,8 +1417,7 @@
     S.loading = Promise.all([
       fetch("./assets/data/looks.json?v=" + V).then(function (r) { if (!r.ok) throw new Error("looks " + r.status); return r.json(); }),
       fetch("./assets/data/variety.json?v=" + V).then(function (r) { if (!r.ok) throw new Error("variety " + r.status); return r.json(); })
-      , fetch("./assets/data/faces.json?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-    ]).then(function (a) { S.looks = a[0]; S.variety = a[1]; FACES = a[2]; });
+    ]).then(function (a) { S.looks = a[0]; S.variety = a[1]; });
     // Focus DNA per platform (optional file; looks still work without it).
     S.loadingArt = fetch("./assets/data/art-by.json?v=" + V).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { ART = j; }).catch(function () { ART = null; });
     S.loadingDNA = fetch("./assets/data/focus-dna.json?v=" + V).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { FOCUS_DNA = j || {}; }).catch(function () { FOCUS_DNA = {}; });
@@ -1618,7 +1561,6 @@
     styleCast(look, cast);
     freshCast(look, cast);
     toneCast(look, cast);
-    faceCast(look, cast);
     eyeCast(look, cast);
     S.last = cast[0]; S._cast = cast;
     return cast;
@@ -2096,7 +2038,7 @@
     EYES.forEach(function (e) {
       var on = eyeMode() === e[0];
       ey.appendChild(h("button", { cls: "pml-btn pml-style pml-eye" + (on ? " on" : ""), type: "button", role: "radio", "aria-checked": on ? "true" : "false", "data-eye": e[0], text: e[1],
-        on: { click: function () { S.eye = e[0]; S.eyeSet = true; save(); renderPanel(); } } }));
+        on: { click: function () { S.eye = e[0]; save(); renderPanel(); } } }));
     });
     ey.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: { regular: "brown \u00b7 dark brown (most common)", hazel: "hazel shades", green: "green shades", blue: "blue shades", gray: "gray shades", hetero: "two different colors", exotic: "random mix (any color)" }[eyeMode()] }));
     if (S.result && (S.result.eye || "regular") !== eyeMode()) ey.appendChild(h("span", { cls: "pml-k", style: "letter-spacing:.12em", text: "applies on next Remix" }));
@@ -2141,9 +2083,6 @@
       h("button", { cls: "pml-toggle pml-skin" + (agOn() ? " on" : ""), type: "button", "data-pm": "look-antigeneric-toggle", "aria-pressed": agOn() ? "true" : "false",
         title: "Anti-Generic Prime: your idea + the look's signature DNA go first at the Focus DNA weight (Video opens with 'Must show'), 1-2 oddly specific real-life details each Remix, and anti-generic negatives. Adults 21+",
         on: { click: function () { S.antiGeneric = !agOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Anti-Generic Prime"]),
-      h("button", { cls: "pml-toggle pml-skin" + (uniqueOn() ? " on" : ""), type: "button", "data-pm": "look-uniquefaces-toggle", "aria-pressed": uniqueOn() ? "true" : "false",
-        title: "Face Builder: every person gets a new combination of face shape, eyes (heritage-matched color unless you pick an Eyes button), brows, nose, lips, jaw + 4-6 distinctive traits; no repeat within 20 Remixes. Adults 21+",
-        on: { click: function () { S.uniqueFaces = !uniqueOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Unique Faces"]),
       isAdult() ? h("button", { cls: "pml-toggle pml-skin" + (realPornOn() ? " on" : ""), type: "button", "data-pm": "look-realporn-toggle", "aria-pressed": realPornOn() ? "true" : "false",
         title: "18+ mode only: real adult-production / amateur footage realism (practical on-set light, real bodies and skin, candid moments). Never overrides Focus DNA or the lighting rotation. Adults 21+ only",
         on: { click: function () { S.realPorn = !realPornOn(); save(); renderPanel(); } } }, [h("span", { cls: "pml-sw" }), "Real Porn Look"]) : null,
@@ -2331,15 +2270,15 @@
       h: h, copyText: copyText, applyBank: applyBank, CSS: CSS
     },
     _run: function (id, idea, o) {
-      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye, S.noir, S.psych, S.anatomy, S.dnaW, S.noAi, S.realPorn, S.neon, S.neonPick, S.room, S.antiGeneric, S.uniqueFaces, S.eyeSet];
-      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; S.noir = false; S.psych = o.psych || (o.noir ? "noir" : ""); S.anatomy = o.anatomy !== false; S.noAi = o.noAi !== false; S.realPorn = o.realPorn !== false; S.neon = o.neon || "rotate"; S.neonPick = o.neonPick || "hot pink"; S.room = o.room || "random"; S.antiGeneric = o.antiGeneric !== false; S.uniqueFaces = o.uniqueFaces !== false; S.eyeSet = !!o.eyeSet; S.dnaW = o.weight || "normal"; S._noirUsed = ""; var keepArt = [S.artOn, S.artCat]; S.artOn = !!o.art; S.artCat = o.artCat || "all"; mashRoll();
+      o = o || {}; var l = lookById(id), keep = [S.heat, S.groupScene, S._forceAdult, S.cam, S.cleanSkin, S.people, S.castMix, S.beauty, S.style, S.twerk, S.mash, S.fresh, S.crowd, S.multitone, S.eye, S.noir, S.psych, S.anatomy, S.dnaW, S.noAi, S.realPorn, S.neon, S.neonPick, S.room, S.antiGeneric];
+      S.heat = o.heat || "tease"; S.cam = o.cam === "iphone" ? "iphone" : "platform"; S.cleanSkin = o.clean == null ? S.cleanSkin : !!o.clean; S.beauty = o.beauty == null ? S.beauty : !!o.beauty; S.style = o.style || "club"; S.twerk = !!o.twerk; S.mash = !!o.mash; S.fresh = !!o.fresh; S.crowd = !!o.crowd; S.multitone = !!o.multitone; S.eye = o.eye || "regular"; S.noir = false; S.psych = o.psych || (o.noir ? "noir" : ""); S.anatomy = o.anatomy !== false; S.noAi = o.noAi !== false; S.realPorn = o.realPorn !== false; S.neon = o.neon || "rotate"; S.neonPick = o.neonPick || "hot pink"; S.room = o.room || "random"; S.antiGeneric = o.antiGeneric !== false; S.dnaW = o.weight || "normal"; S._noirUsed = ""; var keepArt = [S.artOn, S.artCat]; S.artOn = !!o.art; S.artCat = o.artCat || "all"; mashRoll();
       S.people = Math.max(1, Math.min(PEOPLE_MAX, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text); S._ideaNow = i; var heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
       var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags }; if (S._artUsed) res.params = artNo(res.params);
       var out = compose(res);
-      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S.noAi = keep[19]; S.realPorn = keep[20]; S.neon = keep[21]; S.neonPick = keep[22]; S.room = keep[23]; S.antiGeneric = keep[24]; S.uniqueFaces = keep[25]; S.eyeSet = keep[26]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
-      return o.full ? { faces: (S._cast || []).map(function (c) { return { sig: c._faceSig || "", eyes: c.eyes, micro: c.micro, heritage: c.heritageRegion, tone: c.skinTone, man: !!c.man }; }), details: (S._agUsed || []).slice(), neon: S._neonUsed || "brand", room: S._roomUsed || "", art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
+      S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S.noAi = keep[19]; S.realPorn = keep[20]; S.neon = keep[21]; S.neonPick = keep[22]; S.room = keep[23]; S.antiGeneric = keep[24]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
+      return o.full ? { details: (S._agUsed || []).slice(), neon: S._neonUsed || "brand", room: S._roomUsed || "", art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
     }
   };
   window.addEventListener("pm:clear-all", onClearAll);
