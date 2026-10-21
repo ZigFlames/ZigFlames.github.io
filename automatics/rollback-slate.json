@@ -1,13 +1,21 @@
 {
   "current": {
-    "id": "20261006-2233-9c0072d",
-    "commit": "9c0072d",
-    "iso": "2026-10-06T22:33:43-04:00",
-    "version": "v1.3.0+20261006",
-    "notes": "AUTOMATICS: always-latest entries \u2014 NetworkFirst HTML, vanity /go/automatics, Safe Open tip",
+    "id": "20261021-1323-64ab367",
+    "commit": "64ab367",
+    "iso": "2026-10-21T13:23:32-04:00",
+    "version": "v1.3.4+20261021",
+    "notes": "AUTOMATICS v1.3.4: SampleFocus bar at top of Capture (search in key, Load download, paste link, recents)",
     "path": ""
   },
   "builds": [
+    {
+      "id": "20261013-2134-fe695ba",
+      "commit": "fe695ba",
+      "iso": "2026-10-13T21:34:06-04:00",
+      "version": "v1.3.3+20261013",
+      "notes": "AUTOMATICS v1.3.3: Key/Range Finder + Bass Machine (snapshot taken before v1.3.4 deploy)",
+      "path": "snapshots/20261013-2134-fe695ba/"
+    },
     {
       "id": "20261006-2208-c343667",
       "commit": "c343667",
