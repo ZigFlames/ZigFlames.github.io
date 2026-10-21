@@ -1,13 +1,21 @@
 {
   "current": {
-    "id": "20261021-1323-64ab367",
-    "commit": "64ab367",
-    "iso": "2026-10-21T13:23:32-04:00",
-    "version": "v1.3.4+20261021",
-    "notes": "AUTOMATICS v1.3.4: SampleFocus bar at top of Capture (search in key, Load download, paste link, recents)",
+    "id": "20261021-1347-63c8f81",
+    "commit": "63c8f81",
+    "iso": "2026-10-21T13:47:21-04:00",
+    "version": "v1.3.5+20261021",
+    "notes": "AUTOMATICS v1.3.5: Bridge rework (Melodic flip / Breakdown / Half-time, in-key phrase, bass follows, riser into hook)",
     "path": ""
   },
   "builds": [
+    {
+      "id": "20261021-1323-64ab367",
+      "commit": "64ab367",
+      "iso": "2026-10-21T13:23:32-04:00",
+      "version": "v1.3.4+20261021",
+      "notes": "AUTOMATICS v1.3.4: SampleFocus bar at top of Capture (search in key, Load download, paste link, recents) (snapshot taken before v1.3.5 deploy)",
+      "path": "snapshots/20261021-1323-64ab367/"
+    },
     {
       "id": "20261013-2134-fe695ba",
       "commit": "fe695ba",
