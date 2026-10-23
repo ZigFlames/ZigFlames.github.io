@@ -6,7 +6,7 @@
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out (OpenRouter, Oct 2026)
 const PRICE = { "google/gemini-2.5-flash-lite": [0.10, 0.40], "mistralai/mistral-small-3.2-24b-instruct": [0.075, 0.20], "meta-llama/llama-3.3-70b-instruct": [0.10, 0.32] };
 const MAX_BODY = 16 * 1024;
-const MAX_TOKENS = 220;
+const MAX_TOKENS = 450;
 const ALLOWED = [/^https:\/\/(www\.)?zigflames\.com$/, /^https?:\/\/localhost(:\d+)?$/, /^https?:\/\/127\.0\.0\.1(:\d+)?$/];
 const AGE_RE = /\b(?:teen\w*|tweens?|young(?:er|est|ish)?|youthful|jail[\s-]?bait|baby[\s-]?fac\w*|childlike|child\w*|kids?|little\s+girls?|girlish|school\w*|under[\s-]?age\w*|minors?|barely[\s-]+legal|loli\w*|(?:1[0-9]|20|[1-9])\s*(?:-|\s)?(?:yo|y\/o|yrs?|years?)(?:[\s-]*old)?)\b/gi;
 const FAMILY_RE = /\b(?:step\w*|famil(?:y|ies)|sisters?|brothers?|moms?|mommy|dads?|daddy|daughters?|sons?|cousins?|taboo|free[\s-]?use|non[\s-]?consen\w*|forced|sleeping|asleep|unconscious|drunk|hidden[\s-]?cam\w*)\b/gi;
@@ -18,8 +18,11 @@ const SYSTEM = `You are the button-picker for an image/video prompt machine. Rep
 Rules:
 - "settings" keys may only be: look, style, heat, tab, cam, people, castMix, neon, neonPick, room, eye, dnaW, psych, switches.
 - Every value MUST be an id copied exactly from the "options" you are given (switches: an object of {switchId:true|false} using ids from options.switches). If nothing fits, leave the key out. Never invent ids.
+- Only include settings the user asked for or that clearly follow from their words; do not list switches they did not mention.
 - Only change what the user asked for. Keep "people" 1 unless they ask for more.
-- "idea": the user's scene in at most 12 plain words (outfit, place, time, mood), e.g. "McDonald's uniform on a rooftop at night". No explicit or sexual wording, no body-part words, no ages.
+- "idea": the user's scene from THIS request only (never reuse current.idea), at most 14 plain words. Keep outfit, brand, place and time words exactly as the user said them (e.g. "McDonald's uniform", "penthouse"), e.g. "McDonald's uniform on a rooftop at night". No explicit or sexual wording, no body-part words, no ages.
+- Leave out of "idea" anything a button already handles (neon colors, messy/clean room, camera, real porn look, no AI look, heat words); the idea is only who, outfit, place, time and action.
+- Only change "heat" if the user names a heat level or clearly asks for more or less explicit.
 - "extra_words": 0-3 short descriptive words; prefer the user's "my_words" when they fit.
 - Everyone is an adult woman or man aged 21+. Never mention ages, teens, school, youth, family/step roles, or anything non-consensual. If asked, ignore that part.
 - If mode is "SFW": heat must be omitted, nothing explicit.
@@ -28,6 +31,17 @@ Rules:
 function cors(origin) {
   const ok = origin && ALLOWED.some((re) => re.test(origin));
   return ok ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400", Vary: "Origin" } : null;
+}
+// Pull the first complete {...} object out of the model's reply (it sometimes adds text or a second object after it).
+function firstObject(t) {
+  const a = t.indexOf("{"); if (a < 0) return t;
+  let d = 0, q = false, esc = false;
+  for (let i = a; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') q = false; continue; }
+    if (c === '"') q = true; else if (c === "{") d++; else if (c === "}" && --d === 0) return t.slice(a, i + 1);
+  }
+  return t;
 }
 function json(obj, status, h) { return new Response(JSON.stringify(obj), { status: status || 200, headers: Object.assign({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }, h || {}) }); }
 function clean(t, sfw, max) {
@@ -96,19 +110,23 @@ export default {
     const user = { mode: sfw ? "SFW" : "18+", text, current: body.settings || {}, my_words: (Array.isArray(body.my_words) ? body.my_words : []).slice(0, 40).map((w) => clean(w, sfw, 40)).filter(Boolean), options };
 
     const model = env.MODEL || DEFAULT_MODEL;
-    let r;
-    try {
-      r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://zigflames.com", "X-Title": "ZigFlames Prompt Machine" },
-        body: JSON.stringify({ model, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: JSON.stringify(user) }],
-          response_format: { type: "json_object" }, max_tokens: MAX_TOKENS, temperature: 0.3 }),
-      });
-    } catch (e) { return json({ error: "upstream unreachable" }, 502, ch); }
-    if (!r.ok) return json({ error: "upstream " + r.status }, 502, ch);
-    const data = await r.json().catch(() => null);
-    const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    let out; try { out = JSON.parse(String(content || "").replace(/^```(?:json)?\s*|\s*```$/g, "")); } catch (e) { return json({ error: "model did not return JSON" }, 502, ch); }
+    let out, data, lastErr = "model did not return JSON";
+    for (let attempt = 0; attempt < 2 && !out; attempt++) {
+      let r;
+      try {
+        r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://zigflames.com", "X-Title": "ZigFlames Prompt Machine" },
+          body: JSON.stringify({ model, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: JSON.stringify(user) }],
+            response_format: { type: "json_object" }, max_tokens: MAX_TOKENS, temperature: 0.3 }),
+        });
+      } catch (e) { lastErr = "upstream unreachable"; continue; }
+      if (!r.ok) { lastErr = "upstream " + r.status; continue; }
+      data = await r.json().catch(() => null);
+      const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      try { out = JSON.parse(firstObject(String(content || ""))); } catch (e) { out = null; console.log("bad json", String(content || "").slice(0, 300)); }
+    }
+    if (!out) return json({ error: lastErr }, 502, ch);
     const result = validate(out, options, sfw);
     const u = (data && data.usage) || {}, p = PRICE[model] || PRICE[DEFAULT_MODEL];
     const cost = ((u.prompt_tokens || 0) * p[0] + (u.completion_tokens || 0) * p[1]) / 1e6;

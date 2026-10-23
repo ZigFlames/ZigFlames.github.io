@@ -7,7 +7,7 @@
   "use strict";
   // Set this to your Cloudflare Worker URL after deploying /ai-worker (e.g. "https://zigflames-ai.<you>.workers.dev").
   // Empty = "AI not connected yet": the free local keyword matcher is used instead.
-  var AI_ENDPOINT = "";
+  var AI_ENDPOINT = "https://zigflames-ai.zigflames.workers.dev";
   function endpoint() {
     try { if (typeof window.PM_AI_ENDPOINT === "string") return window.PM_AI_ENDPOINT; } catch (e) {}
     try { var o = localStorage.getItem("pm_ai_endpoint"); if (o) return o; } catch (e) {}   // dev/test override
@@ -199,7 +199,8 @@
           .filter(function (x, i, a) { return x && a.indexOf(x) === i; });
         // The Neon control only recolors neon a look already has; when the user asked for a colour, make sure it shows up.
         if (res.applied && res.applied.neonPick && !/\bneon\b/i.test(ideaParts.join(" "))) ideaParts.push(res.applied.neonPick + " neon glow");
-        var idea = api.safe(ideaParts.join(", "), adult, 180);
+        var seenW = {};
+        var idea = api.safe(ideaParts.join(", ").split(/\s*,\s*/).filter(function (x) { var k = x.toLowerCase().trim(); if (!k || seenW[k]) return false; seenW[k] = 1; return true; }).join(", "), adult, 180);
         var out = api.make(idea);
         var cur = api.current();
         var head = r.source === "ai" ? "AI picked the buttons." : (url ? "" : "AI not connected yet \u2014 used the quick keyword matcher.");
@@ -269,5 +270,5 @@
     drawWords();
   }
 
-  window.PMAITalk = { mount: mount, localMatch: localMatch, endpoint: endpoint, version: "20261023a" };
+  window.PMAITalk = { mount: mount, localMatch: localMatch, endpoint: endpoint, version: "20261023b" };
 })();
