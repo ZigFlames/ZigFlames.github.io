@@ -1,0 +1,23 @@
+# ZigFlames "Talk to it" AI worker. Deploy from this folder: `npx wrangler deploy`
+name = "zigflames-ai"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+# Cheap JSON-capable model on OpenRouter (verified Oct 2026: $0.10/M input, $0.40/M output).
+# Alternatives: "mistralai/mistral-small-3.2-24b-instruct", "meta-llama/llama-3.3-70b-instruct"
+MODEL = "google/gemini-2.5-flash-lite"
+RATE_LIMIT_PER_MIN = "20"
+
+# Per-IP rate limit (Workers Rate Limiting binding; needs wrangler >= 4.36).
+# If your account/wrangler doesn't support it, delete this block: worker.js falls back to an in-memory limiter.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+# Secret (NOT in this file): npx wrangler secret put OPENROUTER_API_KEY

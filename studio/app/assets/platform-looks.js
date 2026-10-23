@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261015d";
+  var V = "20261023a";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -471,8 +471,8 @@
     if (!dnaRich(look)) return [];
     var rot = dnaEntry(look).rotate || {}, heat = heatFor(look), out = [];
     var sabOn = walkStyle(look);   // the style owns set + wardrobe
-    var ideaFit = ideaOutfit(S._ideaNow);
-    Object.keys(rot).forEach(function (k) { if (sabOn && /^(location|wardrobe|setting|outfit)$/.test(k)) return; if (ideaFit && /^(wardrobe|outfit|styling)$/.test(k)) return; var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (k === "location" && t) S._dnaLoc = t; if (t && !(sabOn && walkMuted(t))) out.push(t); });
+    var ideaFit = ideaOutfit(S._ideaNow), ideaSetR = !sabOn && ideaSetting(S._ideaNow);
+    Object.keys(rot).forEach(function (k) { if (sabOn && /^(location|wardrobe|setting|outfit)$/.test(k)) return; if (ideaFit && /^(wardrobe|outfit|styling)$/.test(k)) return; if (ideaSetR && /^(location|setting|scene|venue)$/.test(k)) return; var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (k === "location" && t) S._dnaLoc = t; if (t && !(sabOn && walkMuted(t))) out.push(t); });
     S._dnaLast = out.join(", ");
     return out;
   }
@@ -574,14 +574,22 @@
     [/\bunmade (bed|sheets)\b/gi, "neatly made $1"], [/\brumpled (sheets|linen|bed)\b/gi, "crisp fresh $1"], [/\blived-in\b/gi, "tidy, styled"], [/\bgritty and tidy, styled\b/gi, "gritty and tidy"]];
   var MESSY_RE = /\b(messy (apartment|room|bedroom|house|kitchen|motel room|dorm)|cluttered|real clutter|unmade (bed|sheets)|rumpled (sheets|linen|bed)|lived-in|clothes on the floor)\b/i;
   var INDOOR_RE = /\b(bedroom|apartment|hotel room|motel|dorm|living room|couch|bed|kitchen)\b/i;
+  var IDEA_INDOOR_RE = /\b(bedroom|apartment|hotel room|motel|living room|kitchen|bathroom|office|locker room|dressing room|laundromat|garage|basement)\b/i;
   var MESSY_MJ = "messy lived-in room, unmade bed, clothes on the floor";
   var MESSY_VIDEO = "Room: messy lived-in room, unmade bed, clothes on the floor.";
   function roomText(text, look, tab) {
     if (walkStyle(look) || S.style === "sabaddie" || S.style === "roomwalk") return text;
     if (S._roomUsed === "clean") { CLEAN_SWAP.forEach(function (x) { text = text.replace(x[0], x[1]); }); return text; }
     // indoor check only on the ROLLED scene (rotated DNA location > venue / Setting), never the look's whole set list
-    var scene = (dnaRich(look) && S._dnaLoc) || (tab === "video" && (text.match(/\bSetting: ([^.]*)/) || [])[1]) || S._venueNow || "";
-    if (S._roomUsed === "messy" && INDOOR_RE.test(scene) && !MESSY_RE.test(text)) {
+    var ideaSp = settingPhrase(S._ideaNow);   // the idea's setting wins: Messy is judged against it
+    var scene = ideaSp || (dnaRich(look) && S._dnaLoc) || (tab === "video" && (text.match(/\bSetting: ([^.]*)/) || [])[1]) || S._venueNow || "";
+    if (S._roomUsed === "messy" && (INDOOR_RE.test(scene) || (ideaSp && IDEA_INDOOR_RE.test(scene))) && !MESSY_RE.test(text)) {
+      if (ideaSp && !/\b(bedroom|bed|motel|hotel room|dorm)\b/i.test(ideaSp)) {
+        var core = ideaSp.replace(/\s+(?:at|in|during|after|by)\s+.*$/i, ""), mj2 = "messy lived-in " + core + ", real clutter, clothes on the floor";
+        if (tab === "video") { var tl = /\s*adult 21\+\.?\s*$/; return tl.test(text) ? text.replace(tl, " Room: " + mj2 + ". adult 21+.") : text + " Room: " + mj2 + "."; }
+        var m2 = text.match(/::[0-9.]+\s*$/);
+        return m2 ? text.slice(0, m2.index) + ", " + mj2 + m2[0] : text.replace(/[,\s]+$/, "") + ", " + mj2;
+      }
       if (tab === "video") { var tail = /\s*adult 21\+\.?\s*$/; return tail.test(text) ? text.replace(tail, " " + MESSY_VIDEO + " adult 21+.") : text + " " + MESSY_VIDEO; }
       var m = text.match(/::[0-9.]+\s*$/);
       return m ? text.slice(0, m.index) + ", " + MESSY_MJ + m[0] : text.replace(/[,\s]+$/, "") + ", " + MESSY_MJ;
@@ -635,12 +643,16 @@
   function agDetails(look) {
     var pool = AG_DETAILS.concat(agCleanRoom(look) ? [] : AG_CLUTTER), out = [], n = Math.random() < 0.5 ? 1 : 2;
     if (ideaOutfit(S._ideaNow)) pool = pool.filter(function (d) { return !new RegExp("\\b" + OTHER_GARMENT + "\\b|\\b(bra strap|jacket|socks|hoodie)\\b", "i").test(d); });   // idea outfit: no other garments
+    var spD = !agCleanRoomWalk(look) && settingPhrase(S._ideaNow);
+    if (spD) { var reD = settingScrubRe(spD); pool = pool.filter(function (d) { return !reD.test(d); }); }   // idea setting: no details from another room
     while (out.length < n) { var d = pick(pool, AG_HOLD.concat(out)); if (out.indexOf(d) < 0) out.push(d); }
     AG_HOLD = out.concat(AG_HOLD).slice(0, 12); S._agUsed = out; return out;
   }
   function agMust(look) {
     var idea = String(S._ideaNow || "").trim(), dna = focusDnaRaw(look).map(cleanDnaToken).filter(Boolean).slice(0, 3);
     if (S._roomUsed === "clean" && !agCleanRoomWalk(look)) dna = dna.map(function (t) { CLEAN_SWAP.forEach(function (x) { t = t.replace(x[0], x[1]); }); return t; });
+    var spM = !agCleanRoomWalk(look) && settingPhrase(idea);
+    if (spM) { var reM = settingScrubRe(spM); dna = dna.filter(function (t) { return !reM.test(t) || S._setKeep.test(t); }); }
     return (idea ? [idea] : []).concat(dna);
   }
   function agCleanRoomWalk(look) { return walkStyle(look) || S.style === "sabaddie" || S.style === "roomwalk"; }
@@ -676,12 +688,87 @@
     });
     return out.replace(/:\s*,\s*/g, ": ").replace(/,\s*,/g, ",").replace(/:\s*\./g, ".").replace(/\s+,/g, ",").replace(/ {2,}/g, " ");
   }
+  // ---- Idea setting priority (Zig): the idea box names a place -> the look's rotated / pooled scene, venue and style set are
+  // dropped so nothing contradicts it; the Video "Setting:" line uses the idea's setting. Walk styles keep their own room.
+  var SETTING_WORDS = "roof ?tops?|hotel rooms?|hotel suites?|hotel lobby|hotel|hallways?|corridors?|parking (?:lots?|garages?|structures?|decks?)|parking|garages?|saunas?|steam rooms?|poolside|pools?|beach(?:es)?|offices?|kitchens?|bathrooms?|bedrooms?|living rooms?|locker rooms?|dressing rooms?|cars?|backseat|nightclubs?|clubs?|gyms?|laundromats?|motels?|balcon(?:y|ies)|streets?|alleys?|alleyways?|studios?|warehouses?|backyards?|showers?|elevators?|stairwells?|patios?|terraces?|porch|penthouses?|apartments?|lobby|diner|casino|backstage|stage|yacht|boat|forest|woods|desert|park|lake|riverside|farm|barn|subway|train|airport|jacuzzi|hot tub|spa|basement|attic|bar|lounge";
+  var SETTING_RE = new RegExp("((?:[\\w'\u2019&-]+\\s+){0,2})\\b(" + SETTING_WORDS + ")\\b((?:\\s+(?:" + SETTING_WORDS + ")\\b)*)((?:\\s+(?:at|in|during|after|by)\\s+(?:the\\s+)?(?:night|nighttime|midnight|dusk|dawn|sunset|sunrise|golden hour|noon|daytime|day))?)", "i");
+  var SET_STOP = /^(?:on|in|at|inside|into|outside|by|near|from|to|of|a|an|the|her|his|their|our|my|this|that|some|empty|wearing|and|with|while|then)$/i;
+  function ideaSetting(idea) { return !!settingPhrase(idea); }
+  function settingPhrase(idea) {
+    var t = String(idea || ""); if (!t) return "";
+    if (S._setIdeaKey === t) return S._setIdeaVal;
+    var m = t.match(SETTING_RE), out = "";
+    if (m && !/^\s*car\s+keys?\b/i.test(t.slice(m.index + m[1].length))) {
+      var lead = m[1].trim().split(/\s+/).filter(Boolean), keep = [];
+      for (var i = lead.length - 1; i >= 0; i--) { if (SET_STOP.test(lead[i])) break; keep.unshift(lead[i]); }
+      if (keep.length && OUTFIT_RE.test(keep.join(" "))) keep = [];
+      out = (keep.join(" ") + " " + m[2] + m[3] + m[4]).replace(/\s+/g, " ").trim();
+    }
+    S._setIdeaKey = t; S._setIdeaVal = out; return out;
+  }
+  function ideaSetOr(x) { var sp = settingPhrase(S._ideaNow); return sp || x; }
+  // place nouns that contradict a different idea setting (positives only)
+  var PLACE_LIST = ["bedrooms?", "bathrooms?", "kitchens?", "living[ -]rooms?", "dining rooms?", "couch(?:es)?", "sofas?", "unmade bed", "the bed", "a bed", "her bed", "beds", "bedside", "nightstands?", "headboards?", "mattress(?:es)?", "(?:silk |satin |rumpled |unmade )?sheets",
+    "garages?", "saunas?", "steam rooms?", "poolside", "pools?", "beach(?:es)?", "sand on (?:her |their |glistening )?skin", "sand", "offices?", "cars?(?! keys)", "backseat", "nightclubs?", "club floor", "dance floor", "gyms?", "laundromats?", "motels?", "balcon(?:y|ies)",
+    "parking (?:lots?|garages?|structures?|decks?)", "streets?", "street-pickup", "bed level", "mansions?", "mansion-party", "estates?", "arena", "ryokan", "hostel", "pub", "vans?", "taxis?", "limousines?", "cabins?", "condos?", "classrooms?", "rooms?", "locations?", "(?<!\\b(?:lingerie|lace|bikini|workout|pajama|yoga|athleisure|velour|satin|linen|knit|latex|co-ord|matching|bralette|sporty|sports|strappy|coordinated|phone|color|no|a|full|gym|two-piece|bra|swim|tennis|track|sweat|lounge|ribbed|outfit|designer|neon)\\s)[a-z-]+ sets?", "red carpet", "limos?", "sound-stage", "bar[- ]stools?", "alleys?", "alleyways?", "studio sets?", "photo studio", "studio backdrop", "home studio", "hot studio", "studio flats?", "recording studio", "in a studio", "locker rooms?", "warehouses?", "backyards?",
+    "ballrooms?", "backstage", "(?:wide|contest|bikini contest|club|on|a|the) stage", "stage with", "apartments?", "shared flat", "hotel rooms?", "hotel suites?", "suites?", "hotels?", "lobby", "showers?", "bathtubs?", "jacuzzi", "hot tub", "lounge set", "lounge", "dive bar", "cocktail bar", "bar counter", "vip booth",
+    "porch(?:es)?", "farm\\w*", "barns?", "open field", "grass field", "corn ?field", "basement", "patios?", "terraces?", "lawn", "yard", "dressing rooms?", "vanity", "villas?", "penthouses?", "loft(?: set)?", "tatami room", "house-party", "houses?", "homes", "rooftops?", "roof", "hallways?", "corridors?",
+    "elevators?", "stairwells?", "tiled floor", "living-room", "runway", "catwalk", "caf\u00e9s?", "cafes?", "diner", "starship", "spaceship", "forest", "jungle", "desert", "lake", "yacht", "boat", "casino", "subway", "train", "airport", "warehouse", "abandoned-house", "interiors?", "window daylight", "blinds"];
+  var OUTDOOR_SET = /\b(roof ?tops?|roof|beach|poolside|streets?|alleys?|alleyways?|parking lots?|backyards?|balcon\w+|patio|terrace|porch|forest|woods|desert|park|lake|riverside|farm|yacht|boat)\b/i;
+  var SET_SYN = { rooftop: "roof", roof: "rooftop", hallway: "corridor", corridor: "hallway", pool: "poolside", poolside: "pool", car: "backseat", club: "nightclub|club floor|dance floor", nightclub: "club|dance floor", hotel: "hotels?", bedroom: "bed|sheets|nightstand|headboard|mattress|room", motel: "bed|sheets|nightstand|room", bathroom: "room", kitchen: "room", beach: "sand", apartment: "apartments?", studio: "studio" };
+  function settingKeep(sp) {
+    var w = (sp.toLowerCase().match(new RegExp("\\b(" + SETTING_WORDS + ")\\b", "gi")) || []).map(function (x) { return x.toLowerCase().replace(/s$/, ""); });
+    var extra = []; w.forEach(function (x) { if (SET_SYN[x]) extra.push(SET_SYN[x]); });
+    return w.concat(extra);
+  }
+  function settingScrubRe(sp) {
+    if (S._setReKey === sp) return S._setRe;
+    var keep = new RegExp("\\b(?:" + settingKeep(sp).join("|") + ")s?\\b", "i");
+    var list = PLACE_LIST.filter(function (x) { var probe = x.replace(/\(\?[^)]*\)|[?\\\[\]()|*+]/g, " ").replace(/\s+/g, " ").trim(); return !probe.split(/[ -]/).filter(function (w) { return !/^(a|the|her|on|in|with|of|and)$/i.test(w); }).every(function (w) { return keep.test(w); }); });
+    list.push(OUTDOOR_SET.test(sp) ? "indoors?|indoor venue|indoor" : "outdoors?|outdoor|open air|sunlit exterior|exteriors?");
+    S._setReKey = sp; S._setRe = new RegExp("\\b(?:" + list.join("|") + ")\\b", "i"); S._setKeep = keep;
+    return S._setRe;
+  }
+  var NEON_BIT_RE = /(?:[\w-]+\s+){0,2}neon\s+[\w-]+/i;
+  function ideaSettingScrub(text, look, tab) {
+    var idea = String(S._ideaNow || "").trim(), sp = settingPhrase(idea);
+    if (!sp || walkStyle(look) || S.style === "sabaddie" || S.style === "roomwalk") return text;
+    var conf = settingScrubRe(sp), keep = S._setKeep, ideaL = idea.toLowerCase();
+    // negatives are never touched
+    var cut = text.search(/\s--no\s|\bAvoid:/), neg = cut >= 0 ? text.slice(cut) : "", pos = cut >= 0 ? text.slice(0, cut) : text;
+    var isConf = function (seg) { var l = seg.toLowerCase(); if (l.indexOf(ideaL) >= 0) return false; return conf.test(seg) && !(new RegExp("\\b" + sp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(seg)); };
+    if (tab === "video") {
+      var first = true;
+      pos = pos.replace(/(^|\.\s+)(Setting|Set|Location|Scene): ([^.]*)\.(?=\s|$)/g, function (all, pre, lab, val) {
+        if (!isConf(val) && new RegExp(sp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(val)) { first = false; return all; }
+        if (!isConf(val)) return all;
+        var neon = (val.match(NEON_BIT_RE) || [])[0];
+        if (first) { first = false; return pre + "Setting: " + sp + (neon ? ", " + neon : "") + "."; }
+        return neon ? pre + "Light: " + neon + "." : pre.replace(/\s+$/, " ");
+      });
+      if (!/\bSetting: /.test(pos)) {
+        var at = pos.search(/\s(?:Light: |Camera: |Keys: |Aspect \d)/);
+        pos = at > 0 ? pos.slice(0, at) + " Setting: " + sp + "." + pos.slice(at) : pos.replace(/\s*(adult 21\+\.?)?\s*$/, function (m0, t21) { return " Setting: " + sp + "." + (t21 ? " " + t21 : ""); });
+      }
+    }
+    // comma / semicolon / label segments: drop the ones that name another place (keep the idea, its setting and any neon)
+    pos = pos.replace(/(^|,|;|(?<!:):(?!:)|\u2014|\.(?=\s)|::[0-9.]+(?=\s))(\s*)([^,;.:\u2014]+)/g, function (all, sep, sp2, seg) {
+      if (!isConf(seg) || /21\+/.test(seg)) return all;
+      if (/::\s*$/.test(seg)) return all;
+      var neon = (seg.match(NEON_BIT_RE) || [])[0];
+      if (neon && !conf.test(neon)) return sep + sp2 + neon;
+      return sep === ":" || sep === "." || sep.indexOf("::") === 0 ? sep + (sep.indexOf("::") === 0 ? " " : "") : "";
+    });
+    pos = pos.replace(/\s+[\u2014-]\s*(?=[.,;]|$)/g, "").replace(/:\s*[,;]\s*/g, ": ").replace(/([,;])\s*[,;]/g, "$1").replace(/(^|\.\s+)[A-Z][\w ()-]{0,40}:\s*\./g, "$1").replace(/:\s*\./g, ".")
+      .replace(/\s+([,;])/g, "$1").replace(/([.:])\s*[,;]\s*/g, "$1 ").replace(/^[,;\s]+/, "").replace(/,\s*(::[0-9.]+)/g, "$1").replace(/(::[0-9.]+)\s*[,;]\s*/g, "$1 ").replace(/ {2,}/g, " ");
+    return pos + neg;
+  }
   function realNoTerms(look, body) {
     var t = (realLook(look) && noAiOn() ? NOAI_NO : []).concat(realPornActive(look) ? REALP_NO : []).concat(agOn() ? AG_NO : []).concat(uniqueOn() ? ["same face", "generic face", "cloned faces"] : []);
     return noConflict(t, body);
   }
   function realMJ(text, look) {
-    text = agMJ(ideaOutfitScrub(neonRoom(text, look, "mj")), look); S._lastBody = text; if (!realLook(look)) return text;
+    text = myMixMJ(ideaSettingScrub(agMJ(ideaOutfitScrub(neonRoom(text, look, "mj")), look), look, "mj")); S._lastBody = text; if (!realLook(look)) return text;
     var add = (noAiOn() ? [NOAI_MJ] : []).concat(realPornActive(look) ? [REALP_MJ] : []);
     if (!add.length) return text;
     var m = text.match(/::[0-9.]+\s*$/);
@@ -689,7 +776,7 @@
     S._lastBody = out; return out;
   }
   function realVideo(text, look) {
-    text = agVideo(ideaOutfitScrub(neonRoom(text, look, "video")), look); S._lastBody = text;
+    text = myMixVideo(ideaSettingScrub(agVideo(ideaOutfitScrub(neonRoom(text, look, "video")), look), look, "video")); S._lastBody = text;
     var add = realLook(look) ? (noAiOn() ? [NOAI_VIDEO] : []).concat(realPornActive(look) ? [REALP_VIDEO] : []) : [];
     var no = realNoTerms(look, text + " " + add.join(" "));
     S._lastBody = text + " " + add.join(" ");   // positives only, so the --no params get the same terms as the Avoid line
@@ -1122,7 +1209,7 @@
     }
     var ideaW = ideaOutfit(idea) ? wardrobeFor(idea, heat, cast[0]).text : "";   // idea outfit wins for tryouts / rural / contest
     if (st === "tryouts") {
-      var set = pick(TRYOUTS.set); S._venueNow = set; var act = ideaW ? ideaW + ", walking back and forth, stripping off at the end in heels" : TRYOUTS.heat[heat];
+      var set = ideaSetOr(pick(TRYOUTS.set)); S._venueNow = set; var act = ideaW ? ideaW + ", walking back and forth, stripping off at the end in heels" : TRYOUTS.heat[heat];
       var models = cast.map(function (p, i) { return (cast.length > 1 ? castTag(i, cast.length, "models") + ": " : "model: ") + faceShort(p) + ", " + p.build; });
       if (tab === "video") {
         out = (idea ? "Main action (priority): " + idea + ". " : "") + "Video: " + TRYOUTS.open + ". " + (cast.length > 1 ? cast.length + " different women, each with a unique face. " : "") +
@@ -1140,17 +1227,17 @@
         var whoR = NUMW[nR] + " voluptuous rural American women in their 30s and 40s, every one a different face and skin tone, all adults 21+";
         var bodyR = "each with " + RURAL.body.replace(/, light-skinned ebony complexion/, "").replace(/\bher\b/g, "their");
         var locksR = RURAL.locks.replace("same face", "same faces");
-        if (tab === "video") out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of " + whoR + ". Body: " + bodyR + ". Cast: " + rw.join(". ") + ". Wardrobe: " + wearR + ". Set: " + RURAL.set +
+        if (tab === "video") out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of " + whoR + ". Body: " + bodyR + ". Cast: " + rw.join(". ") + ". Wardrobe: " + wearR + ". Set: " + ideaSetOr(RURAL.set) +
           ". Camera move: " + shot + ". Motion: " + RURAL.motion + ". Camera: " + RURAL.camera + ". " + locksR + ". Aspect 9:16, motion high. adult 21+.";
-        else out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of " + whoR, bodyR].concat(rw).concat([wearR, RURAL.set, shot, RURAL.motion, RURAL.camera, locksR, "adult women 21+"]).join(", ");
+        else out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of " + whoR, bodyR].concat(rw).concat([wearR, ideaSetOr(RURAL.set), shot, RURAL.motion, RURAL.camera, locksR, "adult women 21+"]).join(", ");
         out = scrubProse(out);
         return /21\+/.test(out) ? out : out + ", adult 21+";
       }
       if (tab === "video") {
-        out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of a " + RURAL.who + ". Body: " + RURAL.body + ". Face: " + ruralFace(cast[0]) + ". Wardrobe: " + wearR + ". Set: " + RURAL.set +
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + "Ultra-realistic 4K amateur video of a " + RURAL.who + ". Body: " + RURAL.body + ". Face: " + ruralFace(cast[0]) + ". Wardrobe: " + wearR + ". Set: " + ideaSetOr(RURAL.set) +
           ". Camera move: " + shot + ". Motion: " + RURAL.motion + ". Camera: " + RURAL.camera + ". " + RURAL.locks + ". Aspect 9:16, motion high. adult 21+.";
       } else {
-        out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of a " + RURAL.who, RURAL.body, ruralFace(cast[0]), wearR, RURAL.set, shot, RURAL.motion, RURAL.camera, RURAL.locks, "adult woman 21+"].join(", ");
+        out = (idea ? idea + "::2 " : "") + ["ultra-realistic 4K amateur photo of a " + RURAL.who, RURAL.body, ruralFace(cast[0]), wearR, ideaSetOr(RURAL.set), shot, RURAL.motion, RURAL.camera, RURAL.locks, "adult woman 21+"].join(", ");
       }
       out = scrubProse(out);
       return /21\+/.test(out) ? out : out + ", adult 21+";
@@ -1162,17 +1249,17 @@
       var openD = multiOn() && nD > 1 ? openD0.replace("Black women", "mixed-heritage women, every skin tone different") : openD0;
       var tailD = nD === 1 ? DUO.tail[heat].replace(/they dance/g, "she dances") : DUO.tail[heat];
       if (tab === "video") {
-        out = (idea ? "Main action (priority): " + idea + ". " : "") + openD.replace(/^photorealistic cinematic image/, "Photorealistic cinematic video") + ". Set: " + DUO.set + ". " +
+        out = (idea ? "Main action (priority): " + idea + ". " : "") + openD.replace(/^photorealistic cinematic image/, "Photorealistic cinematic video") + ". Set: " + ideaSetOr(DUO.set) + ". " +
           D2.join(". ") + ". Action: " + tailD + "; " + DUO.blur + ". Look: " + DUO.look + ". Aspect 16:9, motion high. adult 21+.";
       } else {
-        out = (idea ? idea + "::2 " : "") + [openD, DUO.set, DUO.blur].concat(D2).concat([tailD, DUO.look, nD > 1 ? "adult women 21+" : "adult woman 21+"]).join(", ");
+        out = (idea ? idea + "::2 " : "") + [openD, ideaSetOr(DUO.set), DUO.blur].concat(D2).concat([tailD, DUO.look, nD > 1 ? "adult women 21+" : "adult woman 21+"]).join(", ");
       }
       out = scrubProse(out);
       return /21\+/.test(out) ? out : out + ", adult 21+";
     }
     if (st === "contest" || st === "carib") {
       var K = st === "carib" ? CARIB : CONTEST, nat = st === "carib" ? r.heritageRegion : "Nigerian", fin = K.finish ? ", " + K.finish : "";
-      var venue = pick(K.venues); S._venueNow = venue; var act = ideaW ? ideaW + ", dancing wild" : K.heat[heat], nC = cast.length;
+      var venue = ideaSetOr(pick(K.venues)); S._venueNow = venue; var act = ideaW ? ideaW + ", dancing wild" : K.heat[heat], nC = cast.length;
       if (nC > 1) {
         var natC = multiOn() ? "mixed-heritage" : st === "carib" ? "Caribbean" : "Nigerian";
         var whoC = cast.map(function (p, i) { return castTag(i, nC, "women") + ": " + faceShort(p); });
@@ -1667,7 +1754,7 @@
     if (styleOf(look) !== "club") return assembleStyle(look, idea, Array.isArray(r) ? r : [r], heat, "mj");
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
-    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r); S._venueNow = r.venue || "";
+    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r); r.venue = ideaSetOr(r.venue); S._venueNow = r.venue || "";
     var w = wardrobeFor(idea, heat, r);
     var heritage = fill(V2.heritageFace, r), bodyTxt = bodyOf(V2, r);
     var styling = [w.text, r.makeupLevel, r.nails, r.tattoosPiercings, cleanOn() && !dna ? CLEAN_TOKEN : ""].filter(Boolean).join(", ");
@@ -1715,7 +1802,7 @@
     if (styleOf(look) !== "club") return assembleStyle(look, idea, Array.isArray(r) ? r : [r], heat, "video");
     var V2 = S.variety.slotTemplates;
     var cast = Array.isArray(r) ? r : [r]; r = cast[0];
-    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r); S._venueNow = r.venue || "";
+    var dna = dnaOn(look); if (dna) r.venue = dnaVenue(idea, r); r.venue = ideaSetOr(r.venue); S._venueNow = r.venue || "";
     var w = wardrobeFor(idea, heat, r);
     // Scrub only the look's own text; the idea is added afterwards so no filter can ever drop it.
     var rest = String(look.promptTemplate || "").replace(/^\{idea\}\s*[\u2014-]\s*/, "").replace(/\{idea\}/g, "");
@@ -1932,6 +2019,15 @@
   function toast(t, d) { try { S.api.current.toast(t, d); } catch (e) {} }
 
   var R = {}; // element refs
+  function mountAI(box) {
+    function go() { try { if (window.PMAITalk) window.PMAITalk.mount(box, window.PMLooks.ai); } catch (e) {} }
+    if (window.PMAITalk) { go(); return; }
+    if (!S._aiLoading) { S._aiLoading = []; var sc = document.createElement("script"); sc.src = "./assets/ai-talk.js?v=" + V; sc.async = true;
+      sc.onload = function () { var q = S._aiLoading || []; S._aiLoading = null; q.forEach(function (f) { f(); }); };
+      sc.onerror = function () { S._aiLoading = null; box.style.display = "none"; };
+      document.head.appendChild(sc); }
+    if (S._aiLoading) S._aiLoading.push(go);
+  }
   function render() {
     var el = S.el; if (!el) return;
     el.innerHTML = "";
@@ -1939,6 +2035,10 @@
     var root = h("div", { cls: "pml", "data-pm": "platform-looks" });
     if (!S.looks) { root.appendChild(h("div", { cls: "pml-card", text: "Loading 120 platform looks…" })); el.appendChild(root); return; }
 
+    // Talk to it (ai-talk.js fills this card; loaded on demand)
+    R.ai = h("div", { cls: "pml-card", "data-pm": "ai-talk", style: "margin-bottom:12px" });
+    root.appendChild(R.ai);
+    mountAI(R.ai);
     // Search + chips + grid
     var top = h("div", { cls: "pml-card" });
     R.search = h("input", { cls: "pml-search", type: "search", placeholder: "Search looks (e.g. vix, gonzo, magazine)…", "aria-label": "Search looks", autocomplete: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "search", "data-pm": "looks-search", on: { input: function (e) { S.q = e.target.value; renderGrid(); } } });
@@ -2260,6 +2360,119 @@
     el.style.display = ""; el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
     clearTimeout(S._focusT); S._focusT = setTimeout(function () { if (R.focus) R.focus.style.display = "none"; }, 6000);
   }
+  // ---- Talk to it (AI assistant bridge) -------------------------------------------------
+  // ai-talk.js drives the machine ONLY through these functions. Every value is checked against
+  // the real option lists; unknowns are ignored. The AI never writes prompt text: it picks
+  // buttons + a short idea, and the prompt still comes from the machine's own banks.
+  var AI_AGE_RE = /\b(?:teen\w*|tweens?|young(?:er|est|ish)?|youthful|youngsters?|juveniles?|jail[\s-]?bait|baby[\s-]?fac\w*|babyface\w*|childlike|child\w*|kids?|little\s+girls?|girlish|petite[\s-]+young|school\w*|(?:1[0-9]|20|[1-9])\s*(?:-|\s)?(?:yo|y\/o|yrs?|years?)(?:[\s-]*old)?|aged?\s*(?:1[0-9]|20|[1-9])|(?:18|19|20)\s*\+|21\s*\+|nsfw|sfw|adults?\s+only|under[\s-]?age\w*|minors?|barely[\s-]+legal)\b/gi;
+  var AI_SFW_RE = /\b(?:nude|nudity|naked|topless|bottomless|nipples?|explicit|porn\w*|xxx|sex\w*|cum\w*|pussy|cock\w*|dick\w*|tits?|titties|boobs?|anal|blowjob\w*|bj|fuck\w*|horny|orgasm\w*|bdsm|fetish\w*|strip(?:per|pers|ping|tease)\w*|onlyfans|erotic\w*|lingerie|thong|g-string|spicy|tease|hardcore|raunchy|kinky|nsfw)\b/gi;
+  var AI_LOOK_SKIP = /teen|seventeen|sis|famil|taboo|nubile|tiny|\blil|little|young|hentai|step|free-?use|school|pervz?|humper/i;
+  function aiSafe(t, adult, max) {
+    var x = stripBlocked(String(t || "")).text;
+    x = x.replace(AI_AGE_RE, " ").replace(new RegExp(FRAMING_RE.source, "gi"), " ");
+    x = x.replace(/\bgirls\b/gi, "women").replace(/\bgirl\b/gi, "woman").replace(/\bgals?\b/gi, "woman");
+    if (!(adult == null ? isAdult() : adult)) x = x.replace(AI_SFW_RE, " ");
+    x = sanitizeIdea(x).replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").replace(/(?:,\s*){2,}/g, ", ").replace(/^[\s,;.+-]+|[\s,;+-]+$/g, "");
+    return x.slice(0, max || 160).replace(/[\s,;]+$/, "");
+  }
+  var AI_SWITCHES = [["cleanSkin", "Clean skin"], ["beauty", "Beauty"], ["fresh", "Fresh face"], ["crowd", "Crowd"], ["multitone", "Multi-tone"], ["twerk", "Twerk"], ["mash", "Mash-up"],
+    ["anatomy", "Perfect Anatomy"], ["noAi", "No AI Look"], ["realPorn", "Real Porn Look (18+)"], ["antiGeneric", "Anti-Generic"], ["uniqueFaces", "Unique Faces"], ["artOn", "Art by influence"]];
+  function aiLookOk(l) { return !!l && !hasBlocked(l.id + " " + l.label) && !AI_LOOK_SKIP.test(l.id + " " + l.label) && (!l.adult || isAdult()); }
+  function aiOptions() {
+    var adult = isAdult();
+    return {
+      mode: adult ? "18+" : "SFW",
+      look: (S.looks || []).filter(aiLookOk).map(function (l) { return [l.id, displayLabel(l)]; }),
+      style: STYLES.filter(function (c) { return !ADULT_STYLES[c[0]] || adult; }).map(function (c) { return [c[0], c[1]]; }),
+      heat: adult ? HEATS.slice() : [],
+      tab: [["mj", "Photo (Midjourney)"], ["video", "Video"]],
+      cam: [["platform", "Platform camera"], ["iphone", "iPhone"]],
+      people: [1, 2, 3, 4, 5, 6, 7, 8].slice(0, PEOPLE_MAX),
+      castMix: [["women", "Women"], ["mixed", "Woman + man"]],
+      neon: NEON_MODES.map(function (c) { return [c[0], c[1]]; }),
+      neonPick: NEON_PALETTE.slice(),
+      room: ROOM_MODES.map(function (c) { return [c[0], c[1]]; }),
+      eye: EYES.map(function (c) { return [c[0], c[1]]; }),
+      dnaW: DNA_W_LABEL.map(function (c) { return [c[0], c[1]]; }),
+      psych: [""].concat(Object.keys(PSYCH)),
+      switches: AI_SWITCHES.filter(function (c) { return c[0] !== "realPorn" || adult; })
+    };
+  }
+  function aiCurrent() {
+    var sw = {};
+    AI_SWITCHES.forEach(function (c) { var k = c[0];
+      sw[k] = k === "cleanSkin" ? cleanOn() : k === "anatomy" ? anatomyOn() : k === "noAi" ? noAiOn() : k === "realPorn" ? (isAdult() && realPornOn()) : k === "antiGeneric" ? agOn() : k === "uniqueFaces" ? uniqueOn() : S[k] === true; });
+    return { look: S.sel || "", style: S.style || "none", heat: isAdult() ? S.heat : "", tab: S.tab, cam: S.cam, people: S.people, castMix: S.castMix, neon: neonMode(), neonPick: neonPick(),
+      room: roomMode(), eye: eyeMode(), dnaW: dnaW(), psych: psychMood(), idea: S.idea || "", switches: sw };
+  }
+  function aiId(v, list) { // list of ids or [id,label]; case-insensitive id or label match
+    if (v == null) return null; var t = String(v).trim().toLowerCase(); if (!t && t !== "") return null;
+    for (var i = 0; i < list.length; i++) { var c = list[i], id = Array.isArray(c) ? c[0] : c, lb = Array.isArray(c) ? c[1] : c;
+      if (String(id).toLowerCase() === t || String(lb).toLowerCase() === t) return id; }
+    return null;
+  }
+  function aiApply(set) {
+    set = set && typeof set === "object" ? set : {};
+    var O = aiOptions(), ok = {}, bad = [], adult = isAdult(), v;
+    if (set.look != null && set.look !== "") { v = aiId(set.look, O.look); if (v) { if (S.sel !== v) S.result = null; S.sel = v; ok.look = v; } else bad.push("look=" + set.look); }
+    if (set.style != null) { v = aiId(set.style, O.style); if (v) { S.style = v; ok.style = v; } else bad.push("style=" + set.style); }
+    if (set.heat != null && set.heat !== "") { v = adult ? aiId(set.heat, O.heat) : null; if (v) { S.heat = v; ok.heat = v; } else bad.push("heat=" + set.heat + (adult ? "" : " (SFW mode)")); }
+    if (set.tab != null) { v = aiId(set.tab, O.tab); if (v) { S.tab = v; ok.tab = v; } else bad.push("tab=" + set.tab); }
+    if (set.cam != null) { v = aiId(set.cam, O.cam); if (v) { S.cam = v; ok.cam = v; } else bad.push("cam=" + set.cam); }
+    if (set.people != null) { v = parseInt(set.people, 10); if (v >= 1 && v <= PEOPLE_MAX) { S.people = v; S.groupScene = v > 1; ok.people = v; } else bad.push("people=" + set.people); }
+    if (set.castMix != null) { v = aiId(set.castMix, O.castMix); if (v) { S.castMix = v; ok.castMix = v; } else bad.push("castMix=" + set.castMix); }
+    if (set.neonPick != null && set.neonPick !== "") { v = aiId(set.neonPick, O.neonPick); if (v) { S.neonPick = v; S.neon = "pick"; ok.neonPick = v; ok.neon = "pick"; } else bad.push("neonPick=" + set.neonPick); }
+    if (set.neon != null && !ok.neonPick) { v = aiId(set.neon, O.neon); if (v) { S.neon = v; ok.neon = v; } else bad.push("neon=" + set.neon); }
+    if (set.room != null) { v = aiId(set.room, O.room); if (v) { S.room = v; ok.room = v; } else bad.push("room=" + set.room); }
+    if (set.eye != null) { v = aiId(set.eye, O.eye); if (v) { S.eye = v; S.eyeSet = v !== "regular"; ok.eye = v; } else bad.push("eye=" + set.eye); }
+    if (set.dnaW != null) { v = aiId(set.dnaW, O.dnaW); if (v) { S.dnaW = v; ok.dnaW = v; } else bad.push("dnaW=" + set.dnaW); }
+    if (set.psych != null) { v = set.psych === "" ? "" : aiId(set.psych, O.psych); if (v != null) { S.psych = v; S.noir = false; ok.psych = v; } else bad.push("psych=" + set.psych); }
+    var sw = set.switches && typeof set.switches === "object" ? set.switches : {};
+    AI_SWITCHES.forEach(function (c) { var k = c[0], val = sw[k] != null ? sw[k] : set[k];
+      if (val == null) return;
+      if (typeof val !== "boolean") { bad.push(k + "=" + val); return; }
+      if (k === "realPorn" && !adult) { bad.push("realPorn (SFW mode)"); return; }
+      S[k] = val; ok[k] = val; });
+    Object.keys(sw).forEach(function (k) { if (!AI_SWITCHES.some(function (c) { return c[0] === k; })) bad.push("switch " + k); });
+    Object.keys(set).forEach(function (k) { if (["look", "style", "heat", "tab", "cam", "people", "castMix", "neon", "neonPick", "room", "eye", "dnaW", "psych", "switches"].indexOf(k) < 0 && !AI_SWITCHES.some(function (c) { return c[0] === k; })) bad.push(k); });
+    // Gating, whatever the AI said: 18+ looks/styles/heat only in 18+ mode.
+    var l = lookById(S.sel); if (l && l.adult && !adult) { S.sel = null; delete ok.look; }
+    if (ADULT_STYLES[S.style] && !adult) S.style = "none";
+    if (!adult) S.heat = "tease";
+    save();
+    if (S.el && S.looks) { renderGrid(); renderPanel(); }
+    return { applied: ok, ignored: bad };
+  }
+  function aiMake(idea) {
+    if (!S.looks) return null;
+    var cur = lookById(S.sel); if (!cur || (cur.adult && !isAdult())) S.sel = null;
+    if (!S.sel) { var d = (S.looks || []).filter(function (l) { return aiLookOk(l) && (isAdult() ? l.adult : !l.adult); })[0] || (S.looks || []).filter(aiLookOk)[0]; S.sel = d ? d.id : null; }
+    if (!S.sel) return null;
+    S.idea = aiSafe(idea); save();
+    if (S.el) { renderGrid(); renderPanel(); if (R.idea) R.idea.value = S.idea; }
+    doRemix();
+    return S.result ? S.result.text : null;
+  }
+  // ---- My Words: the user's own words (localStorage), mixed in one at a time ----
+  var MYW_KEY = "pm_mywords_v1", MYW_MIX = "pm_mywords_mix_v1";
+  function myWords() { try { var a = JSON.parse(localStorage.getItem(MYW_KEY) || "[]"); return Array.isArray(a) ? a.filter(function (w) { return typeof w === "string" && w.trim(); }) : []; } catch (e) { return []; } }
+  function myMixOn() { try { return localStorage.getItem(MYW_MIX) !== "0"; } catch (e) { return true; } }
+  function myPick(text) {
+    S._myUsed = ""; if (!myMixOn()) return "";
+    var low = String(text || "").toLowerCase();
+    var pool = myWords().map(function (w) { return aiSafe(w); }).filter(function (w) { return w && w.length >= 2 && low.indexOf(w.toLowerCase()) < 0; });
+    if (!pool.length) return "";
+    S._myUsed = pool[Math.floor(Math.random() * pool.length)]; return S._myUsed;
+  }
+  function myMixMJ(text) {
+    var w = myPick(text); if (!w) return text;
+    var m = text.match(/::[0-9.]+\s*$/);
+    return m ? text.slice(0, m.index).replace(/[,\s]+$/, "") + ", " + w + m[0] : text.replace(/[,\s]+$/, "") + ", " + w;
+  }
+  function myMixVideo(text) {
+    var w = myPick(text); if (!w) return text;
+    return text.replace(/\s+$/, "") + " Detail: " + w + ".";
+  }
   function setNotice(msg) { S.notice = msg || ""; if (R.note) { R.note.textContent = S.notice; R.note.style.display = S.notice ? "" : "none"; } }
 
   function doRemix() {
@@ -2318,6 +2531,8 @@
     _assembleMJ: function (id, idea, group) { var l = lookById(id); S.groupScene = !!group; var r = roll(l), seed = seed32(); return assembleMJ(l, stripBlocked(idea).text, r, seed) + " " + bankText(bankFor(l, seed)); },
     _strip: stripBlocked,
     _load: fetchData,
+    ai: { options: aiOptions, current: aiCurrent, apply: aiApply, make: aiMake, safe: aiSafe, isAdult: isAdult, myWordsKey: MYW_KEY, myMixKey: MYW_MIX,
+      ready: function () { return !!S.looks; }, lastMyWord: function () { return S._myUsed || ""; } },
     iphoneModel: IPHONE_MODEL,
     // Shared building blocks reused by Cinema Looks (cinema-looks.js): same safety, camera, clean-skin, random and UI code.
     shared: {
