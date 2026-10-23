@@ -270,5 +270,5 @@
     drawWords();
   }
 
-  window.PMAITalk = { mount: mount, localMatch: localMatch, endpoint: endpoint, version: "20261023b" };
+  window.PMAITalk = { mount: mount, localMatch: localMatch, endpoint: endpoint, version: "20261023c" };
 })();
