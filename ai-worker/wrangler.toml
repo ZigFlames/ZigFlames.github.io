@@ -10,5 +10,18 @@ account_id = "57775bbb399e92b359876589f0937d92"
 # Alternatives: "mistralai/mistral-small-3.2-24b-instruct", "meta-llama/llama-3.3-70b-instruct"
 MODEL = "google/gemini-2.5-flash-lite"
 RATE_LIMIT_PER_MIN = "20"
+# AI Boost (boost.js): chat model + media spend caps (USD/day across everyone, per-IP counts/day)
+CHAT_MODEL = "x-ai/grok-4.20"
+CHAT_MAX_TOKENS = "600"
+DAILY_MEDIA_USD_CAP = "3"
+DAILY_IMAGES_PER_IP = "40"
+DAILY_VIDEOS_PER_IP = "6"
+
+[[kv_namespaces]]
+binding = "SPEND"
+id = "cc638181a2d04701beb2097e85322a9a"
 
 # Secret (NOT in this file): npx wrangler secret put OPENROUTER_API_KEY
+# Optional media secrets (each provider shows "needs key" until set):
+#   XAI_API_KEY (Grok Imagine image/video) · VENICE_API_KEY (Venice, uncensored, 18+ mode only)
+#   FAL_KEY (fal.ai FLUX, 18+ mode only) · MODELSLAB_API_KEY (ModelsLab, 18+ mode only)

@@ -7,6 +7,8 @@
 // model; they are re-attached verbatim, last. Output is re-checked (ages, family roles, explicitness, 21+,
 // ::weights, length) and the original comes back with a note if the check fails.
 
+import { boost, BOOST_ACTIONS } from "./boost.js"; // AI Boost actions (chat, cleanup, remix, expand, vocab, trending, looplab, seeds, image, video)
+
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out (OpenRouter, Oct 2026)
 const PRICE = { "google/gemini-2.5-flash-lite": [0.10, 0.40], "mistralai/mistral-small-3.2-24b-instruct": [0.075, 0.20], "meta-llama/llama-3.3-70b-instruct": [0.10, 0.32] };
 const MAX_BODY = 16 * 1024;
@@ -385,6 +387,7 @@ export default {
     if (!body || typeof body !== "object") return json({ error: "bad JSON" }, 400, ch);
     let path = "/"; try { path = new URL(req.url).pathname.replace(/\/+$/, "") || "/"; } catch (e) {}
     if (body.action === "tighten" || path === "/tighten") return tighten(body, env, ch);
+    if (BOOST_ACTIONS.has(body.action)) return boost(body, env, ch, req);
     const sfw = body.mode !== "18+";
     const text = String(body.text || "").replace(AGE_RE, " ").replace(FAMILY_RE, " ").slice(0, 400).trim();
     if (!text) return json({ error: "empty text" }, 400, ch);
