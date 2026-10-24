@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261024a";
+  var V = "20261024c";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 

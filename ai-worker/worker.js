@@ -7,6 +7,7 @@
 // model; they are re-attached verbatim, last. Output is re-checked (ages, family roles, explicitness, 21+,
 // ::weights, length) and the original comes back with a note if the check fails.
 
+import { chain, extras, price } from "./models.js"; // AI_TIER=free -> OpenRouter :free models; paid -> MODEL then free
 import { boost, BOOST_ACTIONS } from "./boost.js"; // AI Boost actions (chat, cleanup, remix, expand, vocab, trending, looplab, seeds, image, video)
 
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out (OpenRouter, Oct 2026)
@@ -220,9 +221,9 @@ async function callModel(env, model, messages, maxTokens, temperature) {
   let r;
   try {
     r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
+      method: "POST", signal: AbortSignal.timeout(/:free$/.test(model) ? 12000 : 30000), // a stuck free model -> next one
       headers: { Authorization: "Bearer " + env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://zigflames.com", "X-Title": "ZigFlames Prompt Machine" },
-      body: JSON.stringify({ model, messages, response_format: { type: "json_object" }, max_tokens: maxTokens, temperature }),
+      body: JSON.stringify(Object.assign({ model, messages, response_format: { type: "json_object" }, max_tokens: maxTokens, temperature }, extras(model))),
     });
   } catch (e) { return { err: "upstream unreachable" }; }
   if (!r.ok) return { err: "upstream " + r.status };
@@ -279,11 +280,13 @@ async function tighten(body, env, ch) {
   const negList = negative ? negative.split(/\s*,\s*/).map((t) => t.trim()).filter(Boolean) : [];
   const input = { mode: sfw ? "SFW" : "18+", cgi_style: cgi, segments: S.map((s) => ({ weight: s.w, phrases: s.ids.map((id) => [id, table[id].text]) })), negative: negList.map((t, i) => [i, t]) };
   const messages = [{ role: "system", content: TIGHTEN_SYSTEM }, { role: "user", content: JSON.stringify(input) }];
-  const model = env.MODEL || DEFAULT_MODEL;
+  const models = chain(env, undefined, [env.MODEL || DEFAULT_MODEL]).models;
+  let model = models[0];
   const keep = keepTokens(o.body);
   let best = null, lastErr = "model did not return JSON", tin = 0, tout = 0, why = "";
   for (let attempt = 0; attempt < 2 && !best; attempt++) {
-    const r = await callModel(env, model, messages, 700, attempt ? 0.4 : 0.1);
+    let r = { err: "no model" };
+    for (const m of models) { r = await callModel(env, m, messages, 700, attempt ? 0.4 : 0.1); model = m; if (r.out) break; } // next model on 402/429/404/bad JSON
     const u = (r.data && r.data.usage) || {}; tin += u.prompt_tokens || 0; tout += u.completion_tokens || 0;
     if (!r.out) { lastErr = r.err; continue; }
     let flat = r.out.keep;
@@ -342,7 +345,7 @@ async function tighten(body, env, ch) {
     if (putBack.length) notes.push("Kept details: " + putBack.join(", "));
     best = { prompt: fin.prompt, negative: neg, notes };
   }
-  const p = PRICE[model] || PRICE[DEFAULT_MODEL];
+  const p = /:free$/.test(model) ? price(model) : PRICE[model] || price(model);
   const usage = { model, in: tin, out: tout, est_usd: Math.round(((tin * p[0] + tout * p[1]) / 1e6) * 1e6) / 1e6 };
   console.log(JSON.stringify({ action: "tighten", ...usage, ok: !!best }));
   if (!best) {
@@ -394,16 +397,17 @@ export default {
     const options = slimOptions(body.options || {});
     const user = { mode: sfw ? "SFW" : "18+", text, current: body.settings || {}, my_words: (Array.isArray(body.my_words) ? body.my_words : []).slice(0, 40).map((w) => clean(w, sfw, 40)).filter(Boolean), options };
 
-    const model = env.MODEL || DEFAULT_MODEL;
-    let out, data, lastErr = "model did not return JSON";
-    for (let attempt = 0; attempt < 2 && !out; attempt++) {
+    const models = chain(env, undefined, [env.MODEL || DEFAULT_MODEL]).models;
+    let out, data, lastErr = "model did not return JSON", model = models[0];
+    for (let attempt = 0; attempt < models.length + 1 && !out; attempt++) { // one try per model, then one retry of the first
+      model = models[attempt % models.length];
       let r;
       try {
         r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
+          method: "POST", signal: AbortSignal.timeout(/:free$/.test(model) ? 12000 : 30000),
           headers: { Authorization: "Bearer " + env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://zigflames.com", "X-Title": "ZigFlames Prompt Machine" },
-          body: JSON.stringify({ model, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: JSON.stringify(user) }],
-            response_format: { type: "json_object" }, max_tokens: MAX_TOKENS, temperature: 0.3 }),
+          body: JSON.stringify(Object.assign({ model, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: JSON.stringify(user) }],
+            response_format: { type: "json_object" }, max_tokens: MAX_TOKENS, temperature: 0.3 }, extras(model))),
         });
       } catch (e) { lastErr = "upstream unreachable"; continue; }
       if (!r.ok) { lastErr = "upstream " + r.status; continue; }
@@ -413,7 +417,7 @@ export default {
     }
     if (!out) return json({ error: lastErr }, 502, ch);
     const result = validate(out, options, sfw);
-    const u = (data && data.usage) || {}, p = PRICE[model] || PRICE[DEFAULT_MODEL];
+    const u = (data && data.usage) || {}, p = /:free$/.test(model) ? price(model) : PRICE[model] || price(model);
     const cost = ((u.prompt_tokens || 0) * p[0] + (u.completion_tokens || 0) * p[1]) / 1e6;
     result.usage = { model, in: u.prompt_tokens || 0, out: u.completion_tokens || 0, est_usd: Math.round(cost * 1e6) / 1e6 };
     console.log(JSON.stringify(result.usage));

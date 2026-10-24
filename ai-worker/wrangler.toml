@@ -10,6 +10,10 @@ account_id = "57775bbb399e92b359876589f0937d92"
 # Alternatives: "mistralai/mistral-small-3.2-24b-instruct", "meta-llama/llama-3.3-70b-instruct"
 MODEL = "google/gemini-2.5-flash-lite"
 RATE_LIMIT_PER_MIN = "20"
+# THE money switch (models.js): "free" = OpenRouter :free models only ($0, ~50 requests/day on a $0 account);
+# "paid" = MODEL / CHAT_MODEL (Gemini, Grok) first, free models as backup. AI Studio chat's picker can still ask
+# for gemini / gpt / grok directly; those answer "needs credit" until the OpenRouter balance is > $0.
+AI_TIER = "free"
 # AI Boost (boost.js): chat model + media spend caps (USD/day across everyone, per-IP counts/day)
 CHAT_MODEL = "x-ai/grok-4.20"
 CHAT_MAX_TOKENS = "600"

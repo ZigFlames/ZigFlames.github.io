@@ -1,4 +1,4 @@
-/* Zig's Prompt Machine — ✨ AI Boost (v20261024a)
+/* Zig's Prompt Machine — ✨ AI Boost (v20261024c)
    window.PMAI.call(action, body, opts) -> Promise<json>  (zigflames-ai worker; endpoint override: localStorage pm_ai_endpoint / window.PM_AI_ENDPOINT)
    window.PMBoost.mount(el, kind, apiRef) / unmount(el) / uniqAI(prompt)
    kinds: studio · remix · expand · vocab · dance · looplab
@@ -6,6 +6,13 @@
 (function () {
   "use strict";
   var DEF = "https://zigflames-ai.zigflames.workers.dev";
+  // Studio Render (22-model panel) now runs through the worker; show when a free preview stood in for a paid model.
+  window.addEventListener("pm-studio-notice", function (ev) {
+    var n = document.querySelector("[data-pm=studio-notice]");
+    if (!n) { n = document.createElement("div"); n.setAttribute("data-pm", "studio-notice"); n.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99999;max-width:min(560px,92vw);padding:10px 14px;border-radius:12px;background:rgba(15,10,30,.95);border:1px solid rgba(167,139,250,.5);color:#e9e5ff;font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.5)"; document.body.appendChild(n); }
+    n.textContent = "\u2139\ufe0f " + String(ev.detail || ""); n.style.display = "block";
+    clearTimeout(n._t); n._t = setTimeout(function () { n.style.display = "none"; }, 9000);
+  });
   function endpoint() { try { var o = localStorage.getItem("pm_ai_endpoint"); if (o) return o; } catch (e) {} return window.PM_AI_ENDPOINT || DEF; }
 
   // ---------- safety (client side, mirrors the worker) ----------
@@ -98,7 +105,7 @@
   function badge(j, local) {
     if (local) return h("span", { cls: "badge local", text: "Offline fallback · free" });
     var u = j && j.usage, m = u && u.model ? u.model.replace(/^.*\//, "") : "AI";
-    return h("span", { cls: "badge ai", text: m + (u && u.est_usd != null ? " · ~$" + Number(u.est_usd).toFixed(4) : "") });
+    return h("span", { cls: "badge ai", text: m + (u && u.free ? " · free $0" : u && u.est_usd != null ? " · ~$" + Number(u.est_usd).toFixed(4) : "") });
   }
   function busy(btn, on, label) { btn.disabled = on; if (on) { btn._t = btn.textContent; btn.textContent = label || "Thinking…"; } else if (btn._t) btn.textContent = btn._t; }
   function itemRow(text, api, extra) {
@@ -235,13 +242,13 @@
     function tab(k, label) { tabs[k] = h("button", { cls: "tab", text: label, "data-tab": k, on: { click: function () { show(k); } } }); return tabs[k]; }
     var panes = { chat: chatPane(api, st), image: mediaPane(api, "image", st), video: mediaPane(api, "video", st) };
     function show(k) { cur = k; for (var t in tabs) tabs[t].className = "tab" + (t === k ? " on" : ""); body.replaceChildren(panes[k].el); panes[k].show && panes[k].show(); }
-    root.append(h("h4", {}, ["🤖 Grok AI Studio", st]), h("p", { cls: "sub", text: "Chat with Grok to build prompts, then generate images or video. Costs are shown before you click; a daily spend cap is enforced on the server." }),
+    root.append(h("h4", {}, ["🤖 Grok AI Studio", st]), h("p", { cls: "sub", text: "Chat with AI to build prompts (free models by default; Gemini / GPT / Grok when there is credit), then generate images or video. Costs are shown before you click; a daily cap is enforced on the server." }),
       h("div", { cls: "row" }, [tab("chat", "💬 Chat"), tab("image", "🖼 Image"), tab("video", "🎬 Video")]), body);
     show("chat");
     root._pmShow = show;
   };
   function chatPane(api, st) {
-    var log = h("div", { cls: "chat" }), msgs = [], ta = h("textarea", { placeholder: "Ask Grok: “give me a gas-station-at-night prompt, 90s camcorder, Atlanta summer” …" });
+    var log = h("div", { cls: "chat" }), msgs = [], ta = h("textarea", { placeholder: "Ask AI: “give me a gas-station-at-night prompt, 90s camcorder, Atlanta summer” …" });
     try { msgs = JSON.parse(sessionStorage.getItem("pmai.chat") || "[]") || []; } catch (e) {}
     function render() {
       log.replaceChildren.apply(log, msgs.map(function (m) {
@@ -251,15 +258,30 @@
       })); log.scrollTop = 1e6; try { sessionStorage.setItem("pmai.chat", JSON.stringify(msgs.slice(-20))); } catch (e) {}
     }
     function localReply(q) { var p = localVariant(q.replace(/^(give me|make|write)\s+(a|an)?\s*/i, "").replace(/\bprompt\b/i, "")); return "AI is offline, so here is a free local build from your words:\n```prompt\n" + p + "\n```"; }
+    var MODELS = [["free", "Free (OpenRouter free models)", "$0 · free models, ~50 requests/day site-wide"], ["gemini", "Gemini 2.5 Flash Lite", "~$0.0002 per message · needs OpenRouter credit"], ["gpt", "GPT-6 Luna (OpenAI)", "~$0.0003 per message · needs OpenRouter credit"], ["grok", "Grok 4.20 (xAI)", "~$0.0015 per message · needs OpenRouter credit"]];
+    var pick = h("select", { "data-pm": "ai-chat-model", title: "Chat model" }, MODELS.map(function (m) { return h("option", { value: m[0], text: m[1] }); })), pnote = h("span", { cls: "muted", "data-pm": "ai-chat-model-note" });
+    try { var sv = localStorage.getItem("pmai.model"); if (sv && MODELS.some(function (m) { return m[0] === sv; })) pick.value = sv; } catch (e) {}
+    function pnoteSync(extra) { var m = MODELS.filter(function (x) { return x[0] === pick.value; })[0]; pnote.textContent = (m ? m[2] : "") + (extra ? " · " + extra : ""); }
+    pick.addEventListener("change", function () { try { localStorage.setItem("pmai.model", pick.value); } catch (e) {} pnoteSync(); });
+    pnoteSync();
     var send = h("button", { cls: "go", text: "Send", on: { click: function () {
       var q = ta.value.trim(); if (!q) return; ta.value = ""; msgs.push({ role: "user", content: q }); render(); busy(send, true);
-      call("chat", { messages: msgs.slice(-8), mode: mode(api), prompt: (api.current.getPrompt && api.current.getPrompt()) || "" }).then(function (j) {
-        busy(send, false); var loc = aiFailed(j) || !j.reply; msgs.push({ role: "assistant", content: loc ? localReply(q) : j.reply }); st.replaceChildren(badge(j, loc)); render();
+      var base = { messages: msgs.slice(-8), mode: mode(api), prompt: (api.current.getPrompt && api.current.getPrompt()) || "" };
+      function done(j, note) {
+        busy(send, false); var loc = aiFailed(j) || !j.reply;
+        msgs.push({ role: "assistant", content: (note ? note + "\n\n" : "") + (loc ? localReply(q) : j.reply) }); st.replaceChildren(badge(j, loc)); render();
+      }
+      call("chat", Object.assign({ model: pick.value }, base)).then(function (j) {
+        if (j && j.needs_credit && pick.value !== "free") { // paid model with $0 balance -> say so, answer with Free instead
+          var lab = pick.options[pick.selectedIndex].text; pnoteSync("⚠ needs credit");
+          return call("chat", Object.assign({ model: "free" }, base)).then(function (j2) { done(j2, "💳 " + lab + " needs OpenRouter credit (balance is $0) — answered with the Free model instead."); });
+        }
+        done(j);
       });
     } } });
     ta.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send.click(); } });
     render();
-    return { el: h("div", {}, [log, ta, h("div", { cls: "row" }, [send, h("button", { cls: "sm", text: "Clear chat", on: { click: function () { msgs = []; render(); } } }), h("span", { cls: "muted", text: "~$0.0006 per message (Grok 4.20 via OpenRouter)" })])]) };
+    return { el: h("div", {}, [log, ta, h("div", { cls: "row" }, [send, h("button", { cls: "sm", text: "Clear chat", on: { click: function () { msgs = []; render(); } } }), pick]), pnote]) };
   }
   function mediaPane(api, kind, st) {
     var ta = h("textarea", { placeholder: kind === "image" ? "Image prompt (adults 21+, no real / named people)" : "Video prompt — describe the motion, camera move and light" });
@@ -302,8 +324,10 @@
       call(kind, body, { timeout: kind === "image" ? 90000 : 40000 }).then(function (j) {
         busy(go, false);
         if (!j || j._status !== 200) return showErr(j || {});
-        var c = j.cost ? h("div", { cls: "muted", text: "Charged ≈ $" + Number(j.cost.est_usd).toFixed(3) + " · " + j.model + " · today $" + Number(j.cost.today_usd || 0).toFixed(2) + " of $" + j.cost.cap_usd + " cap" }) : "";
-        if (kind === "image") { out.replaceChildren(h("img", { src: j.url, alt: "generated" }), c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })])); return; }
+        var c = j.cost ? h("div", { cls: "muted", text: (j.cost.est_usd ? "Charged ≈ $" + Number(j.cost.est_usd).toFixed(3) : "Free · $0") + " · " + j.model + " · today $" + Number(j.cost.today_usd || 0).toFixed(2) + " of $" + j.cost.cap_usd + " cap" }) : "";
+        if (kind === "image") { var wait = h("div", { cls: "muted", "data-pm": "ai-image-loading", text: j.cost && !j.cost.est_usd ? "Loading free image… (5–30 s)" : "Loading image…" });
+          var im = h("img", { src: j.url, alt: "generated", "data-pm": "ai-image-result" }); im.addEventListener("load", function () { wait.remove(); }); im.addEventListener("error", function () { wait.textContent = "The image host didn't answer — click Generate again or copy the prompt."; });
+          out.replaceChildren(wait, im, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })])); return; }
         var stat = h("div", { cls: "muted", text: "Rendering video… (usually 30–120 s)" }); out.replaceChildren(stat, c);
         var tries = 0; (function poll() {
           if (++tries > 60) { stat.textContent = "Still rendering — try again later."; return; }

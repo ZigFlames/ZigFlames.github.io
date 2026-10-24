@@ -8,7 +8,7 @@
 
 const CHAT_MODEL = "x-ai/grok-4.20";            // $1.25/M in, $2.50/M out (OpenRouter, Oct 2026); reasoning off
 const FALLBACK_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out
-const PRICE = { "x-ai/grok-4.20": [1.25, 2.5], "x-ai/grok-4.3": [1.25, 2.5], "google/gemini-2.5-flash-lite": [0.10, 0.40] };
+import { chain, price, tier, extras, freeList, PAID_MODELS } from "./models.js";
 
 const AGE_RE = /\b(?:teen\w*|tweens?|young(?:er|est|ish)?|youthful|jail[\s-]?bait|baby[\s-]?fac\w*|childlike|child\w*|kids?|little\s+girls?|girlish|school\s*girls?|school\s*boys?|under[\s-]?age\w*|minors?|barely[\s-]+legal|loli\w*|shota\w*|preteen\w*|adolescen\w*|juvenile\w*|pubescen\w*|(?:1[0-9]|20|[1-9])\s*(?:-|\s)?(?:yo|y\/o|yrs?|years?)(?:[\s-]*old)?)\b/gi;
 const FAMILY_RE = /\b(?:step[\s-]?(?:moms?|mommy|mothers?|dads?|daddy|fathers?|sis\w*|bro\w*|daughters?|sons?|famil\w*|parents?|kids?|child\w*|aunt\w*|uncle\w*|cousins?)|famil(?:y|ies)|sisters?|brothers?|moms?|mommy|dads?|daddy|daughters?|sons?|cousins?|niece|nephew|taboo|incest\w*|free[\s-]?use|non[\s-]?consen\w*|forced|rape\w*|sleeping|asleep|unconscious|drunk|drugged|hidden[\s-]?cam\w*|voyeur\w*|upskirt\w*)\b/gi;
@@ -61,32 +61,37 @@ function rules(adult) {
 
 async function llm(env, system, user, opt) {
   opt = opt || {};
-  const models = opt.models || [env.CHAT_MODEL || CHAT_MODEL, env.MODEL && env.MODEL !== (env.CHAT_MODEL || CHAT_MODEL) ? env.MODEL : FALLBACK_MODEL];
-  let lastErr = "no model";
+  // AI_TIER=free -> free models only; paid -> opt.models (or Grok, Gemini) then the free chain. opt.pick = picker id.
+  const paidDefault = opt.models || [env.CHAT_MODEL || CHAT_MODEL, env.MODEL && env.MODEL !== (env.CHAT_MODEL || CHAT_MODEL) ? env.MODEL : FALLBACK_MODEL];
+  const ch = chain(env, opt.pick, paidDefault);
+  let nFree = 0;
+  const models = ch.models.filter((m) => !/:free$/.test(m) || !opt.freeMax || ++nFree <= opt.freeMax);
+  let lastErr = "no model", lastStatus = 0;
   for (const model of models) {
-    const body = { model, messages: [{ role: "system", content: system }].concat(Array.isArray(user) ? user : [{ role: "user", content: typeof user === "string" ? user : JSON.stringify(user) }]),
-      max_tokens: opt.maxTokens || 500, temperature: opt.temperature == null ? 0.8 : opt.temperature };
+    const body = Object.assign({ model, messages: [{ role: "system", content: system }].concat(Array.isArray(user) ? user : [{ role: "user", content: typeof user === "string" ? user : JSON.stringify(user) }]),
+      max_tokens: opt.maxTokens || 500, temperature: opt.temperature == null ? 0.8 : opt.temperature }, extras(model));
     if (opt.json) body.response_format = { type: "json_object" };
-    if (/^x-ai\//.test(model)) body.reasoning = { enabled: false };
-    if (opt.plugins && model === models[0]) body.plugins = opt.plugins;
+    if (opt.plugins && model === models[0] && !/:free$/.test(model)) body.plugins = opt.plugins;
     let r;
     try {
-      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), opt.timeout || 25000);
+      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), Math.min(opt.timeout || 25000, /:free$/.test(model) ? 20000 : 60000));
       r = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", signal: ctl.signal,
         headers: { Authorization: "Bearer " + env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://zigflames.com", "X-Title": "ZigFlames Prompt Machine" },
         body: JSON.stringify(body) });
       clearTimeout(to);
     } catch (e) { lastErr = "upstream unreachable"; continue; }
-    if (!r.ok) { lastErr = "upstream " + r.status; console.log("boost llm", model, r.status); continue; }
+    if (!r.ok) { lastErr = "upstream " + r.status; lastStatus = r.status; console.log("boost llm", model, r.status); continue; }
     const data = await r.json().catch(() => null);
     const content = String((data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "");
     const obj = opt.json ? firstObj(content) : null;
     if (opt.json && !obj) { lastErr = "model did not return JSON"; continue; }
     if (!opt.json && !content.trim()) { lastErr = "empty reply"; continue; }
-    const u = (data && data.usage) || {}, p = PRICE[model] || [2, 6];
+    const u = (data && data.usage) || {}, p = price(model);
     const est = typeof u.cost === "number" ? u.cost : ((u.prompt_tokens || 0) * p[0] + (u.completion_tokens || 0) * p[1]) / 1e6;
-    return { text: content, obj, usage: { model, in: u.prompt_tokens || 0, out: u.completion_tokens || 0, est_usd: Math.round(est * 1e6) / 1e6, fallback: model !== models[0] } };
+    return { text: content, obj, usage: { model, in: u.prompt_tokens || 0, out: u.completion_tokens || 0, est_usd: Math.round(est * 1e6) / 1e6, free: /:free$/.test(model), tier: tier(env), fallback: model !== models[0] } };
   }
+  if (ch.explicit && lastStatus === 402) return { err: "needs credit", status: 402, needs_credit: true, model: models[0], hint: "This model needs OpenRouter credit. Pick Free, or add credit at openrouter.ai/settings/credits." };
+  if (lastStatus === 429) return { err: "free AI limit reached — try again later", status: 503, rate_limited: true };
   return { err: lastErr };
 }
 
@@ -96,7 +101,8 @@ const TEXT = {
     const hist = (Array.isArray(b.messages) ? b.messages : []).slice(-8).map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: scrub(m && m.content, adult, 1500) })).filter((m) => m.content);
     if (!hist.length || hist[hist.length - 1].role !== "user") return { err: "empty message", status: 400 };
     const sys = "You are the AI assistant inside Zig's Prompt Machine (an image / video / music prompt studio). Help write and clean up text, build and improve image and video prompts (Midjourney, Grok Imagine, Sora, Kling, Flux), captions and Suno music prompts. Be direct and brief. When you write a prompt, put it alone in a ```prompt fenced block so it can be copied; keep Midjourney --params at the very end.\n" + rules(adult);
-    const r = await llm(env, sys, hist, { maxTokens: Math.min(600, parseInt(env.CHAT_MAX_TOKENS || "600", 10)), temperature: 0.7 });
+    const pick = ["free", "gemini", "gpt", "grok"].includes(b.model) ? b.model : undefined;
+    const r = await llm(env, sys, hist, { maxTokens: Math.min(600, parseInt(env.CHAT_MAX_TOKENS || "600", 10)), temperature: 0.7, pick });
     if (r.err) return r;
     return { reply: scrub(r.text, adult, 6000), usage: r.usage };
   },
@@ -141,7 +147,7 @@ const TEXT = {
     const sys = "Today is " + today + ". List 8 dance / TikTok / Reels trends and viral video formats that are popular RIGHT NOW (use the web results; prefer the last 4 weeks). For each: name, a one-line how-it-looks description, a photoreal video prompt idea (under 40 words) with one adult (21+) performer, a real camera and specific lighting, and when it peaked. Reply JSON {\"items\":[{\"name\":\"\",\"how\":\"\",\"prompt\":\"\",\"when\":\"\"}]}.\n" + rules(adult);
     const focus = scrub(b.focus, adult, 120) || "dance and creator video trends", region = scrub(b.region, adult, 60);
     const q = "viral TikTok dance trends " + (region ? region + " " : "") + new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
-    let r = await llm(env, sys, { focus, region }, { json: true, maxTokens: 2200, temperature: 0.5, timeout: 30000,
+    let r = tier(env) === "free" ? { err: "web search needs credit" } : await llm(env, sys, { focus, region }, { json: true, maxTokens: 2200, temperature: 0.5, timeout: 30000,
       models: [FALLBACK_MODEL, env.CHAT_MODEL || CHAT_MODEL], plugins: [{ id: "web", engine: "exa", max_results: 5, search_prompt: q }] });
     let r2 = r;
     // web search refused (e.g. 402 when OpenRouter credit is empty) -> same models from knowledge, flagged live:false
@@ -171,6 +177,10 @@ const TEXT = {
 // ---------- media providers ----------
 // key: worker secret name. adult: only selectable in 18+ mode (client) and only accepted with mode 18+ (server).
 const IMAGE_PROVIDERS = {
+  // Order = default pick: the first ready, unlocked provider. fal schnell is the default once FAL_KEY is set (and funded).
+  // Pollinations (free, keyless) was tested Oct 24 2026 and left out: the keyless endpoint now serves a low-end model
+  // (sana) that ignored prompts, blocked "21+" as "privacy" and drew young-looking faces for "adult woman".
+  fal_schnell: { label: "fal.ai · FLUX schnell (fast, cheap)", key: "FAL_KEY", adult: false, model: "fal-ai/flux/schnell", usd: 0.003, note: "~$0.003/image (needs fal credit)" },
   openrouter: { label: "Gemini Flash Image (OpenRouter)", key: "OPENROUTER_API_KEY", adult: false, model: "google/gemini-2.5-flash-image", usd: 0.039, note: "~$0.039/image; needs ≥$1 OpenRouter credit" },
   xai: { label: "Grok Imagine (xAI)", key: "XAI_API_KEY", adult: false, model: "grok-imagine-image", usd: 0.02, note: "$0.02/image (1K)" },
   venice: { label: "Venice · Lustify v8 (uncensored)", key: "VENICE_API_KEY", adult: true, model: "lustify-v8", usd: 0.01, note: "$0.01/image, safe_mode off" },
@@ -184,7 +194,7 @@ const VIDEO_PROVIDERS = {
   venice_grok: { label: "Venice · Grok Imagine 1.5 Lite", key: "VENICE_API_KEY", adult: true, model: "grok-imagine-1-5-lite-text-to-video", perSec: { "480p": 0.024, "720p": 0.036 }, note: "$0.12 per 5 s at 480p" },
 };
 function providerList(env, adult) {
-  const m = (P, kind) => Object.keys(P).map((id) => ({ id, kind, label: P[id].label, adult: P[id].adult, ready: !!env[P[id].key], key: P[id].key, note: P[id].note, model: P[id].model, locked: P[id].adult && !adult }));
+  const m = (P, kind) => Object.keys(P).map((id) => ({ id, kind, label: P[id].label, adult: P[id].adult, ready: !P[id].key || !!env[P[id].key], key: P[id].key || "", note: P[id].note, model: P[id].model, locked: P[id].adult && !adult }));
   return { image: m(IMAGE_PROVIDERS, "image"), video: m(VIDEO_PROVIDERS, "video"), caps: caps(env) };
 }
 function caps(env) {
@@ -219,7 +229,7 @@ async function mediaPrompt(env, raw, adult) {
   if (nm && !NAME_OK.test(nm[1])) return { err: "Refused: \"" + nm[1] + "\" looks like a real person's name. Describe an original adult (21+) character instead.", status: 422, refused: "likeness" };
   if (/\b(?:family|step\w*|sisters?|daddy|mommy|non[\s-]?consen\w*|rape\w*|incest\w*)\b/i.test(t) && adult) return { err: "Refused: no family-role or non-consent scenarios.", status: 422, refused: "policy" };
   // cheap AI screen (Gemini Flash Lite, ~$0.00005) for named real people / minors that regexes miss; fails open to the regex result
-  const s = await llm(Object.assign({}, env, { CHAT_MODEL: FALLBACK_MODEL, MODEL: FALLBACK_MODEL }), "Screen an image/video prompt. Reply JSON {\"real_person\":bool,\"minor\":bool}. real_person = it names or asks for the likeness of a real identifiable person (celebrity, public figure, influencer, private individual by name). minor = it implies anyone under 18. Fictional descriptions of unnamed adults are fine.", t.slice(0, 1500), { json: true, maxTokens: 30, temperature: 0, timeout: 8000 });
+  const s = await llm(env, "Screen an image/video prompt. Reply JSON {\"real_person\":bool,\"minor\":bool}. real_person = it names or asks for the likeness of a real identifiable person (celebrity, public figure, influencer, private individual by name). minor = it implies anyone under 18. Fictional descriptions of unnamed adults are fine.", t.slice(0, 1500), { json: true, maxTokens: 30, temperature: 0, timeout: 8000, models: [FALLBACK_MODEL], freeMax: 1 });
   if (s.obj && s.obj.minor === true) return { err: "Refused: adults only (21+).", status: 422, refused: "minor" };
   if (s.obj && s.obj.real_person === true) return { err: "Refused: no real or named person likeness.", status: 422, refused: "likeness" };
   let p = scrub(t, adult, 2000);
@@ -230,10 +240,10 @@ async function mediaPrompt(env, raw, adult) {
 const AR = { "9:16": [768, 1344], "3:4": [896, 1152], "1:1": [1024, 1024], "4:3": [1152, 896], "16:9": [1344, 768], "2:3": [832, 1216] };
 
 async function genImage(b, env, adult, ip) {
-  const id = String(b.provider || "openrouter"), P = IMAGE_PROVIDERS[id];
+  const id = String(b.provider || (env.FAL_KEY ? "fal_schnell" : "openrouter")), P = IMAGE_PROVIDERS[id];
   if (!P) return { err: "unknown provider", status: 400 };
   if (P.adult && !adult) return { err: "This provider is only available in 18+ mode.", status: 403, locked: true };
-  if (!env[P.key]) return { err: "needs key", needs_key: P.key, status: 503, provider: id };
+  if (P.key && !env[P.key]) return { err: "needs key", needs_key: P.key, status: 503, provider: id };
   const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return g;
   const capErr = await capCheck(env, ip, "image", P.usd); if (capErr) return { err: capErr, status: 429, capped: true };
   const ar = AR[b.aspect] ? b.aspect : "9:16", [w, h] = AR[ar];
@@ -253,9 +263,9 @@ async function genImage(b, env, adult, ip) {
       r = await fetch("https://api.venice.ai/api/v1/image/generate", { method: "POST", headers: { Authorization: "Bearer " + env.VENICE_API_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({ model: P.model, prompt: g.prompt.slice(0, 1400), negative_prompt: "child, minor, teen, underage, young-looking, cartoon, cgi, plastic skin, watermark, text", width: w, height: h, safe_mode: !adult, format: "webp", hide_watermark: true }) });
       d = await r.json().catch(() => null); url = d && d.images && d.images[0] ? "data:image/webp;base64," + d.images[0] : "";
-    } else if (id === "fal") {
+    } else if (id === "fal" || id === "fal_schnell") {
       r = await fetch("https://fal.run/" + P.model, { method: "POST", headers: { Authorization: "Key " + env.FAL_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: g.prompt, image_size: { width: w, height: h }, num_images: 1, enable_safety_checker: !adult }) });
+        body: JSON.stringify(Object.assign({ prompt: g.prompt, image_size: { width: w, height: h }, num_images: 1, enable_safety_checker: !adult || !P.adult }, id === "fal_schnell" ? { num_inference_steps: 4 } : {})) });
       d = await r.json().catch(() => null); url = d && d.images && d.images[0] && d.images[0].url || "";
     } else if (id === "modelslab") {
       r = await fetch("https://modelslab.com/api/v6/images/text2img", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -263,6 +273,7 @@ async function genImage(b, env, adult, ip) {
       d = await r.json().catch(() => null); url = d && d.output && d.output[0] || "";
     }
   } catch (e) { return { err: "provider unreachable", status: 502, provider: id }; }
+  if (r && r.status === 403 && d && /TOP_UP|balance/i.test(JSON.stringify(d))) return { err: "fal.ai account has no credit — top up at fal.ai/dashboard/billing.", needs_credit: true, status: 402, provider: id };
   if (r && (r.status === 401 || r.status === 403)) return { err: "provider rejected the key (" + P.key + ")", needs_key: P.key, status: 503, provider: id };
   if (!url) return { err: "provider returned no image" + (r ? " (" + r.status + ")" : ""), status: 502, provider: id, detail: String(JSON.stringify(d || "")).slice(0, 200) };
   const tot = await capAdd(env, ip, "image", P.usd);
@@ -293,6 +304,7 @@ async function genVideo(b, env, adult, ip) {
       d = await r.json().catch(() => null); job = d && d.queue_id || ""; dl = d && d.download_url || "";
     }
   } catch (e) { return { err: "provider unreachable", status: 502, provider: id }; }
+  if (r && r.status === 403 && d && /TOP_UP|balance/i.test(JSON.stringify(d))) return { err: "fal.ai account has no credit — top up at fal.ai/dashboard/billing.", needs_credit: true, status: 402, provider: id };
   if (r && (r.status === 401 || r.status === 403)) return { err: "provider rejected the key (" + P.key + ")", needs_key: P.key, status: 503, provider: id };
   if (r && r.status === 422) return { err: "Provider refused the prompt (content policy).", status: 422, provider: id };
   if (!job) return { err: "provider did not start the job" + (r ? " (" + r.status + ")" : ""), status: 502, provider: id, detail: String(JSON.stringify(d || "")).slice(0, 200) };
@@ -324,13 +336,78 @@ async function videoStatus(b, env, adult, ch) {
   } catch (e) { return J({ status: "pending", error: "unreachable" }, 200, ch); }
 }
 
-export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "expand", "vocab", "trending", "looplab", "seeds", "providers", "image", "video", "video_status"]);
+// ---- Studio Render (the 22-model "AI Studio" panel) ----
+// The panel used to call a Supabase edge function "fal-generate" (FAL_KEY lived there). That edge build is gone and the
+// bundle shipped a stub client that always answered "Edge functions offline". This action is the drop-in replacement:
+// real fal.ai model when FAL_KEY is set AND funded, otherwise a guarded free preview (Pollinations, keyless) clearly labelled.
+const STUDIO_FAL = {
+  "flux-schnell": ["fal-ai/flux/schnell", 0.003, { num_inference_steps: 4 }], "flux-dev": ["fal-ai/flux/dev", 0.025], "flux-pro": ["fal-ai/flux-pro/v1.1", 0.04],
+  "flux-pro-ultra": ["fal-ai/flux-pro/v1.1-ultra", 0.06], "flux-krea": ["fal-ai/flux/krea", 0.025], "flux-realism": ["fal-ai/flux-realism", 0.025],
+  "flux-kontext": ["fal-ai/flux-pro/kontext/text-to-image", 0.04], "flux-kontext-max": ["fal-ai/flux-pro/kontext/max/text-to-image", 0.08],
+  "flux-dev-i2i": ["fal-ai/flux/dev/image-to-image", 0.025, null, "image"], "flux-redux": ["fal-ai/flux/dev/redux", 0.025, null, "image"],
+  "flux-canny": ["fal-ai/flux-pro/v1/canny", 0.05, null, "image"], "flux-depth": ["fal-ai/flux-pro/v1/depth", 0.05, null, "image"], "flux-fill": ["fal-ai/flux-pro/v1/fill", 0.05, null, "image"],
+  "flux-lora": ["fal-ai/flux-lora", 0.035], "sdxl": ["fal-ai/fast-sdxl", 0.003], "sdxl-lightning": ["fal-ai/fast-lightning-sdxl", 0.002], "sdxl-lora": ["fal-ai/lora", 0.003],
+};
+const STUDIO_OPENAI = { "gpt-image-1": ["gpt-image-1-mini", 0.006], "dall-e-3": ["gpt-image-1-mini", 0.006] };
+const STUDIO_AR = { "1:1": [1024, 1024], "9:16": [768, 1344], "16:9": [1344, 768], "3:4": [896, 1152], "4:3": [1152, 896], "2:3": [832, 1216], "3:2": [1216, 832], "4:5": [896, 1120], "21:9": [1536, 640] };
+function pollinationsUrl(prompt, w, h) {
+  // keyless Pollinations trips its "privacy" filter on "21+" -> say adult in words; push away from young-looking faces
+  let p = String(prompt).replace(/\(\s*21\s*\+\s*\)|\b21\s*\+/g, "").replace(/\s{2,}/g, " ").trim();
+  if (PEOPLE_RE.test(p)) p = p.replace(/\badult\b\s*/i, "") + ", grown adults in their late 20s or 30s, mature adult faces, realistic photo";
+  const sc = Math.min(1, 1024 / Math.max(w, h)), W = Math.round(w * sc / 8) * 8, H = Math.round(h * sc / 8) * 8;
+  return "https://image.pollinations.ai/prompt/" + encodeURIComponent(p.slice(0, 900)) + "?model=flux&width=" + W + "&height=" + H + "&seed=" + Math.floor(Math.random() * 1e6) + "&nologo=true&safe=true";
+}
+async function studioRender(b, env, ip) {
+  const mode = String(b.mode || "image"), key = String(b.model || "flux-schnell");
+  if (mode !== "image") return { ok: false, code: "needs_credit", error: (mode === "upscale" ? "Upscaling" : "Video") + " models (" + key + ") need a funded fal.ai key (FAL_KEY). No free provider for this mode yet — use Image mode for a free preview.", status: 200 };
+  if (/^lora-trainer|^civitai/.test(key)) return { ok: false, code: "needs_credit", error: "LoRA training/loading needs a funded fal.ai key (FAL_KEY).", status: 200 };
+  const adult = false; // panel has no 18+ toggle: always the safe path (safety checker on, tasteful)
+  const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return { ok: false, code: g.refused || "error", error: g.err, filter: !!g.refused, status: 200 };
+  const [w, h] = STUDIO_AR[b.aspectRatio] || STUDIO_AR["1:1"];
+  let why = "";
+  const F = STUDIO_FAL[key];
+  if (F && env.FAL_KEY) {
+    if (F[3] === "image" && !b.imageUrl) why = key + " needs a reference image";
+    else {
+      const usd = F[1], capErr = await capCheck(env, ip, "image", usd);
+      if (capErr) return { ok: false, code: "capped", error: capErr, status: 200 };
+      try {
+        const body = Object.assign({ prompt: g.prompt, image_size: { width: w, height: h }, num_images: 1, enable_safety_checker: true }, F[2] || {},
+          b.imageUrl ? { image_url: String(b.imageUrl), strength: Number(b.strength) || 0.72 } : {}, b.loraUrl && /lora/.test(key) ? { loras: [{ path: String(b.loraUrl), scale: Number(b.loraScale) || 1 }] } : {},
+          b.negativePrompt && /sdxl/.test(key) ? { negative_prompt: String(b.negativePrompt).slice(0, 500) } : {});
+        const r = await fetch("https://fal.run/" + F[0], { method: "POST", headers: { Authorization: "Key " + env.FAL_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const d = await r.json().catch(() => null);
+        const url = d && d.images && d.images[0] && d.images[0].url || "";
+        if (url) { const tot = await capAdd(env, ip, "image", usd); return { ok: true, kind: "image", url, imageUrl: url, model: key, provider: "fal", seed: d.seed, prompt: g.prompt, cost: { est_usd: usd, today_usd: tot.usd, cap_usd: caps(env).day_usd } }; }
+        why = r.status === 403 && /TOP_UP|balance|locked/i.test(JSON.stringify(d || "")) ? "fal.ai account has no credit (top up at fal.ai/dashboard/billing)" : "fal.ai returned " + r.status;
+      } catch (e) { why = "fal.ai unreachable"; }
+    }
+  } else if (F) why = "needs the worker secret FAL_KEY";
+  const O = STUDIO_OPENAI[key];
+  if (O) why = env.OPENAI_API_KEY ? why || "OpenAI key has no credit" : "needs the worker secret OPENAI_API_KEY (with credit)";
+  if (O && env.OPENAI_API_KEY) {
+    const capErr = await capCheck(env, ip, "image", O[1]);
+    if (!capErr) try {
+      const r = await fetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ model: O[0], prompt: g.prompt, size: w > h ? "1536x1024" : h > w ? "1024x1536" : "1024x1024", quality: "low", n: 1, moderation: "auto" }) });
+      const d = await r.json().catch(() => null), b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+      if (b64) { const tot = await capAdd(env, ip, "image", O[1]); const url = "data:image/png;base64," + b64; return { ok: true, kind: "image", url, imageUrl: url, model: key, provider: "openai", prompt: g.prompt, cost: { est_usd: O[1], today_usd: tot.usd, cap_usd: caps(env).day_usd } }; }
+      why = r.status === 429 ? "OpenAI key has no credit" : "OpenAI returned " + r.status;
+    } catch (e) { why = "OpenAI unreachable"; }
+  }
+  // free fallback: guarded, counted against the per-visitor image limit (cost $0)
+  const capErr = await capCheck(env, ip, "image", 0); if (capErr) return { ok: false, code: "capped", error: capErr, status: 200 };
+  await capAdd(env, ip, "image", 0);
+  const url = pollinationsUrl(g.prompt, w, h);
+  return { ok: true, kind: "image", url, imageUrl: url, model: "Free preview (Pollinations)", provider: "pollinations", fallback: true, requested: key, notice: key + ": " + (why || "not available") + " — showing a free preview instead.", prompt: g.prompt, cost: { est_usd: 0 } };
+}
+export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "expand", "vocab", "trending", "looplab", "seeds", "providers", "image", "video", "video_status", "studio_render"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";
   if (a === "providers") return J(providerList(env, adult), 200, ch);
   if (a === "video_status") return videoStatus(body, env, adult, ch);
   let out;
+  if (a === "studio_render") { const o = await studioRender(body, env, ip); delete o.status; return J(o, 200, ch); }
   if (a === "image") out = await genImage(body, env, adult, ip);
   else if (a === "video") out = await genVideo(body, env, adult, ip);
   else out = await TEXT[a](body, env, adult);
