@@ -1976,7 +1976,7 @@
     var clr = h("button", { cls: "pml-btn", type: "button", "data-pm": "look-custom-clear", text: "Clear", on: { click: function () { inp.value = ""; apply(); } } });
     paint();
     void ex;
-    return { row: h("div", { style: "margin-top:10px", "data-pm": "look-custom-row" }, [
+    return { row: h("div", { style: "margin-top:10px;margin-bottom:84px", "data-pm": "look-custom-row" }, [
       h("div", { cls: "pml-row" }, [h("span", { cls: "pml-k", text: "Your words / #tags" }), inp, clr]), note]), chips: chips };
   }
   // ---- AI Tighten for the look prompt (reuses PMTighten: free AI first, local dedupe fallback; params + 21+ guards kept) ----
