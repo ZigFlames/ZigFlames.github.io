@@ -91,6 +91,16 @@ function tgContra(allPos) {
 function tgIs21(p) { return /\b21\s*\+/.test(p); }
 function tgContained(k, list) { for (var i = 0; i < list.length; i++) { if (list[i] === k || (" " + list[i] + " ").indexOf(" " + k + " ") >= 0) return true; } return false; }
 function tgNorm(p) { return String(p || "").toLowerCase().replace(/[’]/g, "'").replace(/^\s*(?:a|an|the)\s+/, "").replace(/[^a-z0-9+' ]+/g, " ").replace(/\s+/g, " ").trim(); }
+// Same-meaning phrases (whole phrase only): the second one is a dupe of the first.
+var TG_SYN = [["photorealistic", "photoreal", "photo realistic", "hyperrealistic", "hyper realistic", "ultra realistic", "ultrarealistic", "ultra photorealistic", "realistic", "lifelike", "true to life", "realism", "realistic photo", "real photo", "photorealism"],
+  ["film grain", "grainy", "analog grain", "grainy film", "film grain texture", "grain"], ["candid", "candid shot", "candid photo", "candid snapshot", "candid moment", "snapshot"],
+  ["shallow depth of field", "shallow dof", "bokeh", "bokeh background", "background bokeh"], ["natural skin texture", "real skin texture", "realistic skin texture", "skin texture", "textured skin", "detailed skin texture"],
+  ["visible pores", "skin pores", "pores", "visible skin pores"], ["no airbrushing", "not airbrushed", "no retouching", "unretouched", "no retouch", "unedited skin"], ["no cgi", "no cgi look", "no 3d render look"],
+  ["amateur", "amateur photo", "amateur shot", "amateur photography"], ["sharp focus", "tack sharp", "in focus", "crisp focus"], ["cinematic", "cinematic look", "cinematic still", "cinematic shot", "cinematic feel"],
+  ["raw photo", "raw image", "raw photograph"], ["natural light", "natural lighting", "available light"], ["harsh flash", "direct flash", "on camera flash", "flash photography"]];
+var TG_SYNMAP = {}; TG_SYN.forEach(function (g) { g.forEach(function (w) { TG_SYNMAP[w] = g[0]; }); });
+function tgCanon(k) { return TG_SYNMAP[k] || k; }
+function tgWordRep(t) { return String(t).replace(/\b(\w+)(?:\s+\1\b)+/gi, "$1"); } // "neon neon lights" -> "neon lights"
 function tgCgi(body) { return tgSegs(body).some(function (s) { return TG_CGI.test(tgPosAvoid(s.text)[0]); }); }
 // Free local tighten: dedupe comma phrases (case-insensitive, also phrases already inside a kept phrase),
 // drop generic AI filler unless it's a CGI/cartoon prompt, params stay last.
@@ -104,9 +114,9 @@ function tgLocal(prompt, negative) {
       var raw = p.trim(); if (!raw) return;
       if (!cgi) { var nf = tgTidy(raw.replace(TG_FILLER, " ")); if (nf !== raw) { removed.push(raw); if (!nf) return; raw = nf; } }
       if (contra(raw) || (TG_FRAG.test(raw) && parts[pi + 1] && contra(parts[pi + 1].trim()))) { removed.push(raw); return; }
-      var k = tgNorm(raw); if (!k) return;
+      raw = tgWordRep(raw); var k = tgNorm(raw); if (!k) return;
       var keptK = kept.map(tgNorm);
-      if (keptK.indexOf(k) >= 0 || (!tgIs21(raw) && (tgContained(k, keptK) || (isTail && tgContained(k, prevKept))))) { removed.push(raw); return; }
+      if (keptK.indexOf(k) >= 0 || (tgCanon(k) !== k || TG_SYNMAP[k]) && keptK.map(tgCanon).concat(isTail ? prevKept.map(tgCanon) : []).indexOf(tgCanon(k)) >= 0 || (!tgIs21(raw) && (tgContained(k, keptK) || (isTail && tgContained(k, prevKept))))) { removed.push(raw); return; }
       kept.push(raw);
     });
     var av = "";
@@ -155,7 +165,7 @@ const TIGHTEN_SYSTEM = `You are a prompt EDITOR that TIGHTENS photoreal AI image
 Example: {"keep":[0,2,1,4,7,5],"trim":[[4,"iPhone on a tripod"]],"negative":[0,1]}
 Input: {"mode","cgi_style","segments":[{"weight","phrases":[[id,"phrase"],...]}],"negative":[[id,"phrase"],...]}. Segments are Midjourney multi-prompt parts (text::weight); the machine re-adds weights, "avoid:" lists and --params itself.
 - "keep": a flat list of ids (numbers only). Ids not listed are dropped. Segments stay as they are; your order is applied inside each segment.
-- DROP duplicates and near-duplicates (same idea said twice: keep the more specific one). The LAST segment should drop phrases already said in earlier segments; earlier weighted segments keep their own phrases.
+- DROP duplicates and near-duplicates, including SAME-MEANING words said twice ("photorealistic" + "realistic" + "lifelike", "film grain" + "grainy", "candid" + "candid snapshot", "bokeh" + "shallow depth of field"): keep the more specific one. The LAST segment should drop phrases already said in earlier segments; earlier weighted segments keep their own phrases.
 - DROP contradictions: keep the raw/real option, drop the polished one (keep "natural skin texture", drop "airbrushed", "flawless smooth skin", "uniform complexion", "beauty lighting"; keep "ordinary indoor lighting" over "studio lighting").
 - DROP filler and generic AI-look words ("masterpiece", "best quality", "octane render", "unreal engine", "hyperdetailed", "8k", "highly detailed") unless cgi_style is true.
 - Long prompts usually have 15-30% removable phrases: repeated camera/skin/light wording, generic praise, phrases that say the same as a longer phrase. Remove them.
@@ -268,8 +278,8 @@ async function tighten(body, env, ch) {
       const id = table.length; table.push({ id, seg: si, text: t, orig: t });
       if (!cgi) { t = tgTidy(t.replace(TG_FILLER, " ")); table[id].text = t; if (!t) return; }
       if (contra(t) || (TG_FRAG.test(t) && parts[pi + 1] && contra(parts[pi + 1].trim()))) return;
-      const k = tgNorm(t);
-      if (!k || keptK.includes(k) || (!tgIs21(t) && (tgContained(k, keptK) || (si === last && last > 0 && tgContained(k, earlier))))) return;
+      t = tgWordRep(t); table[id].text = t; const k = tgNorm(t);
+      if (!k || keptK.includes(k) || (TG_SYNMAP[k] && keptK.concat(si === last && last > 0 ? earlier : []).map(tgCanon).includes(tgCanon(k))) || (!tgIs21(t) && (tgContained(k, keptK) || (si === last && last > 0 && tgContained(k, earlier))))) return;
       keptK.push(k); ids.push(id);
     });
     if (si < last) keptK.forEach((k) => earlier.push(k));
@@ -280,7 +290,9 @@ async function tighten(body, env, ch) {
   const negList = negative ? negative.split(/\s*,\s*/).map((t) => t.trim()).filter(Boolean) : [];
   const input = { mode: sfw ? "SFW" : "18+", cgi_style: cgi, segments: S.map((s) => ({ weight: s.w, phrases: s.ids.map((id) => [id, table[id].text]) })), negative: negList.map((t, i) => [i, t]) };
   const messages = [{ role: "system", content: TIGHTEN_SYSTEM }, { role: "user", content: JSON.stringify(input) }];
-  const models = chain(env, undefined, [env.MODEL || DEFAULT_MODEL]).models;
+  // model switch from the page (pm_ai_textmodel): a paid pick is tried first, the free chain is always behind it
+  const pk = ["free", "gemini", "gpt", "grok"].includes(body.model) ? body.model : undefined;
+  const models = [...new Set(chain(env, pk, [env.MODEL || DEFAULT_MODEL]).models.concat(pk && pk !== "free" ? chain(env, "free").models : []))];
   let model = models[0];
   const keep = keepTokens(o.body);
   let best = null, lastErr = "model did not return JSON", tin = 0, tout = 0, why = "";

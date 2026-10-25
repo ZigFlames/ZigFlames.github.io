@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261024c";
+  var V = "20261025a";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -856,7 +856,7 @@
     var res = S.result, a = artPick(res ? lookById(res.look) : null); if (!a) return;
     if (res && res.body && res.art) {
       var old = res.tab === "video" ? res.art.video : res.art.mj, nb = res.body.indexOf(old) >= 0 ? res.body.replace(old, res.tab === "video" ? a.video : a.mj) : artInsert(res.body, a, res.tab);
-      res.body = nb; res.art = a; res.params = artNo(res.params); res.text = compose(res); try { S.api.current.setPrompt(res.text); } catch (e) {}
+      res.body = nb; res.undoBody = ""; res.art = a; res.params = artNo(res.params); res.text = compose(res); try { S.api.current.setPrompt(res.text); } catch (e) {}
     }
     S.artLast = a.credit; save(); renderPanel(); toast("Art by", a.credit);
   }
@@ -1914,7 +1914,119 @@
   }
   // Final prompt: body, then (optional) tag block, then params LAST.
   function compose(res) {
-    return [res.body, res.withTags && res.tags && res.tags.length ? res.tags.join(" ") : "", res.params || ""].filter(Boolean).join(" ").replace(/\s{2,}/g, " ").trim();
+    var ex = res.noExtra ? { words: [], tags: [] } : parseExtra(extraGet(), res);
+    var body = res.body || "";
+    if (ex.words.length) body = body.replace(/[\s,]+$/, "") + (body ? ", " : "") + ex.words.join(", ");
+    var tags = (res.withTags && res.tags ? res.tags : []).concat(ex.tags);
+    return [body, tags.length ? tags.join(" ") : "", res.params || ""].filter(Boolean).join(" ").replace(/\s{2,}/g, " ").trim();
+  }
+  // ---- Your words / #hashtags (type-in under the hashtag line) ----
+  // Words go into the prompt body (before --params), #hashtags join the hashtag line; both deduped; adults 21+ guards apply.
+  var EXTRA_KEY = "pm.looks.extra.v1";
+  var EXTRA_SPICY_RE = /\b(nsfw|nude|naked|topless|nipples?|porn\w*|sex\w*|explicit|xxx|onlyfans|lingerie|boudoir|fetish\w*|kink\w*|thong|bdsm|erotic\w*)\b/i;
+  function extraGet() { try { return String(localStorage.getItem(EXTRA_KEY) || "").slice(0, 300); } catch (e) { return ""; } }
+  function extraSet(v) { try { if (v) localStorage.setItem(EXTRA_KEY, String(v).slice(0, 300)); else localStorage.removeItem(EXTRA_KEY); } catch (e) {} }
+  function parseExtra(raw, res) {
+    var out = { words: [], tags: [], dropped: [] }, adult = isAdult();
+    raw = String(raw || "").replace(/(^|\s)--\S+(\s+[^\s,#-][^\s,#]*)?/g, " ").replace(/::-?\d*\.?\d*/g, " ");
+    var body = " " + String((res && res.body) || "").toLowerCase().replace(/\s+/g, " ") + " ";
+    var have = {}; ((res && res.withTags && res.tags) || []).forEach(function (t) { have[String(t).toLowerCase()] = 1; });
+    var seenW = {};
+    function bad(t) { return hasBlocked(t) || (FRAMING_RE.lastIndex = 0, FRAMING_RE.test(t)) || (!adult && EXTRA_SPICY_RE.test(t)); }
+    raw.split(/[,\n;]+/).forEach(function (chunk) {
+      var words = chunk.replace(/#[\w\u00c0-\uffff]+/g, function (m) {
+        var t = "#" + m.slice(1).replace(/[^\w\u00c0-\uffff]/g, ""), k = t.toLowerCase();
+        if (t.length < 2) return " ";
+        if (bad(m.slice(1).replace(/_/g, " "))) { out.dropped.push(t); return " "; }
+        if (!have[k]) { have[k] = 1; out.tags.push(t); }
+        return " ";
+      }).replace(/\s{2,}/g, " ").replace(/^[\s.,;:-]+|[\s.,;:-]+$/g, "");
+      if (!words) return;
+      if (bad(words)) { out.dropped.push(words); return; }
+      var k = words.toLowerCase();
+      if (seenW[k] || body.indexOf(" " + k + " ") >= 0 || body.indexOf(" " + k + ",") >= 0 || body.indexOf(" " + k + ".") >= 0) return;
+      seenW[k] = 1; out.words.push(words);
+    });
+    return out;
+  }
+  function extraRow(res) {
+    var ex = parseExtra(extraGet(), res);
+    var chips = h("span", { cls: "pml-row", "data-pm": "look-extra-chips", style: "gap:6px" });
+    var note = h("div", { cls: "pml-k", "data-pm": "look-extra-note", style: "margin-top:4px;letter-spacing:.04em;text-transform:none" });
+    function paint() {
+      var e = parseExtra(extraGet(), res);
+      chips.innerHTML = "";
+      e.tags.forEach(function (t) { chips.appendChild(h("span", { cls: "pml-htag pml-htag-mine", text: t })); });
+      var bits = [];
+      if (e.words.length) bits.push("Added to prompt (before params): " + e.words.join(", "));
+      if (e.tags.length) bits.push("Added to hashtag line: " + e.tags.join(" "));
+      if (e.dropped.length) bits.push("Skipped (adults 21+ / mode rules): " + e.dropped.join(", "));
+      note.textContent = bits.join(" \u00b7 ") || "Type words or #hashtags \u2014 words go in the prompt before the params, #tags join the hashtag line. Dupes are skipped.";
+    }
+    var inp = h("input", { cls: "pml-extra", type: "text", "data-pm": "look-custom", maxlength: "300", placeholder: "Type a word, phrase or #hashtag (comma between items)\u2026", "aria-label": "Your words or hashtags", value: extraGet() });
+    var tmr = null;
+    function apply() {
+      extraSet(inp.value.trim());
+      res.text = compose(res);
+      if (R.result) R.result.textContent = res.text;
+      paint(); save();
+      clearTimeout(tmr); tmr = setTimeout(function () { try { S.api.current.setPrompt(res.text); } catch (e) {} }, 250);
+    }
+    inp.addEventListener("input", apply);
+    var clr = h("button", { cls: "pml-btn", type: "button", "data-pm": "look-custom-clear", text: "Clear", on: { click: function () { inp.value = ""; apply(); } } });
+    paint();
+    void ex;
+    return { row: h("div", { style: "margin-top:10px", "data-pm": "look-custom-row" }, [
+      h("div", { cls: "pml-row" }, [h("span", { cls: "pml-k", text: "Your words / #tags" }), inp, clr]), note]), chips: chips };
+  }
+  // ---- AI Tighten for the look prompt (reuses PMTighten: free AI first, local dedupe fallback; params + 21+ guards kept) ----
+  function ensureTighten() {
+    return new Promise(function (ok, no) {
+      if (window.PMTighten) return ok(window.PMTighten);
+      var sc = document.getElementById("pm-tighten-js");
+      if (!sc) { sc = document.createElement("script"); sc.id = "pm-tighten-js"; sc.src = "./assets/ai-tighten.js?v=" + V; document.head.appendChild(sc); }
+      var to = setTimeout(function () { no(new Error("load timeout")); }, 8000);
+      sc.addEventListener("load", function () { clearTimeout(to); window.PMTighten ? ok(window.PMTighten) : no(new Error("not loaded")); });
+      sc.addEventListener("error", function () { clearTimeout(to); no(new Error("script failed")); });
+    });
+  }
+  function lookBodyOf(prompt, params) {
+    var t = String(prompt || "").trim();
+    if (params && t.slice(-params.length) === params) return t.slice(0, -params.length).trim();
+    var m = t.search(/(^|\s)--[a-z]/i);
+    return (m >= 0 ? t.slice(0, m) : t).trim();
+  }
+  function doTighten() {
+    var res = S.result; if (!res || !res.body || S.tightBusy) return;
+    S.tightBusy = true; res.tightNote = "Tightening\u2026"; renderPanel();
+    var before = res.body;
+    ensureTighten().then(function (T) {
+      return T.run({ prompt: before + (res.params ? " " + res.params : ""), negative: "", mode: isAdult() ? "18+" : "SFW", timeout: 30000 });
+    }).then(function (r) {
+      var nb = lookBodyOf(r && r.prompt, res.params);
+      if (!nb || nb.length >= before.length || (/21\+/.test(before) && !/21\+/.test(nb)) || hasBlocked(nb)) {
+        res.tightNote = "Already tight \u2014 nothing same-meaning or repeated to cut.";
+      } else {
+        res.undoBody = before; res.body = nb;
+        var gone = ((r.notes || []).filter(function (n) { return /^Removed:/.test(n); })[0] || "").replace(/^Removed:\s*/, "");
+        var src = r.source === "ai" ? "AI" + (r.usage && r.usage.model ? " \u00b7 " + String(r.usage.model).replace(/^.*\//, "") : "") : "free on-device";
+        res.tightNote = "Tightened (" + src + "): " + before.length + " \u2192 " + nb.length + " chars" + (gone ? " \u00b7 cut: " + gone : "");
+      }
+    }).catch(function (e) {
+      res.tightNote = "Tighten unavailable (" + ((e && e.message) || e) + ").";
+    }).then(function () {
+      S.tightBusy = false;
+      res.text = compose(res); save();
+      try { S.api.current.setPrompt(res.text); } catch (e) {}
+      renderPanel();
+    });
+  }
+  function undoTighten() {
+    var res = S.result; if (!res || !res.undoBody) return;
+    res.body = res.undoBody; res.undoBody = ""; res.tightNote = "Undone \u2014 back to the Remix prompt.";
+    res.text = compose(res); save();
+    try { S.api.current.setPrompt(res.text); } catch (e) {}
+    renderPanel();
   }
   // Keep Prompt Output in sync with the main app's MJ settings panel: if Zig changes --ar / --stylize / --chaos etc.
   // there after a Remix, the look prompt picks it up (the app uses the look prompt verbatim, so it must carry the params).
@@ -1995,6 +2107,8 @@
     ".pml-cam{min-height:44px}.pml-skin{min-height:44px}.pml-cam.on{border-color:var(--acc);color:#fff;background:rgba(125,211,252,.12)}" +
     ".pml-gear{margin-top:6px;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.45;color:#94a3b8}" +
     ".pml-conf{display:inline-block;margin-left:8px;padding:0 6px;border-radius:4px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(255,255,255,.2);color:#cbd5e1}.pml-conf-guess{border-color:rgba(251,191,36,.5);color:#fde68a}.pml-conf-known{border-color:rgba(74,222,128,.5);color:#86efac}" +
+    ".pml-extra{flex:1;min-width:180px;font:13px ui-monospace,Menlo,monospace;padding:7px 9px;border-radius:8px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);color:#f1f5f9}.pml-extra:focus{outline:none;border-color:#f59e0b}" +
+    ".pml-htag-mine{border-color:rgba(245,158,11,.6)!important;color:#fcd34d!important}" +
     ".pml-htag{font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:3px 7px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e2e8f0}";
 
   function h(tag, attrs, kids) {
@@ -2298,19 +2412,28 @@
         h("div", { cls: "pml-row" }, [
           h("button", { cls: "pml-btn", type: "button", "data-pm": "look-copy", text: "Copy", on: { click: function () { copy(res.text, "Prompt copied"); } } }),
           h("button", { cls: "pml-btn", type: "button", "data-pm": "look-again", text: "Remix again", on: { click: doRemix } }),
+          h("button", { cls: "pml-btn pml-tight", type: "button", "data-pm": "look-tighten", disabled: S.tightBusy ? "disabled" : null, title: "Cut repeated and same-meaning words (free AI first, on-device fallback). Never longer; --params and adults 21+ tag stay.", text: S.tightBusy ? "Tightening\u2026" : "\u2728 AI Tighten", on: { click: doTighten } }),
+          res.undoBody ? h("button", { cls: "pml-btn", type: "button", "data-pm": "look-tighten-undo", text: "\u21b6 Undo", on: { click: undoTighten } }) : null,
           h("button", { cls: "pml-btn", type: "button", text: "Open in Prompt Output", on: { click: function () { try { S.api.current.go("output"); } catch (e) {} } } })
         ])
       ]));
-      P.appendChild(h("div", { cls: "pml-out", "data-pm": "look-result", text: res.text }));
+      if (res.tightNote) P.appendChild(h("div", { cls: "pml-note", "data-pm": "look-tighten-note", style: "margin-top:8px", text: res.tightNote }));
+      R.result = h("div", { cls: "pml-out", "data-pm": "look-result", text: res.text });
+      P.appendChild(R.result);
+      var xr = extraRow(res);
       if (res.params) P.appendChild(h("div", { cls: "pml-row", style: "margin-top:6px", "data-pm": "look-out-params" }, [h("span", { cls: "pml-k", text: "Params in prompt" }), h("span", { cls: "pml-param", text: res.params.replace(/\s--no\s.*$/, " --no \u2026") })]));
       if (res.tags && res.tags.length) {
         var tr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-tags" }, [h("span", { cls: "pml-k", text: "Hashtags" })]);
         res.tags.forEach(function (t) { tr.appendChild(h("span", { cls: "pml-htag", text: t })); });
         if (res.body) tr.appendChild(h("button", { cls: "pml-btn pml-addtags" + (res.withTags ? " on" : ""), type: "button", "data-pm": "look-add-tags", "aria-pressed": res.withTags ? "true" : "false",
           text: res.withTags ? "Remove tags" : "Add tags", title: "Insert the tag block into the prompt (params stay last)", on: { click: toggleTags } }));
-        tr.appendChild(h("button", { cls: "pml-btn", type: "button", "data-pm": "look-copy-tags", text: "Copy tags", on: { click: function () { copy(res.tags.join(" "), "Hashtags copied"); } } }));
+        tr.appendChild(xr.chips);
+        tr.appendChild(h("button", { cls: "pml-btn", type: "button", "data-pm": "look-copy-tags", text: "Copy tags", on: { click: function () { copy(res.tags.concat(parseExtra(extraGet(), res).tags).join(" "), "Hashtags copied"); } } }));
         P.appendChild(tr);
+      } else {
+        P.appendChild(h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-tags-mine" }, [h("span", { cls: "pml-k", text: "Hashtags" }), xr.chips]));
       }
+      P.appendChild(xr.row);
     }
   }
   // Focus DNA chips: tap x to drop a key, type + Enter to add one, Reset restores the platform defaults.
@@ -2551,7 +2674,7 @@
       S.people = Math.max(1, Math.min(PEOPLE_MAX, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text); S._ideaNow = i; var heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
-      var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags }; if (S._artUsed) res.params = artNo(res.params);
+      var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags, noExtra: true }; if (S._artUsed) res.params = artNo(res.params);
       var out = compose(res);
       S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S.noAi = keep[19]; S.realPorn = keep[20]; S.neon = keep[21]; S.neonPick = keep[22]; S.room = keep[23]; S.antiGeneric = keep[24]; S.uniqueFaces = keep[25]; S.eyeSet = keep[26]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
       return o.full ? { faces: (S._cast || []).map(function (c) { return { sig: c._faceSig || "", eyes: c.eyes, micro: c.micro, heritage: c.heritageRegion, tone: c.skinTone, man: !!c.man }; }), details: (S._agUsed || []).slice(), neon: S._neonUsed || "brand", room: S._roomUsed || "", art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;

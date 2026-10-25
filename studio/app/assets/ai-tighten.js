@@ -1,4 +1,4 @@
-/* Zig's Prompt Machine — ✨ AI Tighten (v20261023c)
+/* Zig's Prompt Machine — ✨ AI Tighten (v20261025a)
    window.PMTighten.run({prompt, negative, mode}) -> Promise<{prompt, negative, notes[], usage, source:"ai"|"local"}>
    Calls the zigflames-ai worker (action "tighten"); every AI result is re-checked here
    (params kept verbatim and last, ::weights valid, adult 21+ kept, no age/family words, never longer).
@@ -83,6 +83,16 @@
   function tgIs21(p) { return /\b21\s*\+/.test(p); }
   function tgContained(k, list) { for (var i = 0; i < list.length; i++) { if (list[i] === k || (" " + list[i] + " ").indexOf(" " + k + " ") >= 0) return true; } return false; }
   function tgNorm(p) { return String(p || "").toLowerCase().replace(/[’]/g, "'").replace(/^\s*(?:a|an|the)\s+/, "").replace(/[^a-z0-9+' ]+/g, " ").replace(/\s+/g, " ").trim(); }
+  // Same-meaning phrases (whole phrase only): the second one is a dupe of the first.
+  var TG_SYN = [["photorealistic", "photoreal", "photo realistic", "hyperrealistic", "hyper realistic", "ultra realistic", "ultrarealistic", "ultra photorealistic", "realistic", "lifelike", "true to life", "realism", "realistic photo", "real photo", "photorealism"],
+    ["film grain", "grainy", "analog grain", "grainy film", "film grain texture", "grain"], ["candid", "candid shot", "candid photo", "candid snapshot", "candid moment", "snapshot"],
+    ["shallow depth of field", "shallow dof", "bokeh", "bokeh background", "background bokeh"], ["natural skin texture", "real skin texture", "realistic skin texture", "skin texture", "textured skin", "detailed skin texture"],
+    ["visible pores", "skin pores", "pores", "visible skin pores"], ["no airbrushing", "not airbrushed", "no retouching", "unretouched", "no retouch", "unedited skin"], ["no cgi", "no cgi look", "no 3d render look"],
+    ["amateur", "amateur photo", "amateur shot", "amateur photography"], ["sharp focus", "tack sharp", "in focus", "crisp focus"], ["cinematic", "cinematic look", "cinematic still", "cinematic shot", "cinematic feel"],
+    ["raw photo", "raw image", "raw photograph"], ["natural light", "natural lighting", "available light"], ["harsh flash", "direct flash", "on camera flash", "flash photography"]];
+  var TG_SYNMAP = {}; TG_SYN.forEach(function (g) { g.forEach(function (w) { TG_SYNMAP[w] = g[0]; }); });
+  function tgCanon(k) { return TG_SYNMAP[k] || k; }
+  function tgWordRep(t) { return String(t).replace(/\b(\w+)(?:\s+\1\b)+/gi, "$1"); } // "neon neon lights" -> "neon lights"
   function tgCgi(body) { return tgSegs(body).some(function (s) { return TG_CGI.test(tgPosAvoid(s.text)[0]); }); }
   // Free local tighten: dedupe comma phrases (case-insensitive, also phrases already inside a kept phrase),
   // drop generic AI filler unless it's a CGI/cartoon prompt, params stay last.
@@ -96,9 +106,9 @@
         var raw = p.trim(); if (!raw) return;
         if (!cgi) { var nf = tgTidy(raw.replace(TG_FILLER, " ")); if (nf !== raw) { removed.push(raw); if (!nf) return; raw = nf; } }
         if (contra(raw) || (TG_FRAG.test(raw) && parts[pi + 1] && contra(parts[pi + 1].trim()))) { removed.push(raw); return; }
-        var k = tgNorm(raw); if (!k) return;
+        raw = tgWordRep(raw); var k = tgNorm(raw); if (!k) return;
         var keptK = kept.map(tgNorm);
-        if (keptK.indexOf(k) >= 0 || (!tgIs21(raw) && (tgContained(k, keptK) || (isTail && tgContained(k, prevKept))))) { removed.push(raw); return; }
+        if (keptK.indexOf(k) >= 0 || (tgCanon(k) !== k || TG_SYNMAP[k]) && keptK.map(tgCanon).concat(isTail ? prevKept.map(tgCanon) : []).indexOf(tgCanon(k)) >= 0 || (!tgIs21(raw) && (tgContained(k, keptK) || (isTail && tgContained(k, prevKept))))) { removed.push(raw); return; }
         kept.push(raw);
       });
       var av = "";
@@ -133,6 +143,7 @@
     notes.push(gone.length ? "Removed: " + gone.slice(0, 12).join("; ") + (gone.length > 12 ? " (+" + (gone.length - 12) + " more)" : "") : "Nothing to remove locally.");
     return { prompt: p, negative: n, notes: notes.concat(l.notes || []), usage: null, source: "local" };
   }
+  function textModel() { try { var m = localStorage.getItem("pm_ai_textmodel"); return ["free", "gemini", "gpt", "grok"].indexOf(m) >= 0 ? m : "free"; } catch (e) { return "free"; } }
   function check(orig, origNeg, res) {
     if (!res || typeof res.prompt !== "string" || !res.prompt.trim()) return null;
     var fin = tgFinalize(orig, tgSplitParams(res.prompt).body);
@@ -149,7 +160,7 @@
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, opts.timeout || 20000);
     var p;
     try {
-      p = fetch(endpoint(), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "tighten", prompt: prompt, negative: negative, mode: mode }), signal: ctl ? ctl.signal : undefined })
+      p = fetch(endpoint(), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "tighten", prompt: prompt, negative: negative, mode: mode, model: textModel() }), signal: ctl ? ctl.signal : undefined })
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j && j.error ? j.error : "HTTP " + r.status); return j; }); });
     } catch (e) { p = Promise.reject(e); }
     return p.then(function (j) {
@@ -164,5 +175,5 @@
       return localResult(prompt, negative, why);
     }).catch(function (e) { return { prompt: prompt, negative: negative, notes: ["Tighten failed (" + (e && e.message) + ") — kept your prompt."], source: "none" }; });
   }
-  window.PMTighten = { run: run, local: function (p, n) { return localResult(p, n, "local only"); }, version: "20261023c" };
+  window.PMTighten = { run: run, local: function (p, n) { return localResult(p, n, "local only"); }, version: "20261025a" };
 })();
