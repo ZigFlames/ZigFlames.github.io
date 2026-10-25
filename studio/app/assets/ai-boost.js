@@ -205,7 +205,7 @@
       });
     } } });
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") b.click(); });
-    root.append(h("h4", {}, ["🌱 AI Seed Expander · Grok", st]), h("p", { cls: "sub", text: "One seed in, a list of grounded, shootable scene seeds out. Your seed words always stay in." }), h("div", { cls: "row" }, [inp, cnt, b]), out);
+    root.append(h("h4", {}, ["🌱 AI Seed Expander", st]), h("p", { cls: "sub", text: "One seed in, a list of grounded, shootable scene seeds out. Your seed words always stay in." }), h("div", { cls: "row" }, [inp, cnt, b]), out);
   };
 
   P.vocab = function (root, api) {
@@ -274,7 +274,7 @@
       h("div", { cls: "row" }, [bClassify, modelSelect(), h("button", { cls: "sm", text: "↻ Refresh", on: { click: renderLinks } })]), linkBox]);
     linkDet.addEventListener("toggle", function () { if (linkDet.open) renderLinks(); });
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") bAdd.click(); });
-    root.append(h("h4", {}, ["📚 AI Vocabulary fill · Grok", st]), h("p", { cls: "sub", text: "Creates a category and fills it with specific, prompt-ready words — saved straight into your bank (duplicates skipped)." }), h("div", { cls: "row" }, [inp, cnt, bAdd, bSel]), out, linkDet);
+    root.append(h("h4", {}, ["📚 AI Vocabulary Fill", st]), h("p", { cls: "sub", text: "Creates a category and fills it with specific, prompt-ready words — saved straight into your bank (duplicates skipped)." }), h("div", { cls: "row" }, [inp, cnt, bAdd, bSel]), out, linkDet);
   };
 
   P.dance = function (root, api) {
