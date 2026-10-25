@@ -1,4 +1,4 @@
-/* Zig's Prompt Machine — ✨ AI Boost (v20261024c)
+/* Zig's Prompt Machine — ✨ AI Boost (v20261024d)
    window.PMAI.call(action, body, opts) -> Promise<json>  (zigflames-ai worker; endpoint override: localStorage pm_ai_endpoint / window.PM_AI_ENDPOINT)
    window.PMBoost.mount(el, kind, apiRef) / unmount(el) / uniqAI(prompt)
    kinds: studio · remix · expand · vocab · dance · looplab
@@ -115,27 +115,81 @@
   // ---------- panels ----------
   var P = {};
 
+  // ---------- selection context (pm-context.js) + text-model setting ----------
+  var MODEL_KEY = "pm_ai_textmodel";
+  var MODELS = [["free", "Free (best free model)"], ["gpt", "GPT (needs OpenRouter credit)"], ["grok", "Grok (needs credit)"], ["gemini", "Gemini Flash Lite (needs credit)"]];
+  function textModel() { try { var m = localStorage.getItem(MODEL_KEY); return MODELS.some(function (x) { return x[0] === m; }) ? m : "free"; } catch (e) { return "free"; } }
+  function modelSelect() {
+    var sel = h("select", { title: "Which AI writes for Remix / Cleanup / Classify. Free costs $0 (50 calls/day). Paid models answer 'needs credit' until OpenRouter credit exists, then the free model and the local fallback take over." }, MODELS.map(function (m) { return h("option", { value: m[0], text: "Model: " + m[1] }); }));
+    sel.value = textModel(); sel.addEventListener("change", function () { try { localStorage.setItem(MODEL_KEY, sel.value); } catch (e) {} });
+    return sel;
+  }
+  function ctxOf(api) { try { var c = api.current.getCtx && api.current.getCtx(); return c || (window.PMCtx ? window.PMCtx.read() : null); } catch (e) { return null; } }
+  function tierMode(ctx, api) { return ctx ? (ctx.adult ? "18+" : "sfw") : mode(api); }
+  function ctxVariant(idea, ctx) {
+    if (!ctx || !window.PMCtx) return localVariant(idea);
+    var ws = window.PMCtx.words(ctx, 5).slice(0, 5).map(function (x) { return x.w; });
+    var parts = [safe(idea).replace(/[.,;\s]+$/, ""), pick(FRAMES)].concat(ws);
+    if (ctx.realism) parts.push(pick(CAMS), pick(LIGHT), skin());
+    if (ctx.tier === "xxx" && !/explicit|xxx/i.test(parts.join(" "))) parts.push("explicit, uncensored, consenting adults");
+    if (ctx.tier === "nsfw" && !/nsfw|nude|lingerie|topless/i.test(parts.join(" "))) parts.push("NSFW, sensual, implied nudity");
+    return frame21(shuffleTail(parts).join(", "));
+  }
+  function shuffleTail(a) { return a.slice(0, 2).concat(shuffle(a.slice(2))); }
+  function ensureIdea(api, ctx) {
+    var idea = ((api.current.getIdea && api.current.getIdea()) || "").trim(), built = false;
+    if (!idea && ctx && window.PMCtx) { idea = window.PMCtx.seed(ctx); built = true; api.current.setIdea && api.current.setIdea(idea); }
+    return { idea: idea, built: built };
+  }
+  function saveWordsUI(words, api) {
+    var cats = api.current.categories || [], picked = {}, inBank = {};
+    cats.forEach(function (c) { (c.chips || []).forEach(function (x) { if (x && x.text) inBank[String(x.text).toLowerCase()] = 1; }); });
+    words = (words || []).map(safe).filter(function (w) { return w && w.length < 80 && !inBank[w.toLowerCase()]; });
+    if (!words.length) return null;
+    var chips = words.map(function (w) { picked[w] = true; var b = h("button", { cls: "sm tab on", text: w, title: "click to leave this word out" }); b.addEventListener("click", function () { picked[w] = !picked[w]; b.className = "sm tab" + (picked[w] ? " on" : ""); }); return b; });
+    var sel = h("select", {}, [h("option", { value: "__new", text: "➕ new category \"AI Words\"" })].concat(cats.map(function (c) { return h("option", { value: c.id, text: c.name }); })));
+    var save = h("button", { cls: "go", text: "💾 Save words to Vocab Bank", on: { click: function () {
+      var list = words.filter(function (w) { return picked[w]; }); if (!list.length) return toast(api, "No words selected");
+      var id = sel.value;
+      if (id === "__new") { var ex = (api.current.categories || []).filter(function (c) { return c.name.toLowerCase() === "ai words"; })[0]; id = ex ? ex.id : api.current.addCategory && api.current.addCategory("AI Words"); }
+      if (!id || !api.current.massAdd) return toast(api, "Open the Vocab Bank once, then try again");
+      setTimeout(function () { var n = api.current.massAdd(id, list.join("\n")); toast(api, "Saved to Vocab Bank", (n || list.length) + " new word" + (list.length === 1 ? "" : "s")); save.textContent = "✅ Saved"; save.disabled = true; }, 30);
+    } } });
+    return h("div", { cls: "item" }, [h("b", { text: "🧠 New words the AI invented for these selections:" }), h("div", { cls: "row" }, chips), h("div", { cls: "row" }, [sel, save])]);
+  }
+
   P.remix = function (root, api) {
-    var out = h("div"), st = h("span");
+    var out = h("div"), st = h("span"), using = h("div", { cls: "muted" });
     var cnt = h("select", {}, [3, 5, 8].map(function (n) { return h("option", { value: n, text: n + " variations" }); }));
-    var bClean = h("button", { text: "✨ AI Cleanup idea", on: { click: function () {
-      var idea = (api.current.getIdea && api.current.getIdea()) || ""; if (!idea.trim()) return toast(api, "Type an idea first");
-      busy(bClean, true); call("cleanup", { text: idea, mode: mode(api) }).then(function (j) {
-        busy(bClean, false); var loc = aiFailed(j) || !j.text, t = loc ? localCleanup(idea) : localCleanup(j.text);
-        api.current.setIdea && api.current.setIdea(t); st.replaceChildren(badge(j, loc)); toast(api, "Idea cleaned", t.slice(0, 90));
+    function showUsing() { var c = ctxOf(api); using.textContent = c && window.PMCtx ? "Using: " + window.PMCtx.summary(c) : ""; return c; }
+    var bClean = h("button", { text: "✨ AI Cleanup (empty box = builds a seed first)", title: "Tidies the seed idea box. If the box is empty it first builds a seed from your top selections + Vocab Bank, then cleans it.", on: { click: function () {
+      var ctx = showUsing(), e = ensureIdea(api, ctx); if (!e.idea) return toast(api, "Type an idea first");
+      var pack = ctx && window.PMCtx ? window.PMCtx.forAI(ctx, 8) : {};
+      busy(bClean, true); call("cleanup", { text: e.idea, mode: tierMode(ctx, api), tier: pack.tier, context: pack.context, model: textModel() }).then(function (j) {
+        busy(bClean, false); var loc = aiFailed(j) || !j.text, t = loc ? localCleanup(e.idea) : localCleanup(j.text);
+        api.current.setIdea && api.current.setIdea(t); st.replaceChildren(badge(j, loc)); toast(api, e.built ? "Seed built from your settings + cleaned" : "Idea cleaned", t.slice(0, 90));
       });
     } } });
-    var bVar = h("button", { cls: "go", text: "🎲 Fresh AI variations", on: { click: function () {
-      var idea = (api.current.getIdea && api.current.getIdea()) || ""; if (!idea.trim()) return toast(api, "Type an idea first");
-      var n = +cnt.value; busy(bVar, true);
-      call("remix", { idea: idea, count: n, mode: mode(api) }).then(function (j) {
+    var bVar = h("button", { cls: "go", text: "🎲 AI Remix (uses your settings + Vocab Bank)", title: "Writes fresh variations at your heat tier, style, platform, realism, mood and people, using the Vocab Bank words linked to those selections. Empty box is fine.", on: { click: function () {
+      var ctx = showUsing(), e = ensureIdea(api, ctx); if (!e.idea) return toast(api, "Type an idea first");
+      var n = +cnt.value, pack = ctx && window.PMCtx ? window.PMCtx.forAI(ctx, 14) : {};
+      busy(bVar, true);
+      call("remix", { idea: e.idea, count: n, mode: tierMode(ctx, api), tier: pack.tier, context: pack.context, words: pack.words, avoid: pack.avoid, invent: true, model: textModel() }, { timeout: 30000 }).then(function (j) {
         busy(bVar, false); var loc = aiFailed(j) || !(j.ideas && j.ideas.length);
-        var list = loc ? Array.apply(null, Array(n)).map(function () { return localVariant(idea); }) : j.ideas.map(frame21);
-        st.replaceChildren(badge(j, loc)); out.replaceChildren.apply(out, list.map(function (t) { return itemRow(t, api, [h("button", { cls: "sm", text: "Use as idea", on: { click: function () { api.current.setIdea && api.current.setIdea(t); toast(api, "Loaded as idea"); } } })]); }));
+        var list = loc ? Array.apply(null, Array(n)).map(function () { return ctxVariant(e.idea, ctx); }) : j.ideas.map(frame21);
+        var notes = [];
+        if (e.built) notes.push(h("div", { cls: "note", text: "Empty box → seed built from your settings + Vocab Bank: " + e.idea }));
+        if (j && j.usage && j.usage.credit_note) notes.push(h("div", { cls: "note", text: j.usage.credit_note }));
+        if (j && j._status === 402) notes.push(h("div", { cls: "note", text: "That paid model needs OpenRouter credit — switch the model back to Free (used the free fallback)." }));
+        st.replaceChildren(badge(j, loc), ctx ? h("span", { cls: "badge", text: ctx.tierLabel }) : "");
+        var sw = !loc && saveWordsUI(j.newWords, api);
+        out.replaceChildren.apply(out, notes.concat(list.map(function (t) { return itemRow(t, api, [h("button", { cls: "sm", text: "Use as idea", on: { click: function () { api.current.setIdea && api.current.setIdea(t); toast(api, "Loaded as idea"); } } })]); })).concat(sw ? [sw] : []));
       });
     } } });
-    root.append(h("h4", {}, ["✨ AI Remix · Grok", st]), h("p", { cls: "sub", text: "Cleans up the idea above (keeps your words, fixes order, adds nothing you didn't ask for) or spins fresh variations — real cameras, a new lighting each time, raw skin most of the time, adults 21+." }),
-      h("div", { cls: "row" }, [bClean, cnt, bVar]), out);
+    root.append(h("h4", {}, ["✨ AI Remix (uses your settings + Vocab Bank)", st]),
+      h("p", { cls: "sub", text: "No typing needed: leave the seed box empty and it builds a seed from your top selections (heat tier, style, platform, realism, mood, people) plus the Vocab Bank words linked to them. The AI only composes; the app picks which bank words fit. It can also invent new fitting words you can save with one click. Real cameras, varied lighting, raw skin, adults 21+." }),
+      h("div", { cls: "row" }, [bVar, cnt, bClean, modelSelect()]), using, out);
+    showUsing(); var iv = setInterval(function () { if (!root.isConnected) return clearInterval(iv); showUsing(); }, 2000);
   };
 
   P.expand = function (root, api) {
@@ -179,8 +233,48 @@
       var c = api.current.current && api.current.current(); if (!c) return toast(api, "Pick a category first");
       fill(c.name, c.id, c.chips.map(function (x) { return x.text; }), bSel);
     } } });
+    // ---- 🔗 link categories to the top selections (deterministic; optional one-time AI classify, cached) ----
+    var linkBox = h("div"), linkSt = h("span");
+    function renderLinks() {
+      var cats = api.current.categories || [], C = window.PMCtx;
+      if (!C) { linkBox.replaceChildren(h("div", { cls: "muted", text: "pm-context.js not loaded" })); return; }
+      var ctx = C.read();
+      var rows = cats.map(function (c) {
+        var L = C.linkOf(c), auto = C.autoLink(c.name, (c.chips || []).slice(0, 8).map(function (x) { return x.text; })), ai = C.aiLinks()[String(c.name).toLowerCase()];
+        var sel = h("select", {}, C.LINKS.map(function (x) { return h("option", { value: x[0], text: x[1] }); }));
+        sel.value = c.linkTo || "auto";
+        sel.addEventListener("change", function () { api.current.setCategoryMeta && api.current.setCategoryMeta(c.id, { linkTo: sel.value === "auto" ? undefined : sel.value }); setTimeout(renderLinks, 60); });
+        var al = h("input", { type: "checkbox", title: "Always use this category, whatever the selections (heat-linked words still stay below their tier)" }); al.checked = !!c.always;
+        al.addEventListener("change", function () { api.current.setCategoryMeta && api.current.setCategoryMeta(c.id, { always: al.checked }); setTimeout(renderLinks, 60); });
+        var on = C.linkMatches(L.link, ctx) || c.always && !/^heat:/.test(L.link);
+        if (L.link === "negative") on = false;
+        return h("div", { cls: "row", style: "margin:3px 0;border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:3px" }, [
+          h("b", { text: c.name, style: "min-width:140px;font-size:12px" }), h("span", { cls: "muted", text: (c.chips || []).length + " words" }), sel,
+          h("label", { cls: "muted" }, [al, " always use"]),
+          h("span", { cls: "badge" + (on ? " ai" : ""), text: (L.link === "negative" ? "avoid list" : on ? "in play now" : "idle for these selections") }),
+          h("span", { cls: "muted", text: "→ " + L.link + " (" + L.src + (L.src !== "auto" ? "; name guess: " + auto : "") + (ai && L.src !== "AI" ? "; AI said: " + ai.link : "") + ")" })]);
+      });
+      linkBox.replaceChildren.apply(linkBox, [h("div", { cls: "muted", text: "Now: " + C.summary(ctx) })].concat(rows));
+    }
+    var bClassify = h("button", { text: "🤖 AI classify my categories (one-time, cached)", title: "Asks the AI once to label every category (style / heat / platform / mood / realism / negative / general) from its name + sample words. Saved on this device; remixes never spend calls on it. Your own link choices always win.", on: { click: function () {
+      var cats = (api.current.categories || []).filter(function (c) { return (c.chips || []).length || c.name; });
+      if (!cats.length) return toast(api, "No categories yet");
+      busy(bClassify, true, "Classifying…");
+      call("classify", { categories: cats.slice(0, 60).map(function (c) { return { name: safe(c.name), sample: (c.chips || []).slice(0, 8).map(function (x) { return safe(x.text); }).filter(Boolean) }; }), model: textModel() }, { timeout: 45000 }).then(function (j) {
+        busy(bClassify, false);
+        var loc = aiFailed(j) || !(j.links && j.links.length);
+        linkSt.replaceChildren(badge(j, loc));
+        if (loc) { toast(api, "AI classify unavailable", "Using the built-in name matching (free)."); renderLinks(); return; }
+        window.PMCtx && window.PMCtx.applyClassify(j.links); renderLinks();
+        toast(api, "Categories classified", j.links.length + " labels cached on this device");
+      });
+    } } });
+    var linkDet = h("details", { style: "margin-top:10px" }, [h("summary", { style: "cursor:pointer;font-weight:700;color:#67e8f9;font-size:12px" }, ["🔗 Link categories to your selections (style · heat · platform · mood · realism) ", linkSt]),
+      h("p", { cls: "sub", text: "Auto links by name (e.g. \"Hip Hop Fits\" → Hip-hop style, \"Boudoir\" → NSFW+, \"Camera\" → Realism, \"Negative Drift\" → avoid list). Pick a link to override, tick \"always use\" for categories that fit everything. Random, Remix and the AI pull every linked word over time." }),
+      h("div", { cls: "row" }, [bClassify, modelSelect(), h("button", { cls: "sm", text: "↻ Refresh", on: { click: renderLinks } })]), linkBox]);
+    linkDet.addEventListener("toggle", function () { if (linkDet.open) renderLinks(); });
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") bAdd.click(); });
-    root.append(h("h4", {}, ["📚 AI Vocabulary fill · Grok", st]), h("p", { cls: "sub", text: "Creates a category and fills it with specific, prompt-ready words — saved straight into your bank (duplicates skipped)." }), h("div", { cls: "row" }, [inp, cnt, bAdd, bSel]), out);
+    root.append(h("h4", {}, ["📚 AI Vocabulary fill · Grok", st]), h("p", { cls: "sub", text: "Creates a category and fills it with specific, prompt-ready words — saved straight into your bank (duplicates skipped)." }), h("div", { cls: "row" }, [inp, cnt, bAdd, bSel]), out, linkDet);
   };
 
   P.dance = function (root, api) {

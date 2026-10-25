@@ -64,6 +64,8 @@ async function llm(env, system, user, opt) {
   // AI_TIER=free -> free models only; paid -> opt.models (or Grok, Gemini) then the free chain. opt.pick = picker id.
   const paidDefault = opt.models || [env.CHAT_MODEL || CHAT_MODEL, env.MODEL && env.MODEL !== (env.CHAT_MODEL || CHAT_MODEL) ? env.MODEL : FALLBACK_MODEL];
   const ch = chain(env, opt.pick, paidDefault);
+  // opt.freeFirst: try this free model first for this action (e.g. the strongest free model for classification)
+  if (opt.freeFirst && !ch.explicit && /:free$/.test(opt.freeFirst)) ch.models = [opt.freeFirst].concat(ch.models.filter((m) => m !== opt.freeFirst));
   let nFree = 0;
   const models = ch.models.filter((m) => !/:free$/.test(m) || !opt.freeMax || ++nFree <= opt.freeMax);
   let lastErr = "no model", lastStatus = 0;
@@ -95,6 +97,36 @@ async function llm(env, system, user, opt) {
   return { err: lastErr };
 }
 
+// model setting from the page (Free / GPT / Grok / Gemini). A paid pick without OpenRouter credit (402) falls back to the free chain.
+function pickOf(b) { return ["free", "gemini", "gpt", "grok"].includes(b && b.model) ? b.model : undefined; }
+async function llmPick(env, sys, user, opt, b) {
+  const pick = pickOf(b);
+  let r = await llm(env, sys, user, Object.assign({}, opt, { pick }));
+  if (r.needs_credit && pick && pick !== "free") { r = await llm(env, sys, user, Object.assign({}, opt, { pick: "free" })); if (!r.err) r.usage.credit_note = pick + " needs OpenRouter credit — used the free model"; }
+  return r;
+}
+// Best free model for category classification (tested Oct 24 2026 on 15 labelled categories: nemotron-3-ultra 12/15,
+// nemotron-3.5-super-vl 11/15, dots-3-note 11/15; gemma-4-31b rate-limited, inkling 403). Override: wrangler var CLASSIFY_MODEL.
+const CLASSIFY_FREE = "nvidia/nemotron-3-ultra-550b-a55b:free";
+const LINK_RE = /^(?:general|off|negative|realism|mood(?::[a-z][a-z -]{0,20})?|style:(?:hiphop|afterdark|broadcast|luxury|fashion|musicvideo|documentary|street|dramatic)|heat:(?:afterdark|nsfw|xxx)|platform:[a-z0-9]{2,20})$/;
+const TIER_LINE = {
+  sfw: "Heat tier SFW: nothing sexual, no nudity.",
+  afterdark: "Heat tier AFTER DARK: suggestive, sultry, nightlife; clothed, no nudity.",
+  nsfw: "Heat tier NSFW (adults 21+): every variation must be clearly NSFW — nudity, lingerie, sensual and erotic poses between consenting adults; explicit sex acts optional.",
+  xxx: "Heat tier XXX (adults 21+): every variation must be fully explicit, uncensored sexual content between consenting adults 21+ — say what is happening plainly.",
+};
+function ctxLines(b, adult) {
+  const c = (b && typeof b.context === "object" && b.context) || {}, L = [];
+  const t = TIER_LINE[b && b.tier] ? b.tier : adult ? "nsfw" : "sfw";
+  L.push(adult || t === "sfw" || t === "afterdark" ? TIER_LINE[t] : TIER_LINE.sfw);
+  const styles = strList(c.styles, 4, 40, adult); if (styles.length) L.push("Style / genre to follow: " + styles.join(" + ") + " (use that culture's real clothes, places, slang-free visual details).");
+  if (c.realism) L.push("Realism ON: real cameras, real light, raw unretouched skin, no CGI / illustration look.");
+  const pl = scrub(c.platform, adult, 60); if (pl) L.push("Platform look: " + pl + ".");
+  const md = scrub(c.mood, adult, 80); if (md) L.push("Mood: " + md + ".");
+  const ppl = Math.max(1, Math.min(8, parseInt(c.people, 10) || 1)); L.push("People per image: " + ppl + (c.cast && c.cast !== "neutral" ? " (cast: " + scrub(c.cast, adult, 20) + ")" : "") + ", all adults 21+.");
+  return { lines: L, tier: L[0] === TIER_LINE.sfw && t !== "sfw" ? "sfw" : t };
+}
+
 // ---------- text actions ----------
 const TEXT = {
   async chat(b, env, adult) {
@@ -109,7 +141,8 @@ const TEXT = {
   async cleanup(b, env, adult) {
     const text = scrub(b.text, adult, 2000); if (!text) return { err: "empty text", status: 400 };
     const sys = "Clean up the user's idea text for an image/video prompt: fix spelling, grammar and wording, make it clear and vivid, one short paragraph or comma phrases. KEEP every specific detail and every word the user chose (names of places, brands, outfits, colours, camera). Do not add new subjects. Reply JSON {\"text\":\"...\"}.\n" + rules(adult);
-    const r = await llm(env, sys, { text, kind: b.kind || "idea" }, { json: true, maxTokens: 400, temperature: 0.3 });
+    const cx = b.tier || b.context ? ctxLines(b, adult).lines.join("\n") : "";
+    const r = await llmPick(env, sys + (cx ? "\nSelections to respect:\n" + cx : ""), { text, kind: b.kind || "idea" }, { json: true, maxTokens: 400, temperature: 0.3 }, b);
     if (r.err) return r;
     const out = frame21(scrub(r.obj.text, adult, 1500));
     return out ? { text: out, usage: r.usage } : { err: "empty", status: 502 };
@@ -117,11 +150,35 @@ const TEXT = {
   async remix(b, env, adult) {
     const idea = scrub(b.idea || b.text, adult, 1200); if (!idea) return { err: "empty idea", status: 400 };
     const n = Math.max(1, Math.min(8, parseInt(b.count || 5, 10)));
-    const sys = "You remix a seed idea into " + n + " FRESH, clearly different variations for photoreal image/video prompts. Each: one sentence of 18-40 words with who (adult 21+), outfit, place, time, action, a specific real camera and a DIFFERENT lighting setup; vary location, light, camera and mood across the set. Keep the user's key words. Reply JSON {\"ideas\":[\"...\"]}.\n" + rules(adult);
-    const r = await llm(env, sys, { seed: idea, style: scrub(b.style, adult, 120), count: n }, { json: true, maxTokens: 900, temperature: 1.0 });
+    const cx = ctxLines(b, adult);
+    // the page already picked which Vocab Bank words fit these selections (deterministic, on-device); the model only composes
+    const words = (Array.isArray(b.words) ? b.words : []).slice(0, 24).map((x) => typeof x === "string" ? { w: x } : x || {}).map((x) => ({ w: scrub(x.w, adult, 60), use: scrub(x.use, adult, 60) })).filter((x) => x.w);
+    const avoid = strList(b.avoid, 12, 60, adult);
+    const invent = b.invent !== false;
+    const sys = "You remix a seed idea into " + n + " FRESH, clearly different variations for photoreal image/video prompts. Each: one sentence of 18-45 words with who (adult 21+), outfit, place, time, action, a specific real camera and a DIFFERENT lighting setup; vary location, light, camera and mood across the set. Keep the user's key words.\n" +
+      "Follow these selections exactly:\n- " + cx.lines.join("\n- ") + "\n" +
+      (words.length ? "Use the provided word list (already chosen to fit the selections; 'use' says why): weave 2-4 of them into EACH variation and use every word at least once across the set, verbatim.\n" : "") +
+      (avoid.length ? "Never include: " + avoid.join(", ") + ".\n" : "") +
+      (invent ? "Also invent exactly 8 NEW vocabulary words or phrases (1-4 words each) for newWords that fit these exact selections: specific outfits, places, props, poses, camera or lighting terms. They must NOT repeat any word from the word list or the seed.\n" : "") +
+      "Reply JSON {\"ideas\":[\"...\"]" + (invent ? ",\"newWords\":[\"...\"]" : "") + "}.\n" + rules(adult && cx.tier !== "sfw");
+    const r = await llmPick(env, sys, { seed: idea, style: scrub(b.style, adult, 120), count: n, words }, { json: true, maxTokens: 1300, temperature: 1.0 }, b);
     if (r.err) return r;
-    const ideas = strList(r.obj.ideas, n, 500, adult).map(frame21);
-    return ideas.length ? { ideas, usage: r.usage } : { err: "empty", status: 502 };
+    const ideas = strList(r.obj.ideas, n, 600, adult).map(frame21);
+    const have = new Set(words.map((x) => x.w.toLowerCase())), seedL = idea.toLowerCase();
+    const newWords = invent ? strList(r.obj.newWords || r.obj.new_words, 12, 50, adult).filter((w) => w.split(/\s+/).length <= 5 && !have.has(w.toLowerCase()) && seedL.indexOf(w.toLowerCase()) < 0) : [];
+    return ideas.length ? { ideas, newWords, tier: cx.tier, usage: r.usage } : { err: "empty", status: 502 };
+  },
+  async classify(b, env, adult) {
+    // one-time labelling of Vocab Bank categories; the page caches the result, so remixes never spend calls on it
+    const cats = (Array.isArray(b.categories) ? b.categories : []).slice(0, 60).map((c) => ({ name: scrub(c && c.name, true, 60), sample: strList(c && c.sample, 8, 50, true) })).filter((c) => c.name);
+    if (!cats.length) return { err: "no categories", status: 400 };
+    const sys = "You label vocabulary categories for an image-prompt app so the app knows WHEN to use each category. Allowed links: style:hiphop, style:afterdark, style:broadcast, style:luxury, style:fashion, style:musicvideo, style:documentary, style:street, style:dramatic, heat:afterdark (suggestive), heat:nsfw (nudity/sensual), heat:xxx (explicit sex), platform:<lowercase platform name>, mood:<one word>, realism (camera/lighting/skin/photo realism words), negative (things to avoid), general (fits anything). Pick exactly ONE link per category, judging by the name AND sample words. Reply JSON {\"links\":[{\"name\":\"...\",\"link\":\"...\"}]} with every category in order.";
+    const r = await llmPick(env, sys, { categories: cats }, { json: true, maxTokens: 1800, temperature: 0.1, timeout: 40000, freeFirst: env.CLASSIFY_MODEL || CLASSIFY_FREE }, b);
+    if (r.err) return r;
+    const names = new Set(cats.map((c) => c.name.toLowerCase()));
+    const links = (Array.isArray(r.obj.links) ? r.obj.links : []).map((x) => ({ name: scrub(x && x.name, true, 60), link: String((x && x.link) || "").toLowerCase().trim().replace(/\s+/g, "") }))
+      .map((x) => (x.link === "style:afterdark" ? Object.assign(x, { link: "heat:afterdark" }) : x)).filter((x) => x.name && names.has(x.name.toLowerCase()) && LINK_RE.test(x.link));
+    return links.length ? { links, usage: r.usage } : { err: "empty", status: 502 };
   },
   async expand(b, env, adult) {
     const seeds = strList(b.seeds || [b.text], 12, 300, adult); if (!seeds.length) return { err: "empty seeds", status: 400 };
@@ -400,7 +457,7 @@ async function studioRender(b, env, ip) {
   const url = pollinationsUrl(g.prompt, w, h);
   return { ok: true, kind: "image", url, imageUrl: url, model: "Free preview (Pollinations)", provider: "pollinations", fallback: true, requested: key, notice: key + ": " + (why || "not available") + " — showing a free preview instead.", prompt: g.prompt, cost: { est_usd: 0 } };
 }
-export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "expand", "vocab", "trending", "looplab", "seeds", "providers", "image", "video", "video_status", "studio_render"]);
+export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "providers", "image", "video", "video_status", "studio_render"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";
