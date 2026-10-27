@@ -72,29 +72,51 @@
     parts.push("both/all performers are consenting adults 21+, original fictional characters, no real or named people");
     return { text: safe(parts.join(", ")) };
   }
+  // Grok's iOS app claims every grok.com path as a universal link (grok.com/.well-known/apple-app-site-association: "/*" -> ai.x.GrokApp),
+  // so a tap on https://grok.com/imagine opens the app when it's installed and grok.com/imagine in the browser when it isn't.
+  // The app also registers grok-imagine:// (per App Store build metadata, route format undocumented) — offered only as a manual, labelled-experimental link
+  // because iOS shows an error dialog for an unknown scheme when the app isn't installed.
+  var GROK_URL = "https://grok.com/imagine", GROK_SCHEME = "grok-imagine://";
   function grokSendBtn(im, api, getPrompt) {
     var blob = null, note = h("div", { cls: "note", "data-pm": "ai-grok-send-note" });
-    function grab() { if (blob || !im.src) return; fetch(im.src, { mode: "cors" }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (b) { if (b && /^image\//.test(b.type)) blob = b; }).catch(function () {}); }
-    im.addEventListener("load", grab); if (im.complete && im.naturalWidth) grab();
-    var btn = h("button", { cls: "sm", "data-pm": "ai-grok-send", text: "📲 Send to Grok app", title: "Saves the image (Share → Save Image / Grok on iPhone, or a download) and copies a spicy companion prompt for Grok Imagine.", on: { click: function () {
+    var openLink = h("a", { href: GROK_URL, target: "_blank", rel: "noopener", "data-pm": "ai-grok-open", text: "Open Grok app ↗", style: "display:none;color:#67e8f9;font-weight:600;font-size:13px;margin-left:10px" });
+    var keep = function (b) { if (b && /^image\//.test(b.type) && b.size > 0) blob = b; return blob; };
+    // xAI's image host sends no CORS headers, so fall back to the worker's img_fetch (allow-listed result hosts only) to get shareable bytes.
+    function viaWorker() { return fetch(endpoint(), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "img_fetch", url: im.src }) }).then(function (r) { return r.ok ? r.blob() : null; }).then(keep).catch(function () {}); }
+    function grab() { if (blob || !im.src) return; if (/^(?:blob|data):/.test(im.src)) { fetch(im.src).then(function (r) { return r.blob(); }).then(keep).catch(function () {}); return; }
+      fetch(im.src, { mode: "cors" }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (b) { if (!keep(b)) return viaWorker(); }).catch(viaWorker); }
+    im.addEventListener("load", function () { blob = null; grab(); }); if (im.complete && im.naturalWidth) grab();
+    function openGrok() { var w = null; try { w = window.open(GROK_URL, "_blank"); if (w) w.opener = null; } catch (e) {} openLink.style.display = ""; return !!w; }
+    var btn = h("button", { cls: "sm", "data-pm": "ai-grok-send", text: "📲 Send to Grok app", title: "One tap: copies the spicy prompt, hands the image to the share sheet (pick Grok or Save Image) or downloads it, then opens grok.com/imagine — the Grok app if it's installed.", on: { click: function () {
       var sp = spicyPrompt(api, getPrompt()); if (sp.err) { note.textContent = "🛑 " + sp.err; return; }
-      try { navigator.clipboard.writeText(sp.text); } catch (e) {}
-      var done = function (how) { note.textContent = "✅ Image " + how + " + spicy prompt copied. Open the Grok app, tap Imagine, upload the image, turn on Spicy, paste."; };
+      var copied = false; try { navigator.clipboard.writeText(sp.text).catch(function () {}); copied = true; } catch (e) {}
+      var cp = copied ? "✅ Spicy prompt copied" : "⚠ Couldn't copy — use the prompt preview below";
       var ext = blob && /png/.test(blob.type) ? "png" : blob && /webp/.test(blob.type) ? "webp" : "jpg", file = null;
       try { if (blob) file = new File([blob], "zigflames-grok." + ext, { type: blob.type }); } catch (e) {}
       if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: "ZigFlames → Grok" }).then(function () { done("saved"); }).catch(function (e) { if (e && e.name === "AbortError") note.textContent = "Spicy prompt copied — share was cancelled, so the image wasn't saved. Tap again to save it."; else download(); });
+        // Share sheet first (a page can only hand an image to another app this way); opening Grok right away would close the sheet.
+        note.textContent = cp + ". Share sheet: pick Grok to send the image straight in, or Save Image.";
+        navigator.share({ files: [file], title: "ZigFlames → Grok" }).then(function () {
+          var auto = openGrok();
+          note.textContent = cp + " · image shared. " + (auto ? "Opening Grok…" : "Tap “Open Grok app ↗”.") + " In Grok: Imagine → upload the image → switch Spicy on → paste.";
+        }).catch(function (e) {
+          openLink.style.display = "";
+          note.textContent = e && e.name === "AbortError" ? cp + " — share cancelled, image not sent. Tap again, or “Open Grok app ↗” and upload it yourself." : (save(), cp + " · image downloaded. Tap “Open Grok app ↗”, then Imagine → upload → Spicy → paste.");
+        });
         return;
       }
-      download();
-      function download() {
-        var a = document.createElement("a"); a.href = blob ? URL.createObjectURL(blob) : im.src; a.download = "zigflames-grok." + ext; if (!blob) { a.target = "_blank"; a.rel = "noopener"; }
-        document.body.appendChild(a); a.click(); a.remove(); done(blob ? "saved" : "opened (long-press → Save to Photos)");
+      var how = save(), auto = openGrok();
+      note.textContent = cp + " · image " + how + ". " + (auto ? "Opened Grok in a new tab (the app, if installed)." : "Tap “Open Grok app ↗”.") + " In Grok: Imagine → upload the image → switch Spicy on → paste.";
+      function save() {
+        if (!blob) return "not saved automatically (long-press it above → Save to Photos)";
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "zigflames-grok." + ext;
+        document.body.appendChild(a); a.click(); a.remove(); return "downloaded";
       }
     } } });
     var prev = h("details", { "data-pm": "ai-grok-send-prompt" }, [h("summary", { text: "Spicy prompt preview", style: "font-size:11px;color:#94a3b8;cursor:pointer" })]);
-    prev.addEventListener("toggle", function () { if (prev.open) { var sp = spicyPrompt(api, getPrompt()); prev.replaceChildren(prev.firstChild, h("div", { cls: "muted", text: sp.err || sp.text })); } });
-    return h("div", { "data-pm": "ai-grok-send-wrap" }, [h("div", { cls: "row" }, [btn]), note, prev, h("div", { cls: "muted", text: "Doesn't open Spicy for you — the Grok app needs you to upload the image and switch Spicy on yourself." })]);
+    prev.addEventListener("toggle", function () { if (prev.open) { var sp = spicyPrompt(api, getPrompt()); prev.replaceChildren(prev.firstChild, h("div", { cls: "muted", text: sp.err || sp.text }), sp.err ? "" : h("a", { href: GROK_SCHEME, "data-pm": "ai-grok-scheme", text: "App didn't open? Try the grok-imagine:// app link (experimental)", style: "font-size:11px;color:#94a3b8" })); } });
+    return h("div", { "data-pm": "ai-grok-send-wrap" }, [h("div", { cls: "row" }, [btn, openLink]), note, prev,
+      h("div", { cls: "muted", "data-pm": "ai-grok-send-honest", text: "Automatic: copies the prompt, hands the image to the share sheet (or downloads it), opens Grok. Not automatic: Grok can't be pre-filled from a web page — you pick the image, switch Spicy on, and paste." })]);
   }
 
   // ---------- local fallback material ----------

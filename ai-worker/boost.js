@@ -491,12 +491,28 @@ async function studioRender(b, env, ip) {
   const url = pollinationsUrl(g.prompt, w, h);
   return { ok: true, kind: "image", url, imageUrl: url, model: "Free preview (Pollinations)", provider: "pollinations", fallback: true, requested: key, notice: key + ": " + (why || "not available") + " — showing a free preview instead.", prompt: g.prompt, cost: { est_usd: 0 } };
 }
-export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "providers", "image", "video", "video_status", "studio_render"]);
+// "Send to Grok app": fetch a result image server-side so the page can hand it to the iOS share sheet (xAI's image host sends no CORS headers).
+// Only our own result hosts, images only, <= 12 MB.
+const IMG_HOSTS = /^(?:imgen\.x\.ai|image\.pollinations\.ai|gen\.pollinations\.ai)$/;
+async function imgFetch(b, ch) {
+  let u; try { u = new URL(String(b.url || "")); } catch (e) { return J({ error: "bad url" }, 400, ch); }
+  if (u.protocol !== "https:" || !IMG_HOSTS.test(u.hostname)) return J({ error: "host not allowed" }, 400, ch);
+  try {
+    const r = await fetch(u.toString(), { headers: { Accept: "image/*" } });
+    const ct = r.headers.get("Content-Type") || "", len = parseInt(r.headers.get("Content-Length") || "0", 10);
+    if (!r.ok || !/^image\/(?:jpeg|png|webp)/.test(ct)) return J({ error: "image host returned " + r.status }, 502, ch);
+    if (len > 12e6) return J({ error: "image too large" }, 413, ch);
+    const buf = await r.arrayBuffer(); if (buf.byteLength > 12e6) return J({ error: "image too large" }, 413, ch);
+    return new Response(buf, { status: 200, headers: Object.assign({ "Content-Type": ct, "Cache-Control": "no-store" }, ch) });
+  } catch (e) { return J({ error: "image host unreachable" }, 502, ch); }
+}
+export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";
   if (a === "providers") return J(providerList(env, adult), 200, ch);
   if (a === "video_status") return videoStatus(body, env, adult, ch);
+  if (a === "img_fetch") return imgFetch(body, ch);
   let out;
   if (a === "studio_render") { const o = await studioRender(body, env, ip); delete o.status; return J(o, 200, ch); }
   if (a === "image") out = await genImage(body, env, adult, ip);
