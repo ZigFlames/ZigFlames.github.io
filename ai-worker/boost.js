@@ -326,7 +326,8 @@ async function genImage(b, env, adult, ip) {
   } catch (e) { if (id === "xai") return freePreview(env, ip, g.prompt, w, h, "xAI unreachable", "image"); return { err: "provider unreachable", status: 502, provider: id }; }
   if (id === "xai" && !url) {
     const why = xaiErr(r, d);
-    if (/moderat|policy|safety|inappropriate|not allowed|violat/i.test(why)) return { err: "Grok Imagine refused the prompt (content policy): " + why, status: 422, provider: id, refused: "policy" };
+    // our own guards already passed (mediaPrompt); an xAI moderation refusal -> straight to the free preview, no paid retry
+    if (XAI_MOD_RE.test(why)) return freePreview(env, ip, g.prompt, w, h, why, "image", { moderated: true, adult });
     return freePreview(env, ip, g.prompt, w, h, why, "image");
   }
   if (r && r.status === 403 && d && /TOP_UP|balance/i.test(JSON.stringify(d))) return { err: "fal.ai account has no credit — top up at fal.ai/dashboard/billing.", needs_credit: true, status: 402, provider: id };
@@ -342,13 +343,20 @@ function xaiErr(r, d) {
   return "xAI " + (r ? r.status : "?") + (m ? ": " + String(m).slice(0, 180) : d ? ": " + JSON.stringify(d).slice(0, 180) : "");
 }
 // Grok failed -> guarded free still preview (Pollinations, keyless, $0; counts toward the visitor's image limit), clearly labelled
-async function freePreview(env, ip, prompt, w, h, why, kind) {
+// o.moderated: xAI's own filter refused (our guards passed). Uncensored (safe=false) only in 18+ mode.
+async function freePreview(env, ip, prompt, w, h, why, kind, o) {
+  o = o || {};
   const capErr = await capCheck(env, ip, "image", 0); if (capErr) return { err: capErr + " (Grok failed: " + why + ")", status: 429, capped: true };
   await capAdd(env, ip, "image", 0);
-  const label = kind === "video" ? "Grok Imagine Video" : "Grok Imagine";
+  const label = kind === "video" ? "Grok Imagine Video" : "Grok Imagine", unc = !!(o.moderated && o.adult);
+  const still = kind === "video" ? " (still image, not a video)" : "";
+  if (o.moderated) return { url: pollinationsUrl(prompt, w, h, unc), kind: "image", provider: "pollinations", model: "flux (Pollinations)", fallback: true, moderated: true, xai_error: why,
+    engine: "Free " + (unc ? "uncensored " : "") + "preview · Pollinations flux" + still + (unc ? "" : " · safe filter on (SFW mode)"),
+    notice: "Grok's filter refused this — showing free " + (unc ? "uncensored " : "") + "preview instead" + still + ".", prompt, cost: { est_usd: 0, note: "free preview (Grok refused)" } };
   return { url: pollinationsUrl(prompt, w, h), kind: "image", provider: "pollinations", model: "flux (Pollinations)", engine: "Free preview · Pollinations (still image)", fallback: true,
     notice: label + " (xAI) failed — " + why + " — showing a free Pollinations " + (kind === "video" ? "still preview instead of a video." : "preview instead."), prompt, cost: { est_usd: 0, note: "free preview" } };
 }
+const XAI_MOD_RE = /moderat|content[\s_-]*polic|policy|safety|inappropriate|not allowed|violat/i;
 
 async function genVideo(b, env, adult, ip) {
   const id = String(b.provider || "xai"), P = VIDEO_PROVIDERS[id];
@@ -376,7 +384,7 @@ async function genVideo(b, env, adult, ip) {
   } catch (e) { if (id === "xai") return freePreview(env, ip, g.prompt, ...(AR[ar] || AR["9:16"]), "xAI unreachable", "video"); return { err: "provider unreachable", status: 502, provider: id }; }
   if (id === "xai" && !job) {
     const why = xaiErr(r, d);
-    if (/moderat|policy|safety|inappropriate|not allowed|violat/i.test(why)) return { err: "Grok Imagine Video refused the prompt (content policy): " + why, status: 422, provider: id, refused: "policy" };
+    if (XAI_MOD_RE.test(why)) return freePreview(env, ip, g.prompt, ...(AR[ar] || AR["9:16"]), why, "video", { moderated: true, adult });
     return freePreview(env, ip, g.prompt, ...(AR[ar] || AR["9:16"]), why, "video");
   }
   if (r && r.status === 403 && d && /TOP_UP|balance/i.test(JSON.stringify(d))) return { err: "fal.ai account has no credit — top up at fal.ai/dashboard/billing.", needs_credit: true, status: 402, provider: id };
@@ -399,10 +407,11 @@ async function videoStatus(b, env, adult, ch) {
       if (d.status === "done" && d.video && d.video.url) return J({ status: "done", url: d.video.url, engine: P.label + " · " + P.model }, 200, ch);
       if (d.status === "failed" || d.status === "expired" || (!r.ok && r.status !== 429 && r.status < 500)) {
         const why = d.status ? "job " + d.status + (d.error ? ": " + String(d.error.message || d.error).slice(0, 160) : "") : xaiErr(r, d);
-        const out = { status: "failed", error: "Grok Imagine Video (xAI) " + why };
+        const mod = XAI_MOD_RE.test(why), unc = mod && adult;
+        const out = { status: "failed", error: "Grok Imagine Video (xAI) " + why, moderated: mod };
         // free still preview of the same (already guarded + returned by the video call) prompt; re-check the hard guards anyway
         const pr = String(b.prompt || "").slice(0, 2000);
-        if (pr && !MINOR_HARD.test(pr) && !LIKENESS_RE.test(pr)) { const [w, h] = AR[b.aspect] || AR["9:16"]; Object.assign(out, { fallback_url: pollinationsUrl(frame21(scrub(pr, adult, 2000)), w, h), engine: "Free preview · Pollinations (still image)", notice: out.error + " — showing a free Pollinations still preview instead." }); }
+        if (pr && !MINOR_HARD.test(pr) && !LIKENESS_RE.test(pr)) { const [w, h] = AR[b.aspect] || AR["9:16"]; Object.assign(out, mod ? { fallback_url: pollinationsUrl(frame21(scrub(pr, adult, 2000)), w, h, unc), engine: "Free " + (unc ? "uncensored " : "") + "preview · Pollinations flux (still image, not a video)" + (unc ? "" : " · safe filter on (SFW mode)"), notice: "Grok's filter refused this — showing free " + (unc ? "uncensored " : "") + "preview instead (still image, not a video)." } : { fallback_url: pollinationsUrl(frame21(scrub(pr, adult, 2000)), w, h), engine: "Free preview · Pollinations (still image)", notice: out.error + " — showing a free Pollinations still preview instead." }); }
         return J(out, 200, ch);
       }
       return J({ status: "pending" }, 200, ch);
@@ -432,12 +441,12 @@ const STUDIO_FAL = {
 };
 const STUDIO_OPENAI = { "gpt-image-1": ["gpt-image-1-mini", 0.006], "dall-e-3": ["gpt-image-1-mini", 0.006] };
 const STUDIO_AR = { "1:1": [1024, 1024], "9:16": [768, 1344], "16:9": [1344, 768], "3:4": [896, 1152], "4:3": [1152, 896], "2:3": [832, 1216], "3:2": [1216, 832], "4:5": [896, 1120], "21:9": [1536, 640] };
-function pollinationsUrl(prompt, w, h) {
+function pollinationsUrl(prompt, w, h, uncensored) {
   // keyless Pollinations trips its "privacy" filter on "21+" -> say adult in words; push away from young-looking faces
   let p = String(prompt).replace(/\(\s*21\s*\+\s*\)|\b21\s*\+/g, "").replace(/\s{2,}/g, " ").trim();
   if (PEOPLE_RE.test(p)) p = p.replace(/\badult\b\s*/i, "") + ", grown adults in their late 20s or 30s, mature adult faces, realistic photo";
   const sc = Math.min(1, 1024 / Math.max(w, h)), W = Math.round(w * sc / 8) * 8, H = Math.round(h * sc / 8) * 8;
-  return "https://image.pollinations.ai/prompt/" + encodeURIComponent(p.slice(0, 900)) + "?model=flux&width=" + W + "&height=" + H + "&seed=" + Math.floor(Math.random() * 1e6) + "&nologo=true&safe=true";
+  return "https://image.pollinations.ai/prompt/" + encodeURIComponent(p.slice(0, 900)) + "?model=flux&width=" + W + "&height=" + H + "&seed=" + Math.floor(Math.random() * 1e6) + "&nologo=true&safe=" + (uncensored ? "false" : "true");
 }
 async function studioRender(b, env, ip) {
   const mode = String(b.mode || "image"), key = String(b.model || "flux-schnell");

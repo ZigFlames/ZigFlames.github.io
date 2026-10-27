@@ -43,6 +43,60 @@
   function aiFailed(j) { return !j || j._offline || j._status === 0 || j._status >= 500 && !j.needs_key || j._status === 429 && !j.capped || j._status === 404; }
   window.PMAI = { call: call, endpoint: endpoint, safe: safe };
 
+  // Keyless Pollinations answers "at its limit right now" with a placeholder picture (different size from what we asked for).
+  // Spot it by size and quietly retry with a new seed every 10 s (free), up to 6 times.
+  function polBusy(im, note) {
+    var u = String(im.src || ""); if (u.indexOf("pollinations.ai/") < 0) return false;
+    var w = +((u.match(/[?&]width=(\d+)/) || [])[1] || 0), hh = +((u.match(/[?&]height=(\d+)/) || [])[1] || 0);
+    if (!w || !hh || (Math.abs(im.naturalWidth - w) <= 2 && Math.abs(im.naturalHeight - hh) <= 2)) { if (note) note.textContent = ""; return false; }
+    var n = (+im.getAttribute("data-pol-try") || 0) + 1; im.setAttribute("data-pol-try", n);
+    if (n > 6) { if (note) note.textContent = "The free preview service is still busy — click Generate again in a minute."; return true; }
+    if (note) note.textContent = "Free preview service is busy — retrying in 10 s (" + n + "/6)…";
+    setTimeout(function () { im.src = u.replace(/([?&]seed=)\d+/, "$1" + Math.floor(Math.random() * 1e6)); }, 10000);
+    return true;
+  }
+  function polWatch(im) { var note = h("div", { cls: "muted", "data-pm": "ai-media-wait" }); im.addEventListener("load", function () { if (!note.parentNode && im.parentNode) im.parentNode.insertBefore(note, im); polBusy(im, note); }); return im; }
+
+  // ---------- Send to Grok app (image result -> Photos / Grok app + spicy companion prompt on the clipboard) ----------
+  var HARD_MINOR = /\b(?:child\w*|kids?|minors?|under[\s-]?age\w*|teen\w*|tweens?|preteen\w*|loli\w*|shota\w*|school\s*girls?|schoolboys?|jail[\s-]?bait|barely[\s-]+legal|juvenile\w*|pubescen\w*|adolescen\w*|little\s+girls?|little\s+boys?|baby[\s-]?fac\w*|childlike|(?:[1-9]|1[0-7])\s*(?:-|\s)?(?:yo|y\/o|yrs?|years?)(?:[\s-]*old)?)\b/i;
+  var HARD_LIKE = /\b(?:celebrit\w*|celeb|look[\s-]?alike|lookalike|deep[\s-]?fake\w*|face[\s-]?swap\w*|real\s+person|real\s+people|likeness\s+of|in\s+the\s+likeness|(?:looks?\s+like|resembling|dressed\s+as|styled\s+as)\s+[A-Z][a-z'’-]+\s+[A-Z][a-z'’-]+)\b/;
+  var HEAT = { xxx: "explicit, uncensored, bold and sensual, consenting adults", nsfw: "spicy, sensual, provocative, implied nudity, teasing", afterdark: "flirty after-dark heat, seductive, confident", sfw: "flirty, confident, playful heat" };
+  function spicyPrompt(api, base) {
+    var ctx = ctxOf(api) || {}, raw = String(base || "").replace(/\s--[a-z][\w-]*(?:\s+(?!--)[^\s]+)?/gi, " ").trim();
+    if (HARD_MINOR.test(raw) || HARD_LIKE.test(raw)) return { err: "Not copied: adults 21+ only, no real or named people. Edit the prompt first." };
+    var p = frame21(raw).replace(/[.,;\s]+$/, "");
+    var parts = ["Animate this image (Grok Imagine · Spicy): " + p, HEAT[ctx.tier] || HEAT.nsfw];
+    if (ctx.styleLabel) parts.push(ctx.styleLabel + " style");
+    if (ctx.realism !== false) parts.push("photoreal, raw skin texture, real camera feel, natural motion");
+    parts.push("slow sensual movement, confident eye contact, handheld camera drift");
+    parts.push("both/all performers are consenting adults 21+, original fictional characters, no real or named people");
+    return { text: safe(parts.join(", ")) };
+  }
+  function grokSendBtn(im, api, getPrompt) {
+    var blob = null, note = h("div", { cls: "note", "data-pm": "ai-grok-send-note" });
+    function grab() { if (blob || !im.src) return; fetch(im.src, { mode: "cors" }).then(function (r) { return r.ok ? r.blob() : null; }).then(function (b) { if (b && /^image\//.test(b.type)) blob = b; }).catch(function () {}); }
+    im.addEventListener("load", grab); if (im.complete && im.naturalWidth) grab();
+    var btn = h("button", { cls: "sm", "data-pm": "ai-grok-send", text: "📲 Send to Grok app", title: "Saves the image (Share → Save Image / Grok on iPhone, or a download) and copies a spicy companion prompt for Grok Imagine.", on: { click: function () {
+      var sp = spicyPrompt(api, getPrompt()); if (sp.err) { note.textContent = "🛑 " + sp.err; return; }
+      try { navigator.clipboard.writeText(sp.text); } catch (e) {}
+      var done = function (how) { note.textContent = "✅ Image " + how + " + spicy prompt copied. Open the Grok app, tap Imagine, upload the image, turn on Spicy, paste."; };
+      var ext = blob && /png/.test(blob.type) ? "png" : blob && /webp/.test(blob.type) ? "webp" : "jpg", file = null;
+      try { if (blob) file = new File([blob], "zigflames-grok." + ext, { type: blob.type }); } catch (e) {}
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: "ZigFlames → Grok" }).then(function () { done("saved"); }).catch(function (e) { if (e && e.name === "AbortError") note.textContent = "Spicy prompt copied — share was cancelled, so the image wasn't saved. Tap again to save it."; else download(); });
+        return;
+      }
+      download();
+      function download() {
+        var a = document.createElement("a"); a.href = blob ? URL.createObjectURL(blob) : im.src; a.download = "zigflames-grok." + ext; if (!blob) { a.target = "_blank"; a.rel = "noopener"; }
+        document.body.appendChild(a); a.click(); a.remove(); done(blob ? "saved" : "opened (long-press → Save to Photos)");
+      }
+    } } });
+    var prev = h("details", { "data-pm": "ai-grok-send-prompt" }, [h("summary", { text: "Spicy prompt preview", style: "font-size:11px;color:#94a3b8;cursor:pointer" })]);
+    prev.addEventListener("toggle", function () { if (prev.open) { var sp = spicyPrompt(api, getPrompt()); prev.replaceChildren(prev.firstChild, h("div", { cls: "muted", text: sp.err || sp.text })); } });
+    return h("div", { "data-pm": "ai-grok-send-wrap" }, [h("div", { cls: "row" }, [btn]), note, prev, h("div", { cls: "muted", text: "Doesn't open Spicy for you — the Grok app needs you to upload the image and switch Spicy on yourself." })]);
+  }
+
   // ---------- local fallback material ----------
   var CAMS = ["shot on iPhone 15, rear camera", "Canon AE-1 on Portra 400", "Sony A7 IV with 35mm f/1.8", "90s camcorder still", "disposable camera with direct flash", "Fujifilm X100V", "Pixel night-mode phone shot", "Contax T2 point-and-shoot", "Ricoh GR III street snap", "Leica M6 on Tri-X 400"];
   var LIGHT = ["harsh overhead fluorescent light", "warm sodium streetlight", "late golden hour backlight", "on-camera direct flash at night", "blue-hour ambient window light", "neon sign spill in red and teal", "overcast soft daylight", "single bare bulb, deep shadows", "candle and phone-screen glow", "hard noon sun with crisp shadows", "dashboard and gas-station canopy light", "mixed tungsten and LED club light"];
@@ -424,16 +478,17 @@
         if (!j || j._status !== 200) return showErr(j || {});
         var c = j.cost ? h("div", { cls: "muted", text: (j.cost.est_usd ? "Charged ≈ $" + Number(j.cost.est_usd).toFixed(3) : "Free · $0") + " · " + j.model + (j.cost.cap_usd ? " · today $" + Number(j.cost.today_usd || 0).toFixed(2) + " of $" + j.cost.cap_usd + " cap" : "") }) : "";
         var eng = h("div", { cls: "badge " + (j.fallback ? "local" : "ai"), "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0" , text: "Engine: " + (j.engine || j.model || j.provider) });
-        var notice = j.notice ? h("div", { cls: "note", "data-pm": "ai-media-notice", text: "⚠ " + j.notice }) : "";
+        var notice = j.notice ? h("div", { cls: "note", "data-pm": "ai-media-notice", title: j.xai_error || "", text: (j.moderated ? "🛡 " : "⚠ ") + j.notice }) : "";
         if (kind === "image" || j.kind === "image") { var wait = h("div", { cls: "muted", "data-pm": "ai-image-loading", text: j.cost && !j.cost.est_usd ? "Loading free image… (5–30 s)" : "Loading image…" });
-          var im = h("img", { src: j.url, alt: "generated", "data-pm": "ai-image-result" }); im.addEventListener("load", function () { wait.remove(); }); im.addEventListener("error", function () { wait.textContent = "The image host didn't answer — click Generate again or copy the prompt."; });
-          out.replaceChildren(notice, wait, im, eng, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })])); return; }
+          var im = h("img", { src: j.url, alt: "generated", "data-pm": "ai-image-result" }); im.addEventListener("load", function () { if (!polBusy(im, wait)) wait.remove(); }); im.addEventListener("error", function () { wait.textContent = "The image host didn't answer — click Generate again or copy the prompt."; });
+          var getP = function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; };
+          out.replaceChildren(notice, wait, im, eng, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })]), grokSendBtn(im, api, getP)); return; }
         var stat = h("div", { cls: "muted", "data-pm": "ai-video-status", text: "Rendering video… (usually 30–120 s)" }); out.replaceChildren(stat, eng, c);
-        var tries = 0; (function poll() {
+        var tries = 0, fim; (function poll() {
           if (++tries > 60) { stat.textContent = "Still rendering — try again later."; return; }
           call("video_status", { provider: j.provider, job: j.job, download_url: j.download_url, mode: mode(api), prompt: j.prompt, aspect: j.aspect || ar.value }, { timeout: 60000 }).then(function (s) {
             if (s.status === "done" && s.url) { out.replaceChildren(h("video", { src: s.url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true, "data-pm": "ai-video-result" }), eng, c, h("div", { cls: "row" }, [h("a", { href: s.url, target: "_blank", rel: "noopener", text: "Open / download video", style: "color:#67e8f9;font-size:12px" })])); }
-            else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(h("div", { cls: "note", "data-pm": "ai-media-notice", text: "⚠ " + (s.notice || s.error) }), h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c); }
+            else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(h("div", { cls: "note", "data-pm": "ai-media-notice", title: s.error || "", text: (s.moderated ? "🛡 " : "⚠ ") + (s.notice || s.error) }), (fim = polWatch(h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }))), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c, grokSendBtn(fim, api, function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; })); }
             else if (s.status === "failed") stat.textContent = "Video failed: " + (s.error || "unknown");
             else setTimeout(poll, 5000);
           });
