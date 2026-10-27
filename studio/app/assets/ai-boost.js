@@ -105,7 +105,9 @@
   function badge(j, local) {
     if (local) return h("span", { cls: "badge local", text: "Offline fallback · free" });
     var u = j && j.usage, m = u && u.model ? u.model.replace(/^.*\//, "") : "AI";
-    return h("span", { cls: "badge ai", text: m + (u && u.free ? " · free $0" : u && u.est_usd != null ? " · ~$" + Number(u.est_usd).toFixed(4) : "") });
+    var b = h("span", { cls: "badge ai", "data-pm": "ai-engine", text: m + (u && u.free ? " · free $0" : u && u.est_usd != null ? " · ~$" + Number(u.est_usd).toFixed(4) : "") });
+    if (!(u && u.credit_note)) return b;
+    return h("span", {}, [b, " ", h("span", { cls: "badge warn", title: u.credit_note, text: "⚠ " + u.credit_note })]);
   }
   function busy(btn, on, label) { btn.disabled = on; if (on) { btn._t = btn.textContent; btn.textContent = label || "Thinking…"; } else if (btn._t) btn.textContent = btn._t; }
   function itemRow(text, api, extra) {
@@ -117,10 +119,10 @@
 
   // ---------- selection context (pm-context.js) + text-model setting ----------
   var MODEL_KEY = "pm_ai_textmodel";
-  var MODELS = [["free", "Free (best free model)"], ["gpt", "GPT (needs OpenRouter credit)"], ["grok", "Grok (needs credit)"], ["gemini", "Gemini Flash Lite (needs credit)"]];
+  var MODELS = [["free", "Free (best free model)"], ["gpt", "GPT (needs OpenRouter credit)"], ["grok", "Grok (xAI direct · ~$0.001/call, free fallback)"], ["gemini", "Gemini Flash Lite (needs credit)"]];
   function textModel() { try { var m = localStorage.getItem(MODEL_KEY); return MODELS.some(function (x) { return x[0] === m; }) ? m : "free"; } catch (e) { return "free"; } }
   function modelSelect() {
-    var sel = h("select", { title: "Which AI writes for Remix / Cleanup / Classify. Free costs $0 (50 calls/day). Paid models answer 'needs credit' until OpenRouter credit exists, then the free model and the local fallback take over." }, MODELS.map(function (m) { return h("option", { value: m[0], text: "Model: " + m[1] }); }));
+    var sel = h("select", { title: "Which AI writes for Remix / Cleanup / Classify. Free costs $0 (50 calls/day). Grok calls xAI directly (Zig's xAI credit, counted in the $3/day site cap) and falls back to the free model if xAI fails. GPT / Gemini answer 'needs credit' until OpenRouter credit exists, then the free model and the local fallback take over." }, MODELS.map(function (m) { return h("option", { value: m[0], text: "Model: " + m[1] }); }));
     sel.value = textModel(); sel.addEventListener("change", function () { try { localStorage.setItem(MODEL_KEY, sel.value); } catch (e) {} });
     return sel;
   }
@@ -198,7 +200,7 @@
     var b = h("button", { cls: "go", text: "🌱 AI Expand", on: { click: function () {
       var s = inp.value.trim(); if (!s) return toast(api, "Type a seed first");
       var n = +cnt.value; busy(b, true);
-      call("expand", { seeds: [s], count: n, mode: mode(api) }).then(function (j) {
+      call("expand", { seeds: [s], count: n, mode: mode(api), model: textModel() }).then(function (j) {
         busy(b, false); var loc = aiFailed(j) || !(j.seeds && j.seeds.length), list = loc ? localExpand(s, n) : j.seeds.map(frame21);
         st.replaceChildren(badge(j, loc));
         out.replaceChildren.apply(out, [h("div", { cls: "row" }, [h("button", { cls: "sm", text: "Copy all", on: { click: function () { copy(list.join("\n"), api); } } })])].concat(list.map(function (t) { return itemRow(t, api); })));
@@ -213,7 +215,7 @@
     var cnt = h("select", {}, [12, 25, 40, 60].map(function (n) { return h("option", { value: n, text: n + " words" }); })); cnt.value = "25";
     function fill(catName, catId, have, btn) {
       busy(btn, true);
-      return call("vocab", { category: catName, have: have || [], count: +cnt.value, mode: mode(api) }).then(function (j) {
+      return call("vocab", { category: catName, have: have || [], count: +cnt.value, mode: mode(api), model: textModel() }).then(function (j) {
         busy(btn, false); var loc = aiFailed(j) || !(j.items && j.items.length), items = (loc ? localVocab(catName) : j.items).map(safe).filter(Boolean);
         st.replaceChildren(badge(j, loc));
         if (!items.length) { out.replaceChildren(h("div", { cls: "note", text: "AI is offline and there is no built-in list for \"" + catName + "\" — the category is ready, paste words with Mass Add." })); return; }
@@ -281,7 +283,7 @@
     var out = h("div"), st = h("span"), focus = h("input", { type: "text", placeholder: "optional focus: dance, transitions, rap video, Atlanta, Afrobeats…" });
     var b = h("button", { cls: "go", text: "🔥 Trending Now (AI)", on: { click: function () {
       busy(b, true, "Searching the web…");
-      call("trending", { focus: focus.value, mode: mode(api) }, { timeout: 40000 }).then(function (j) {
+      call("trending", { focus: focus.value, mode: mode(api), model: textModel() }, { timeout: 40000 }).then(function (j) {
         busy(b, false); var loc = aiFailed(j) || !(j.items && j.items.length), items;
         if (loc) items = shuffle(api.current.fallback || []).slice(0, 8).map(function (n) { return { name: n, how: "From your built-in scenario list (offline).", prompt: localVariant(n), when: "" }; });
         else items = j.items;
@@ -312,7 +314,7 @@
     }
     var b = h("button", { cls: "go", text: "✨ AI Cleanup → Suno + sampler", on: { click: function () {
       if (!ta.value.trim()) grab(); var t = ta.value.trim(); if (!t) return;
-      busy(b, true); call("looplab", { text: t, mode: mode(api) }).then(function (j) {
+      busy(b, true); call("looplab", { text: t, mode: mode(api), model: textModel() }).then(function (j) {
         busy(b, false); var loc = aiFailed(j) || !j.style, o = loc ? localLoop(t) : j;
         var os = String(o.style || ""), style = [o.genre, o.bpm && !/\d{2,3}\s*bpm/i.test(os) ? o.bpm + " BPM" : "", o.key && os.indexOf(o.key) < 0 ? "key of " + o.key : "", (o.instruments || []).join(", "), os].filter(Boolean).join(", ").slice(0, 1000);
         st.replaceChildren(badge(j, loc));
@@ -336,7 +338,7 @@
     function tab(k, label) { tabs[k] = h("button", { cls: "tab", text: label, "data-tab": k, on: { click: function () { show(k); } } }); return tabs[k]; }
     var panes = { chat: chatPane(api, st), image: mediaPane(api, "image", st), video: mediaPane(api, "video", st) };
     function show(k) { cur = k; for (var t in tabs) tabs[t].className = "tab" + (t === k ? " on" : ""); body.replaceChildren(panes[k].el); panes[k].show && panes[k].show(); }
-    root.append(h("h4", {}, ["🤖 Grok AI Studio", st]), h("p", { cls: "sub", text: "Chat with AI to build prompts (free models by default; Gemini / GPT / Grok when there is credit), then generate images or video. Costs are shown before you click; a daily cap is enforced on the server." }),
+    root.append(h("h4", {}, ["🤖 Grok AI Studio", st]), h("p", { cls: "sub", text: "Chat with Grok (xAI direct) to build prompts, then generate images or video with Grok Imagine. Free models stay one click away, and if xAI fails the free model / a free Pollinations preview takes over (labelled). Costs are shown before you click; a $3/day site-wide cap is enforced on the server." }),
       h("div", { cls: "row" }, [tab("chat", "💬 Chat"), tab("image", "🖼 Image"), tab("video", "🎬 Video")]), body);
     show("chat");
     root._pmShow = show;
@@ -352,7 +354,7 @@
       })); log.scrollTop = 1e6; try { sessionStorage.setItem("pmai.chat", JSON.stringify(msgs.slice(-20))); } catch (e) {}
     }
     function localReply(q) { var p = localVariant(q.replace(/^(give me|make|write)\s+(a|an)?\s*/i, "").replace(/\bprompt\b/i, "")); return "AI is offline, so here is a free local build from your words:\n```prompt\n" + p + "\n```"; }
-    var MODELS = [["free", "Free (OpenRouter free models)", "$0 · free models, ~50 requests/day site-wide"], ["gemini", "Gemini 2.5 Flash Lite", "~$0.0002 per message · needs OpenRouter credit"], ["gpt", "GPT-6 Luna (OpenAI)", "~$0.0003 per message · needs OpenRouter credit"], ["grok", "Grok 4.20 (xAI)", "~$0.0015 per message · needs OpenRouter credit"]];
+    var MODELS = [["grok", "Grok 4.20 (xAI direct)", "~$0.001 per message (grok-4.20 non-reasoning, $1.25/M in · $2.50/M out) · counted in the $3/day cap · falls back to Free if xAI fails"], ["free", "Free (OpenRouter free models)", "$0 · free models, ~50 requests/day site-wide"], ["gemini", "Gemini 2.5 Flash Lite", "~$0.0002 per message · needs OpenRouter credit"], ["gpt", "GPT-6 Luna (OpenAI)", "~$0.0003 per message · needs OpenRouter credit"]];
     var pick = h("select", { "data-pm": "ai-chat-model", title: "Chat model" }, MODELS.map(function (m) { return h("option", { value: m[0], text: m[1] }); })), pnote = h("span", { cls: "muted", "data-pm": "ai-chat-model-note" });
     try { var sv = localStorage.getItem("pmai.model"); if (sv && MODELS.some(function (m) { return m[0] === sv; })) pick.value = sv; } catch (e) {}
     function pnoteSync(extra) { var m = MODELS.filter(function (x) { return x[0] === pick.value; })[0]; pnote.textContent = (m ? m[2] : "") + (extra ? " · " + extra : ""); }
@@ -363,6 +365,7 @@
       var base = { messages: msgs.slice(-8), mode: mode(api), prompt: (api.current.getPrompt && api.current.getPrompt()) || "" };
       function done(j, note) {
         busy(send, false); var loc = aiFailed(j) || !j.reply;
+        if (!note && !loc && j.usage && j.usage.credit_note) note = "⚠ " + j.usage.credit_note + ".";
         msgs.push({ role: "assistant", content: (note ? note + "\n\n" : "") + (loc ? localReply(q) : j.reply) }); st.replaceChildren(badge(j, loc)); render();
       }
       call("chat", Object.assign({ model: pick.value }, base)).then(function (j) {
@@ -380,7 +383,8 @@
   function mediaPane(api, kind, st) {
     var ta = h("textarea", { placeholder: kind === "image" ? "Image prompt (adults 21+, no real / named people)" : "Video prompt — describe the motion, camera move and light" });
     var sel = h("select", { "data-pm": "ai-provider-" + kind }), ar = h("select", {}, ["9:16", "1:1", "16:9", "3:4"].map(function (a) { return h("option", { value: a, text: a }); }));
-    var dur = h("select", {}, [5, 6, 10].map(function (d) { return h("option", { value: d, text: d + " s" }); })), res = h("select", {}, ["480p", "720p"].map(function (r) { return h("option", { value: r, text: r }); }));
+    var dur = h("select", { "data-pm": "ai-video-duration" }, [3, 5, 6, 10].map(function (d) { return h("option", { value: d, text: d + " s" }); })), res = h("select", { "data-pm": "ai-video-res" }, ["480p", "720p"].map(function (r) { return h("option", { value: r, text: r }); }));
+    dur.value = "5";
     var cost = h("div", { cls: "muted" }), out = h("div", { cls: "media" }), list = [];
     function price(p) {
       if (!p) return "";
@@ -418,15 +422,18 @@
       call(kind, body, { timeout: kind === "image" ? 90000 : 40000 }).then(function (j) {
         busy(go, false);
         if (!j || j._status !== 200) return showErr(j || {});
-        var c = j.cost ? h("div", { cls: "muted", text: (j.cost.est_usd ? "Charged ≈ $" + Number(j.cost.est_usd).toFixed(3) : "Free · $0") + " · " + j.model + " · today $" + Number(j.cost.today_usd || 0).toFixed(2) + " of $" + j.cost.cap_usd + " cap" }) : "";
-        if (kind === "image") { var wait = h("div", { cls: "muted", "data-pm": "ai-image-loading", text: j.cost && !j.cost.est_usd ? "Loading free image… (5–30 s)" : "Loading image…" });
+        var c = j.cost ? h("div", { cls: "muted", text: (j.cost.est_usd ? "Charged ≈ $" + Number(j.cost.est_usd).toFixed(3) : "Free · $0") + " · " + j.model + (j.cost.cap_usd ? " · today $" + Number(j.cost.today_usd || 0).toFixed(2) + " of $" + j.cost.cap_usd + " cap" : "") }) : "";
+        var eng = h("div", { cls: "badge " + (j.fallback ? "local" : "ai"), "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0" , text: "Engine: " + (j.engine || j.model || j.provider) });
+        var notice = j.notice ? h("div", { cls: "note", "data-pm": "ai-media-notice", text: "⚠ " + j.notice }) : "";
+        if (kind === "image" || j.kind === "image") { var wait = h("div", { cls: "muted", "data-pm": "ai-image-loading", text: j.cost && !j.cost.est_usd ? "Loading free image… (5–30 s)" : "Loading image…" });
           var im = h("img", { src: j.url, alt: "generated", "data-pm": "ai-image-result" }); im.addEventListener("load", function () { wait.remove(); }); im.addEventListener("error", function () { wait.textContent = "The image host didn't answer — click Generate again or copy the prompt."; });
-          out.replaceChildren(wait, im, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })])); return; }
-        var stat = h("div", { cls: "muted", text: "Rendering video… (usually 30–120 s)" }); out.replaceChildren(stat, c);
+          out.replaceChildren(notice, wait, im, eng, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })])); return; }
+        var stat = h("div", { cls: "muted", "data-pm": "ai-video-status", text: "Rendering video… (usually 30–120 s)" }); out.replaceChildren(stat, eng, c);
         var tries = 0; (function poll() {
           if (++tries > 60) { stat.textContent = "Still rendering — try again later."; return; }
-          call("video_status", { provider: j.provider, job: j.job, download_url: j.download_url, mode: mode(api) }, { timeout: 60000 }).then(function (s) {
-            if (s.status === "done" && s.url) { out.replaceChildren(h("video", { src: s.url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true }), c); }
+          call("video_status", { provider: j.provider, job: j.job, download_url: j.download_url, mode: mode(api), prompt: j.prompt, aspect: j.aspect || ar.value }, { timeout: 60000 }).then(function (s) {
+            if (s.status === "done" && s.url) { out.replaceChildren(h("video", { src: s.url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true, "data-pm": "ai-video-result" }), eng, c, h("div", { cls: "row" }, [h("a", { href: s.url, target: "_blank", rel: "noopener", text: "Open / download video", style: "color:#67e8f9;font-size:12px" })])); }
+            else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(h("div", { cls: "note", "data-pm": "ai-media-notice", text: "⚠ " + (s.notice || s.error) }), h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c); }
             else if (s.status === "failed") stat.textContent = "Video failed: " + (s.error || "unknown");
             else setTimeout(poll, 5000);
           });
@@ -442,7 +449,7 @@
   // ---------- Unique Seeds (MJ Param Bank) ----------
   function uniqAI(prompt) {
     var p = prompt || window.__pmLastPrompt || "adult (21+) woman, candid photo";
-    return call("seeds", { prompt: p, mode: window.__pmIsAdult ? "18+" : "sfw" }).then(function (j) {
+    return call("seeds", { prompt: p, mode: window.__pmIsAdult ? "18+" : "sfw", model: textModel() }).then(function (j) {
       var loc = aiFailed(j) || !(j.details && j.details.length), d = (loc ? localDetails() : j.details).map(safe).filter(Boolean);
       window.__pmUniqDetails = d; return { details: d, local: loc, usage: j && j.usage };
     });

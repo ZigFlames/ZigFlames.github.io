@@ -8,7 +8,7 @@
 
 const CHAT_MODEL = "x-ai/grok-4.20";            // $1.25/M in, $2.50/M out (OpenRouter, Oct 2026); reasoning off
 const FALLBACK_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out
-import { chain, price, tier, extras, freeList, PAID_MODELS } from "./models.js";
+import { chain, price, tier, extras, freeList, PAID_MODELS, chatFetch, isXai, modelLabel } from "./models.js";
 
 const AGE_RE = /\b(?:teen\w*|tweens?|young(?:er|est|ish)?|youthful|jail[\s-]?bait|baby[\s-]?fac\w*|childlike|child\w*|kids?|little\s+girls?|girlish|school\s*girls?|school\s*boys?|under[\s-]?age\w*|minors?|barely[\s-]+legal|loli\w*|shota\w*|preteen\w*|adolescen\w*|juvenile\w*|pubescen\w*|(?:1[0-9]|20|[1-9])\s*(?:-|\s)?(?:yo|y\/o|yrs?|years?)(?:[\s-]*old)?)\b/gi;
 const FAMILY_RE = /\b(?:step[\s-]?(?:moms?|mommy|mothers?|dads?|daddy|fathers?|sis\w*|bro\w*|daughters?|sons?|famil\w*|parents?|kids?|child\w*|aunt\w*|uncle\w*|cousins?)|famil(?:y|ies)|sisters?|brothers?|moms?|mommy|dads?|daddy|daughters?|sons?|cousins?|niece|nephew|taboo|incest\w*|free[\s-]?use|non[\s-]?consen\w*|forced|rape\w*|sleeping|asleep|unconscious|drunk|drugged|hidden[\s-]?cam\w*|voyeur\w*|upskirt\w*)\b/gi;
@@ -65,32 +65,27 @@ async function llm(env, system, user, opt) {
   const paidDefault = opt.models || [env.CHAT_MODEL || CHAT_MODEL, env.MODEL && env.MODEL !== (env.CHAT_MODEL || CHAT_MODEL) ? env.MODEL : FALLBACK_MODEL];
   const ch = chain(env, opt.pick, paidDefault);
   // opt.freeFirst: try this free model first for this action (e.g. the strongest free model for classification)
-  if (opt.freeFirst && !ch.explicit && /:free$/.test(opt.freeFirst)) ch.models = [opt.freeFirst].concat(ch.models.filter((m) => m !== opt.freeFirst));
+  if (opt.freeFirst && !ch.explicit && !ch.xai && /:free$/.test(opt.freeFirst)) ch.models = [opt.freeFirst].concat(ch.models.filter((m) => m !== opt.freeFirst));
   let nFree = 0;
   const models = ch.models.filter((m) => !/:free$/.test(m) || !opt.freeMax || ++nFree <= opt.freeMax);
-  let lastErr = "no model", lastStatus = 0;
+  let lastErr = "no model", lastStatus = 0, xaiErr = "";
   for (const model of models) {
-    const body = Object.assign({ model, messages: [{ role: "system", content: system }].concat(Array.isArray(user) ? user : [{ role: "user", content: typeof user === "string" ? user : JSON.stringify(user) }]),
-      max_tokens: opt.maxTokens || 500, temperature: opt.temperature == null ? 0.8 : opt.temperature }, extras(model));
+    const body = { messages: [{ role: "system", content: system }].concat(Array.isArray(user) ? user : [{ role: "user", content: typeof user === "string" ? user : JSON.stringify(user) }]),
+      max_tokens: opt.maxTokens || 500, temperature: opt.temperature == null ? 0.8 : opt.temperature };
     if (opt.json) body.response_format = { type: "json_object" };
-    if (opt.plugins && model === models[0] && !/:free$/.test(model)) body.plugins = opt.plugins;
-    let r;
-    try {
-      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), Math.min(opt.timeout || 25000, /:free$/.test(model) ? 20000 : 60000));
-      r = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", signal: ctl.signal,
-        headers: { Authorization: "Bearer " + env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://zigflames.com", "X-Title": "ZigFlames Prompt Machine" },
-        body: JSON.stringify(body) });
-      clearTimeout(to);
-    } catch (e) { lastErr = "upstream unreachable"; continue; }
-    if (!r.ok) { lastErr = "upstream " + r.status; lastStatus = r.status; console.log("boost llm", model, r.status); continue; }
-    const data = await r.json().catch(() => null);
+    if (opt.plugins && model === models[0] && !/:free$/.test(model) && !isXai(model)) body.plugins = opt.plugins;
+    const f = await chatFetch(env, model, body, Math.min(opt.timeout || 25000, /:free$/.test(model) ? 20000 : 60000));
+    if (!f.ok) { lastErr = f.err; lastStatus = f.status; if (isXai(model)) xaiErr = f.err; continue; }
+    const data = f.data;
     const content = String((data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "");
     const obj = opt.json ? firstObj(content) : null;
-    if (opt.json && !obj) { lastErr = "model did not return JSON"; continue; }
-    if (!opt.json && !content.trim()) { lastErr = "empty reply"; continue; }
+    if (opt.json && !obj) { lastErr = "model did not return JSON"; if (isXai(model)) xaiErr = "Grok did not return JSON"; continue; }
+    if (!opt.json && !content.trim()) { lastErr = "empty reply"; if (isXai(model)) xaiErr = "Grok sent an empty reply"; continue; }
     const u = (data && data.usage) || {}, p = price(model);
     const est = typeof u.cost === "number" ? u.cost : ((u.prompt_tokens || 0) * p[0] + (u.completion_tokens || 0) * p[1]) / 1e6;
-    return { text: content, obj, usage: { model, in: u.prompt_tokens || 0, out: u.completion_tokens || 0, est_usd: Math.round(est * 1e6) / 1e6, free: /:free$/.test(model), tier: tier(env), fallback: model !== models[0] } };
+    const usage = { model: modelLabel(model), engine: isXai(model) ? "xai" : /:free$/.test(model) ? "openrouter-free" : "openrouter", in: u.prompt_tokens || 0, out: u.completion_tokens || 0, est_usd: Math.round(est * 1e6) / 1e6, free: /:free$/.test(model), tier: tier(env), fallback: model !== models[0] };
+    if (xaiErr && !isXai(model)) usage.credit_note = "Grok (xAI) unavailable — " + xaiErr + " — answered with the free model";
+    return { text: content, obj, usage };
   }
   if (ch.explicit && lastStatus === 402) return { err: "needs credit", status: 402, needs_credit: true, model: models[0], hint: "This model needs OpenRouter credit. Pick Free, or add credit at openrouter.ai/settings/credits." };
   if (lastStatus === 429) return { err: "free AI limit reached — try again later", status: 503, rate_limited: true };
@@ -133,8 +128,7 @@ const TEXT = {
     const hist = (Array.isArray(b.messages) ? b.messages : []).slice(-8).map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: scrub(m && m.content, adult, 1500) })).filter((m) => m.content);
     if (!hist.length || hist[hist.length - 1].role !== "user") return { err: "empty message", status: 400 };
     const sys = "You are the AI assistant inside Zig's Prompt Machine (an image / video / music prompt studio). Help write and clean up text, build and improve image and video prompts (Midjourney, Grok Imagine, Sora, Kling, Flux), captions and Suno music prompts. Be direct and brief. When you write a prompt, put it alone in a ```prompt fenced block so it can be copied; keep Midjourney --params at the very end.\n" + rules(adult);
-    const pick = ["free", "gemini", "gpt", "grok"].includes(b.model) ? b.model : undefined;
-    const r = await llm(env, sys, hist, { maxTokens: Math.min(600, parseInt(env.CHAT_MAX_TOKENS || "600", 10)), temperature: 0.7, pick });
+    const r = await llmPick(env, sys, hist, { maxTokens: Math.min(600, parseInt(env.CHAT_MAX_TOKENS || "600", 10)), temperature: 0.7 }, b);
     if (r.err) return r;
     return { reply: scrub(r.text, adult, 6000), usage: r.usage };
   },
@@ -184,7 +178,7 @@ const TEXT = {
     const seeds = strList(b.seeds || [b.text], 12, 300, adult); if (!seeds.length) return { err: "empty seeds", status: 400 };
     const n = Math.max(1, Math.min(20, parseInt(b.count || 10, 10)));
     const sys = "You are a seed expander. From the user's seed ideas, invent " + n + " NEW seed ideas (6-16 words each): new scenarios, locations, outfits, camera formats and lighting in the same spirit, never repeats or near-duplicates of each other or the input. Reply JSON {\"seeds\":[\"...\"]}.\n" + rules(adult);
-    const r = await llm(env, sys, { seeds, count: n, avoid: strList(b.avoid, 40, 80, adult) }, { json: true, maxTokens: 900, temperature: 1.05 });
+    const r = await llmPick(env, sys, { seeds, count: n, avoid: strList(b.avoid, 40, 80, adult) }, { json: true, maxTokens: 900, temperature: 1.05 }, b);
     if (r.err) return r;
     const out = strList(r.obj.seeds, n, 240, adult);
     return out.length ? { seeds: out, usage: r.usage } : { err: "empty", status: 502 };
@@ -193,7 +187,7 @@ const TEXT = {
     const cat = scrub(b.category, adult, 60); if (!cat) return { err: "empty category", status: 400 };
     const n = Math.max(5, Math.min(60, parseInt(b.count || 30, 10)));
     const sys = "List " + n + " specific, real, visual items for the vocabulary category the user names (for image prompts). Short chips of 1-5 words, concrete and describable (models, styles, colourways, materials), no numbering, no duplicates, none from the 'have' list. Reply JSON {\"items\":[\"...\"]}.\n" + rules(adult);
-    const r = await llm(env, sys, { category: cat, have: strList(b.have, 80, 60, adult), count: n }, { json: true, maxTokens: 800, temperature: 0.7 });
+    const r = await llmPick(env, sys, { category: cat, have: strList(b.have, 80, 60, adult), count: n }, { json: true, maxTokens: 800, temperature: 0.7 }, b);
     if (r.err) return r;
     const seen = new Set(), items = strList(r.obj.items, n, 60, adult).filter((x) => { const k = x.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
     return items.length ? { category: cat, items, usage: r.usage } : { err: "empty", status: 502 };
@@ -208,7 +202,7 @@ const TEXT = {
       models: [FALLBACK_MODEL, env.CHAT_MODEL || CHAT_MODEL], plugins: [{ id: "web", engine: "exa", max_results: 5, search_prompt: q }] });
     let r2 = r;
     // web search refused (e.g. 402 when OpenRouter credit is empty) -> same models from knowledge, flagged live:false
-    if (r2.err) r2 = await llm(env, sys.replace("(use the web results; prefer the last 4 weeks)", "(from your most recent knowledge)"), { focus, region }, { json: true, maxTokens: 2200, temperature: 0.5, timeout: 25000, models: [env.CHAT_MODEL || CHAT_MODEL, FALLBACK_MODEL] });
+    if (r2.err) r2 = await llmPick(env, sys.replace("(use the web results; prefer the last 4 weeks)", "(from your most recent knowledge)"), { focus, region }, { json: true, maxTokens: 2200, temperature: 0.5, timeout: 25000, models: [env.CHAT_MODEL || CHAT_MODEL, FALLBACK_MODEL] }, b);
     if (r2.err) return r2;
     const webOk = !r.err; r = r2;
     const items = (Array.isArray(r.obj.items) ? r.obj.items : []).slice(0, 12).map((x) => ({ name: scrub(x && x.name, adult, 80), how: scrub(x && x.how, adult, 220), prompt: frame21(scrub(x && x.prompt, adult, 500)), when: scrub(x && x.when, adult, 40) })).filter((x) => x.name);
@@ -217,14 +211,14 @@ const TEXT = {
   async looplab(b, env, adult) {
     const text = scrub(b.text, true, 2000); if (!text) return { err: "empty text", status: 400 };
     const sys = "You are a music-prompt editor. Turn the user's loop / beat idea into: (1) a tight Suno 'Style of Music' prompt under 900 characters with genre, BPM, key, instruments, mix and vibe - NO artist names (describe the sound instead); (2) a song structure (section tags like [Intro] [Verse] [Hook] with bar counts); (3) 3 sample-friendly loop descriptions for chopping on an MPC or phone (4-8 bars, clean loop points, no vocals unless asked, mono low end). Reply JSON {\"genre\":\"\",\"bpm\":90,\"key\":\"\",\"instruments\":[\"\"],\"style\":\"\",\"exclude\":\"\",\"structure\":\"\",\"samples\":[\"\"]}.";
-    const r = await llm(env, sys, { idea: text, target: b.target || "suno" }, { json: true, maxTokens: 900, temperature: 0.6 });
+    const r = await llmPick(env, sys, { idea: text, target: b.target || "suno" }, { json: true, maxTokens: 900, temperature: 0.6 }, b);
     if (r.err) return r;
     const o = r.obj, bpm = Math.max(40, Math.min(220, parseInt(o.bpm, 10) || 0)) || null;
     return { genre: scrub(o.genre, true, 80), bpm, key: scrub(o.key, true, 30), instruments: strList(o.instruments, 12, 60, true), style: scrub(o.style, true, 1000), exclude: scrub(o.exclude, true, 400), structure: String(o.structure || "").replace(/[^\S\n]{2,}/g, " ").slice(0, 1500), samples: strList(o.samples, 5, 400, true), usage: r.usage };
   },
   async seeds(b, env, adult) {
     const sys = "Give 12 short variation details (4-12 words, under 120 characters each) that make each new image of the same prompt look like a DIFFERENT real adult (21+) person and a different real photo: face shape, features, skin texture (raw, unretouched most of the time), hair, expression, framing, and a different lighting each. No names, no ages. Reply JSON {\"details\":[\"...\"]}.\n" + rules(adult);
-    const r = await llm(env, sys, { prompt: scrub(b.prompt, adult, 600) }, { json: true, maxTokens: 500, temperature: 1.0 });
+    const r = await llmPick(env, sys, { prompt: scrub(b.prompt, adult, 600) }, { json: true, maxTokens: 500, temperature: 1.0 }, b);
     if (r.err) return r;
     const d = strList(r.obj.details, 16, 160, adult);
     return d.length ? { details: d, usage: r.usage } : { err: "empty", status: 502 };
@@ -237,16 +231,16 @@ const IMAGE_PROVIDERS = {
   // Order = default pick: the first ready, unlocked provider. fal schnell is the default once FAL_KEY is set (and funded).
   // Pollinations (free, keyless) was tested Oct 24 2026 and left out: the keyless endpoint now serves a low-end model
   // (sana) that ignored prompts, blocked "21+" as "privacy" and drew young-looking faces for "adult woman".
+  xai: { label: "Grok Imagine (xAI)", key: "XAI_API_KEY", adult: false, model: "grok-imagine-image", usd: 0.02, note: "$0.02/image (xAI direct); free preview if xAI fails" },
   fal_schnell: { label: "fal.ai · FLUX schnell (fast, cheap)", key: "FAL_KEY", adult: false, model: "fal-ai/flux/schnell", usd: 0.003, note: "~$0.003/image (needs fal credit)" },
   openrouter: { label: "Gemini Flash Image (OpenRouter)", key: "OPENROUTER_API_KEY", adult: false, model: "google/gemini-2.5-flash-image", usd: 0.039, note: "~$0.039/image; needs ≥$1 OpenRouter credit" },
-  xai: { label: "Grok Imagine (xAI)", key: "XAI_API_KEY", adult: false, model: "grok-imagine-image", usd: 0.02, note: "$0.02/image (1K)" },
   venice: { label: "Venice · Lustify v8 (uncensored)", key: "VENICE_API_KEY", adult: true, model: "lustify-v8", usd: 0.01, note: "$0.01/image, safe_mode off" },
   venice_grok: { label: "Venice · Grok Imagine (private)", key: "VENICE_API_KEY", adult: true, model: "grok-imagine-image", usd: 0.03, note: "$0.03/image (1K)" },
   fal: { label: "fal.ai · FLUX dev (safety checker off)", key: "FAL_KEY", adult: true, model: "fal-ai/flux/dev", usd: 0.025, note: "$0.025/megapixel" },
   modelslab: { label: "ModelsLab · NSFW V2 (SD)", key: "MODELSLAB_API_KEY", adult: true, model: "nsfwxxx12", usd: 0.0047, note: "$0.0047/image on a $21+/mo plan" },
 };
 const VIDEO_PROVIDERS = {
-  xai: { label: "Grok Imagine Video 1.5 Lite (xAI)", key: "XAI_API_KEY", adult: false, model: "grok-imagine-video-1.5-lite", perSec: { "480p": 0.02, "720p": 0.03 }, note: "$0.02/s 480p · $0.03/s 720p" },
+  xai: { label: "Grok Imagine Video 1.5 Lite (xAI)", key: "XAI_API_KEY", adult: false, model: "grok-imagine-video-1.5-lite", perSec: { "480p": 0.02, "720p": 0.03 }, note: "$0.02/s 480p · $0.03/s 720p (xAI direct); free still preview if xAI fails" },
   venice: { label: "Venice · Wan 2.7 Enhanced (uncensored)", key: "VENICE_API_KEY", adult: true, model: "wan-2-7-enhanced-text-to-video", perSec: { "720p": 0.128 }, note: "$0.64 per 5 s at 720p" },
   venice_grok: { label: "Venice · Grok Imagine 1.5 Lite", key: "VENICE_API_KEY", adult: true, model: "grok-imagine-1-5-lite-text-to-video", perSec: { "480p": 0.024, "720p": 0.036 }, note: "$0.12 per 5 s at 480p" },
 };
@@ -297,7 +291,7 @@ async function mediaPrompt(env, raw, adult) {
 const AR = { "9:16": [768, 1344], "3:4": [896, 1152], "1:1": [1024, 1024], "4:3": [1152, 896], "16:9": [1344, 768], "2:3": [832, 1216] };
 
 async function genImage(b, env, adult, ip) {
-  const id = String(b.provider || (env.FAL_KEY ? "fal_schnell" : "openrouter")), P = IMAGE_PROVIDERS[id];
+  const id = String(b.provider || (env.XAI_API_KEY ? "xai" : env.FAL_KEY ? "fal_schnell" : "openrouter")), P = IMAGE_PROVIDERS[id];
   if (!P) return { err: "unknown provider", status: 400 };
   if (P.adult && !adult) return { err: "This provider is only available in 18+ mode.", status: 403, locked: true };
   if (P.key && !env[P.key]) return { err: "needs key", needs_key: P.key, status: 503, provider: id };
@@ -329,12 +323,31 @@ async function genImage(b, env, adult, ip) {
         body: JSON.stringify({ key: env.MODELSLAB_API_KEY, model_id: P.model, prompt: g.prompt, negative_prompt: "child, minor, teen, underage, young-looking, cartoon, cgi, watermark, text", width: String(Math.min(w, 1024)), height: String(Math.min(h, 1024)), samples: "1", safety_checker: adult ? "no" : "yes" }) });
       d = await r.json().catch(() => null); url = d && d.output && d.output[0] || "";
     }
-  } catch (e) { return { err: "provider unreachable", status: 502, provider: id }; }
+  } catch (e) { if (id === "xai") return freePreview(env, ip, g.prompt, w, h, "xAI unreachable", "image"); return { err: "provider unreachable", status: 502, provider: id }; }
+  if (id === "xai" && !url) {
+    const why = xaiErr(r, d);
+    if (/moderat|policy|safety|inappropriate|not allowed|violat/i.test(why)) return { err: "Grok Imagine refused the prompt (content policy): " + why, status: 422, provider: id, refused: "policy" };
+    return freePreview(env, ip, g.prompt, w, h, why, "image");
+  }
   if (r && r.status === 403 && d && /TOP_UP|balance/i.test(JSON.stringify(d))) return { err: "fal.ai account has no credit — top up at fal.ai/dashboard/billing.", needs_credit: true, status: 402, provider: id };
   if (r && (r.status === 401 || r.status === 403)) return { err: "provider rejected the key (" + P.key + ")", needs_key: P.key, status: 503, provider: id };
   if (!url) return { err: "provider returned no image" + (r ? " (" + r.status + ")" : ""), status: 502, provider: id, detail: String(JSON.stringify(d || "")).slice(0, 200) };
   const tot = await capAdd(env, ip, "image", P.usd);
-  return { url, provider: id, model: P.model, prompt: g.prompt, cost: { est_usd: P.usd + (g.screen_usd || 0), note: P.note, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
+  return { url, provider: id, model: P.model, engine: P.label + " · " + P.model, prompt: g.prompt, cost: { est_usd: P.usd + (g.screen_usd || 0), note: P.note, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
+}
+// real error text from an xAI response (never includes the key)
+function xaiErr(r, d) {
+  let m = d && (d.error && (d.error.message || d.error) || d.message || d.code);
+  if (m && typeof m !== "string") m = JSON.stringify(m);
+  return "xAI " + (r ? r.status : "?") + (m ? ": " + String(m).slice(0, 180) : d ? ": " + JSON.stringify(d).slice(0, 180) : "");
+}
+// Grok failed -> guarded free still preview (Pollinations, keyless, $0; counts toward the visitor's image limit), clearly labelled
+async function freePreview(env, ip, prompt, w, h, why, kind) {
+  const capErr = await capCheck(env, ip, "image", 0); if (capErr) return { err: capErr + " (Grok failed: " + why + ")", status: 429, capped: true };
+  await capAdd(env, ip, "image", 0);
+  const label = kind === "video" ? "Grok Imagine Video" : "Grok Imagine";
+  return { url: pollinationsUrl(prompt, w, h), kind: "image", provider: "pollinations", model: "flux (Pollinations)", engine: "Free preview · Pollinations (still image)", fallback: true,
+    notice: label + " (xAI) failed — " + why + " — showing a free Pollinations " + (kind === "video" ? "still preview instead of a video." : "preview instead."), prompt, cost: { est_usd: 0, note: "free preview" } };
 }
 
 async function genVideo(b, env, adult, ip) {
@@ -360,13 +373,18 @@ async function genVideo(b, env, adult, ip) {
         body: JSON.stringify({ model: P.model, prompt: g.prompt.slice(0, 2400), duration: dur + "s", resolution: res, aspect_ratio: ar }) });
       d = await r.json().catch(() => null); job = d && d.queue_id || ""; dl = d && d.download_url || "";
     }
-  } catch (e) { return { err: "provider unreachable", status: 502, provider: id }; }
+  } catch (e) { if (id === "xai") return freePreview(env, ip, g.prompt, ...(AR[ar] || AR["9:16"]), "xAI unreachable", "video"); return { err: "provider unreachable", status: 502, provider: id }; }
+  if (id === "xai" && !job) {
+    const why = xaiErr(r, d);
+    if (/moderat|policy|safety|inappropriate|not allowed|violat/i.test(why)) return { err: "Grok Imagine Video refused the prompt (content policy): " + why, status: 422, provider: id, refused: "policy" };
+    return freePreview(env, ip, g.prompt, ...(AR[ar] || AR["9:16"]), why, "video");
+  }
   if (r && r.status === 403 && d && /TOP_UP|balance/i.test(JSON.stringify(d))) return { err: "fal.ai account has no credit — top up at fal.ai/dashboard/billing.", needs_credit: true, status: 402, provider: id };
   if (r && (r.status === 401 || r.status === 403)) return { err: "provider rejected the key (" + P.key + ")", needs_key: P.key, status: 503, provider: id };
   if (r && r.status === 422) return { err: "Provider refused the prompt (content policy).", status: 422, provider: id };
   if (!job) return { err: "provider did not start the job" + (r ? " (" + r.status + ")" : ""), status: 502, provider: id, detail: String(JSON.stringify(d || "")).slice(0, 200) };
   const tot = await capAdd(env, ip, "video", usd);
-  return { job, download_url: dl, provider: id, model: P.model, prompt: g.prompt, duration: dur, resolution: res, cost: { est_usd: usd, note: P.note, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
+  return { job, download_url: dl, provider: id, model: P.model, engine: P.label + " · " + P.model + " · " + res + " · " + dur + " s", aspect: ar, prompt: g.prompt, duration: dur, resolution: res, cost: { est_usd: usd, note: P.note, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
 }
 
 async function videoStatus(b, env, adult, ch) {
@@ -378,8 +396,15 @@ async function videoStatus(b, env, adult, ch) {
     if (id === "xai") {
       const r = await fetch("https://api.x.ai/v1/videos/" + job, { headers: { Authorization: "Bearer " + env.XAI_API_KEY } });
       const d = await r.json().catch(() => null) || {};
-      if (d.status === "done" && d.video && d.video.url) return J({ status: "done", url: d.video.url }, 200, ch);
-      if (d.status === "failed" || d.status === "expired") return J({ status: "failed", error: "generation failed" }, 200, ch);
+      if (d.status === "done" && d.video && d.video.url) return J({ status: "done", url: d.video.url, engine: P.label + " · " + P.model }, 200, ch);
+      if (d.status === "failed" || d.status === "expired" || (!r.ok && r.status !== 429 && r.status < 500)) {
+        const why = d.status ? "job " + d.status + (d.error ? ": " + String(d.error.message || d.error).slice(0, 160) : "") : xaiErr(r, d);
+        const out = { status: "failed", error: "Grok Imagine Video (xAI) " + why };
+        // free still preview of the same (already guarded + returned by the video call) prompt; re-check the hard guards anyway
+        const pr = String(b.prompt || "").slice(0, 2000);
+        if (pr && !MINOR_HARD.test(pr) && !LIKENESS_RE.test(pr)) { const [w, h] = AR[b.aspect] || AR["9:16"]; Object.assign(out, { fallback_url: pollinationsUrl(frame21(scrub(pr, adult, 2000)), w, h), engine: "Free preview · Pollinations (still image)", notice: out.error + " — showing a free Pollinations still preview instead." }); }
+        return J(out, 200, ch);
+      }
       return J({ status: "pending" }, 200, ch);
     }
     const r = await fetch("https://api.venice.ai/api/v1/video/retrieve", { method: "POST", headers: { Authorization: "Bearer " + env.VENICE_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ model: P.model, queue_id: job }) });

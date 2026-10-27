@@ -7,7 +7,7 @@
 // model; they are re-attached verbatim, last. Output is re-checked (ages, family roles, explicitness, 21+,
 // ::weights, length) and the original comes back with a note if the check fails.
 
-import { chain, extras, price } from "./models.js"; // AI_TIER=free -> OpenRouter :free models; paid -> MODEL then free
+import { chain, extras, price, chatFetch, isXai, modelLabel } from "./models.js"; // AI_TIER=free -> OpenRouter :free models; paid -> MODEL then free
 import { boost, BOOST_ACTIONS } from "./boost.js"; // AI Boost actions (chat, cleanup, remix, expand, vocab, trending, looplab, seeds, image, video)
 
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out (OpenRouter, Oct 2026)
@@ -228,16 +228,10 @@ function slimOptions(o) { // keep the request small: ids + short labels only
 // ---------- AI Tighten ----------
 const MAX_PROMPT = 6000;
 async function callModel(env, model, messages, maxTokens, temperature) {
-  let r;
-  try {
-    r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST", signal: AbortSignal.timeout(/:free$/.test(model) ? 12000 : 30000), // a stuck free model -> next one
-      headers: { Authorization: "Bearer " + env.OPENROUTER_API_KEY, "Content-Type": "application/json", "HTTP-Referer": "https://zigflames.com", "X-Title": "ZigFlames Prompt Machine" },
-      body: JSON.stringify(Object.assign({ model, messages, response_format: { type: "json_object" }, max_tokens: maxTokens, temperature }, extras(model))),
-    });
-  } catch (e) { return { err: "upstream unreachable" }; }
-  if (!r.ok) return { err: "upstream " + r.status };
-  const data = await r.json().catch(() => null);
+  // routed by chatFetch: "xai:<id>" -> api.x.ai with XAI_API_KEY (counted in the daily $ cap), anything else -> OpenRouter
+  const f = await chatFetch(env, model, { messages, response_format: { type: "json_object" }, max_tokens: maxTokens, temperature }, /:free$/.test(model) ? 12000 : 30000); // a stuck free model -> next one
+  if (!f.ok) return { err: f.err };
+  const data = f.data;
   const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
   let out = null;
   try { out = JSON.parse(firstObject(String(content || ""))); } catch (e) { console.log("bad json", (data && data.choices && data.choices[0] && data.choices[0].finish_reason) || "", String(content || "").length, String(content || "").slice(-200)); }
@@ -295,10 +289,10 @@ async function tighten(body, env, ch) {
   const models = [...new Set(chain(env, pk, [env.MODEL || DEFAULT_MODEL]).models.concat(pk && pk !== "free" ? chain(env, "free").models : []))];
   let model = models[0];
   const keep = keepTokens(o.body);
-  let best = null, lastErr = "model did not return JSON", tin = 0, tout = 0, why = "";
+  let best = null, lastErr = "model did not return JSON", tin = 0, tout = 0, why = "", xaiNote = "";
   for (let attempt = 0; attempt < 2 && !best; attempt++) {
     let r = { err: "no model" };
-    for (const m of models) { r = await callModel(env, m, messages, 700, attempt ? 0.4 : 0.1); model = m; if (r.out) break; } // next model on 402/429/404/bad JSON
+    for (const m of models) { r = await callModel(env, m, messages, 700, attempt ? 0.4 : 0.1); model = m; if (r.out) break; if (isXai(m)) xaiNote = r.err; } // next model on 402/429/404/bad JSON
     const u = (r.data && r.data.usage) || {}; tin += u.prompt_tokens || 0; tout += u.completion_tokens || 0;
     if (!r.out) { lastErr = r.err; continue; }
     let flat = r.out.keep;
@@ -358,7 +352,8 @@ async function tighten(body, env, ch) {
     best = { prompt: fin.prompt, negative: neg, notes };
   }
   const p = /:free$/.test(model) ? price(model) : PRICE[model] || price(model);
-  const usage = { model, in: tin, out: tout, est_usd: Math.round(((tin * p[0] + tout * p[1]) / 1e6) * 1e6) / 1e6 };
+  const usage = { model: modelLabel(model), engine: isXai(model) ? "xai" : /:free$/.test(model) ? "openrouter-free" : "openrouter", in: tin, out: tout, est_usd: Math.round(((tin * p[0] + tout * p[1]) / 1e6) * 1e6) / 1e6 };
+  if (xaiNote && !isXai(model)) usage.credit_note = "Grok (xAI) unavailable — " + xaiNote + " — used the free model";
   console.log(JSON.stringify({ action: "tighten", ...usage, ok: !!best }));
   if (!best) {
     const pre = tgFinalize(prompt, tgJoin(S.map((s) => ({ text: tgTidy(s.ids.map((id) => table[id].text).join(", ") + (s.avoid ? ", " + s.avoid : "")), w: s.w }))));
