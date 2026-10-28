@@ -13,6 +13,7 @@ import { boost, BOOST_ACTIONS } from "./boost.js"; // AI Boost actions (chat, cl
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out (OpenRouter, Oct 2026)
 const PRICE = { "google/gemini-2.5-flash-lite": [0.10, 0.40], "mistralai/mistral-small-3.2-24b-instruct": [0.075, 0.20], "meta-llama/llama-3.3-70b-instruct": [0.10, 0.32] };
 const MAX_BODY = 16 * 1024;
+const STUDIO_MAX_BODY = 3 * 1024 * 1024; // studio_render only (reference photo)
 const MAX_TOKENS = 450;
 const ALLOWED = [/^https:\/\/(www\.)?zigflames\.com$/, /^https?:\/\/localhost(:\d+)?$/, /^https?:\/\/127\.0\.0\.1(:\d+)?$/];
 const AGE_RE = /\b(?:teen\w*|tweens?|young(?:er|est|ish)?|youthful|jail[\s-]?bait|baby[\s-]?fac\w*|childlike|child\w*|kids?|little\s+girls?|girlish|school\w*|under[\s-]?age\w*|minors?|barely[\s-]+legal|loli\w*|(?:1[0-9]|20|[1-9])\s*(?:-|\s)?(?:yo|y\/o|yrs?|years?)(?:[\s-]*old)?)\b/gi;
@@ -389,12 +390,14 @@ export default {
       if (arr.length > lim) return json({ error: "slow down — try again in a minute" }, 429, ch);
     }
 
+    // 16 KB for everything except the 22-model panel (studio_render), which may carry a reference photo (page shrinks it to ~1024 px JPEG).
     const len = parseInt(req.headers.get("Content-Length") || "0", 10);
-    if (len > MAX_BODY) return json({ error: "request too large" }, 413, ch);
+    if (len > STUDIO_MAX_BODY) return json({ error: "request too large" }, 413, ch);
     const raw = await req.text();
-    if (raw.length > MAX_BODY) return json({ error: "request too large" }, 413, ch);
+    if (raw.length > STUDIO_MAX_BODY) return json({ error: "request too large" }, 413, ch);
     let body; try { body = JSON.parse(raw); } catch (e) { return json({ error: "bad JSON" }, 400, ch); }
     if (!body || typeof body !== "object") return json({ error: "bad JSON" }, 400, ch);
+    if (raw.length > MAX_BODY && body.action !== "studio_render") return json({ error: "request too large" }, 413, ch);
     let path = "/"; try { path = new URL(req.url).pathname.replace(/\/+$/, "") || "/"; } catch (e) {}
     if (body.action === "tighten" || path === "/tighten") return tighten(body, env, ch);
     if (BOOST_ACTIONS.has(body.action)) return boost(body, env, ch, req);

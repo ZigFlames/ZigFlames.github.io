@@ -448,8 +448,64 @@ function pollinationsUrl(prompt, w, h, uncensored) {
   const sc = Math.min(1, 1024 / Math.max(w, h)), W = Math.round(w * sc / 8) * 8, H = Math.round(h * sc / 8) * 8;
   return "https://image.pollinations.ai/prompt/" + encodeURIComponent(p.slice(0, 900)) + "?model=flux&width=" + W + "&height=" + H + "&seed=" + Math.floor(Math.random() * 1e6) + "&nologo=true&safe=" + (uncensored ? "false" : "true");
 }
+// ---- Grok Imagine in the 22-model panel: edit-from-reference (images/edits) and reference -> video (videos/generations + image) ----
+// Ref arrives as a client-downscaled JPEG data URI (<= ~1024 px) or an https URL. Same guards as everywhere: prompt gate (21+, minors,
+// named/real people), plus a cheap vision screen of the reference itself; xAI moderation refusal -> labelled free preview.
+const REF_DATA_RE = /^data:image\/(?:jpeg|jpg|png);base64,[A-Za-z0-9+/=]+$/;
+const REF_MAX = 2.8e6;
+async function refScreen(env, ref) {
+  const s = await llm(env, "You screen a reference photo for an image/video generator. Reply JSON {\"minor\":bool,\"celebrity\":bool}. minor = anyone in it could be under 18. celebrity = it clearly shows a famous, recognizable public figure. Ordinary unknown adults are fine.",
+    [{ role: "user", content: [{ type: "text", text: "Screen this reference image." }, { type: "image_url", image_url: { url: ref } }] }], { json: true, maxTokens: 30, temperature: 0, timeout: 12000, models: [FALLBACK_MODEL], freeMax: 1 });
+  if (s.obj && s.obj.minor === true) return { err: "Refused: the reference photo may show someone under 18. Adults 21+ only.", refused: "minor" };
+  if (s.obj && s.obj.celebrity === true) return { err: "Refused: the reference photo looks like a real public figure. No real or named person likeness.", refused: "likeness" };
+  return { ok: true, screened: !!s.obj, usd: s.usage ? s.usage.est_usd : 0 };
+}
+function studioFromPreview(o, key, extra) {
+  if (o.err) return { ok: false, code: o.capped ? "capped" : "error", error: o.err };
+  return Object.assign({ ok: true, kind: "image", url: o.url, imageUrl: o.url, model: "Free preview (Pollinations)", provider: "pollinations", fallback: true, requested: key, moderated: !!o.moderated, xai_error: o.xai_error,
+    engine: o.engine, notice: o.notice + " (The free preview can't use your reference photo.)", prompt: o.prompt, cost: { est_usd: 0 } }, extra || {});
+}
+async function grokStudio(b, env, ip, key) {
+  const video = key === "grok-imagine-video-ref", adult = b.contentMode === "18+";
+  if (!env.XAI_API_KEY) return { ok: false, code: "needs_key", error: "Grok Imagine needs the worker secret XAI_API_KEY." };
+  let ref = String(b.imageUrl || "");
+  if (ref && !(REF_DATA_RE.test(ref) && ref.length <= REF_MAX) && !/^https:\/\/[^\s"']{8,2000}$/.test(ref)) return { ok: false, code: "bad_ref", error: "Reference image must be a JPG/PNG under ~2 MB (the page shrinks it to 1024 px automatically) — re-upload it." };
+  if (video && !ref) return { ok: false, code: "needs_ref", error: "Grok Imagine Video (from reference) needs a reference image — upload one first." };
+  const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return { ok: false, code: g.refused || "error", error: g.err, filter: !!g.refused };
+  if (ref) { const sc = await refScreen(env, ref); if (sc.err) return { ok: false, code: sc.refused, error: sc.err, filter: true }; }
+  const [w, h] = STUDIO_AR[b.aspectRatio] || STUDIO_AR["9:16"];
+  const hdr = { Authorization: "Bearer " + env.XAI_API_KEY, "Content-Type": "application/json" };
+  let r, d;
+  if (!video) {
+    const P = IMAGE_PROVIDERS.xai, usd = ref ? 0.04 : P.usd; // edits bill the input image too (est.)
+    const capErr = await capCheck(env, ip, "image", usd); if (capErr) return { ok: false, code: "capped", error: capErr };
+    const ar = ["9:16", "16:9", "1:1", "3:4", "4:3", "2:3", "3:2"].includes(b.aspectRatio) ? b.aspectRatio : "9:16";
+    try {
+      r = ref ? await fetch("https://api.x.ai/v1/images/edits", { method: "POST", headers: hdr, body: JSON.stringify({ model: P.model, prompt: g.prompt, image: { url: ref, type: "image_url" }, n: 1, response_format: "url" }) })
+        : await fetch("https://api.x.ai/v1/images/generations", { method: "POST", headers: hdr, body: JSON.stringify({ model: P.model, prompt: g.prompt, n: 1, aspect_ratio: ar, response_format: "url" }) });
+      d = await r.json().catch(() => null);
+    } catch (e) { return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, "xAI unreachable", "image"), key); }
+    const url = d && d.data && d.data[0] && (d.data[0].url || (d.data[0].b64_json ? "data:image/jpeg;base64," + d.data[0].b64_json : "")) || "";
+    if (!url) { const why = xaiErr(r, d), mod = XAI_MOD_RE.test(why); console.log(JSON.stringify({ action: "studio_grok", ok: false, why })); return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, why, "image", mod ? { moderated: true, adult } : undefined), key); }
+    const tot = await capAdd(env, ip, "image", usd);
+    return { ok: true, kind: "image", url, imageUrl: url, model: "Grok Imagine (xAI)", provider: "xai", engine: "Grok Imagine (xAI) · " + P.model + (ref ? " · edit from your reference" : " · text to image"), prompt: g.prompt,
+      cost: { est_usd: Math.round((usd + (g.screen_usd || 0)) * 1e4) / 1e4, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
+  }
+  const V = VIDEO_PROVIDERS.xai, res = "480p", dur = 6, usd = Math.round(V.perSec[res] * dur * 100) / 100;
+  const capErr = await capCheck(env, ip, "video", usd); if (capErr) return { ok: false, code: "capped", error: capErr };
+  let job = "";
+  try {
+    r = await fetch("https://api.x.ai/v1/videos/generations", { method: "POST", headers: hdr, body: JSON.stringify({ model: V.model, prompt: g.prompt, image: { url: ref }, duration: dur, resolution: res }) });
+    d = await r.json().catch(() => null); job = d && d.request_id || "";
+  } catch (e) { return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, "xAI unreachable", "video"), key); }
+  if (!job) { const why = xaiErr(r, d), mod = XAI_MOD_RE.test(why); console.log(JSON.stringify({ action: "studio_grok_video", ok: false, why })); return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, why, "video", mod ? { moderated: true, adult } : undefined), key); }
+  const tot = await capAdd(env, ip, "video", usd);
+  return { ok: true, kind: "video_job", job, provider: "xai", model: "Grok Imagine Video (xAI)", engine: V.label + " · " + V.model + " · from your reference · " + res + " · " + dur + " s", prompt: g.prompt, aspect: b.aspectRatio,
+    adult, cost: { est_usd: usd, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
+}
 async function studioRender(b, env, ip) {
   const mode = String(b.mode || "image"), key = String(b.model || "flux-schnell");
+  if (/^grok-imagine/.test(key)) return grokStudio(b, env, ip, key);
   if (mode !== "image") return { ok: false, code: "needs_credit", error: (mode === "upscale" ? "Upscaling" : "Video") + " models (" + key + ") need a funded fal.ai key (FAL_KEY). No free provider for this mode yet — use Image mode for a free preview.", status: 200 };
   if (/^lora-trainer|^civitai/.test(key)) return { ok: false, code: "needs_credit", error: "LoRA training/loading needs a funded fal.ai key (FAL_KEY).", status: 200 };
   const adult = false; // panel has no 18+ toggle: always the safe path (safety checker on, tasteful)

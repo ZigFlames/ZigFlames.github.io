@@ -539,5 +539,16 @@
     try { P[kind](root, api); } catch (e) { root.textContent = "AI panel failed to load: " + e.message; }
   }
   function unmount(el) { if (el) el.replaceChildren(); }
-  window.PMBoost = { mount: mount, unmount: unmount, uniqAI: uniqAI, localDetails: localDetails, providers: function () { PROVS = null; } };
+  // 22-model panel: mount "Send to Grok app" under an image result ({url, prompt}); re-mounts only when the result changes.
+  function grokMount(el, res) {
+    if (!el || !res || !res.url || el.getAttribute("data-for") === res.url) return;
+    el.setAttribute("data-for", res.url);
+    var im = h("img", { src: res.url, alt: "", style: "display:none" });
+    var w = grokSendBtn(im, { current: {} }, function () { return res.prompt || ""; });
+    el.replaceChildren(im, w);
+    el.style.cssText += ";font-size:11px;color:#94a3b8;line-height:1.45";
+    var bt = w.querySelector ? w.querySelector("[data-pm=ai-grok-send]") : null;
+    if (bt) bt.style.cssText += ";padding:7px 14px;border-radius:9px;border:1px solid #f97316;background:linear-gradient(90deg,#f97316,#ec4899);color:#fff;font-weight:600;font-size:13px;cursor:pointer;margin:2px 0 4px";
+  }
+  window.PMBoost = { mount: mount, unmount: unmount, uniqAI: uniqAI, localDetails: localDetails, providers: function () { PROVS = null; }, grokMount: grokMount };
 })();
