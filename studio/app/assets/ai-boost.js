@@ -456,12 +456,35 @@
     render();
     return { el: h("div", {}, [log, ta, h("div", { cls: "row" }, [send, h("button", { cls: "sm", text: "Clear chat", on: { click: function () { msgs = []; render(); } } }), pick]), pnote]) };
   }
+  // Reference photo shared with the 22-model panel / prompt builder (same storage key as prompt-machine-v4.js pmLoadOutputRef).
+  function loadRef() {
+    try { var e = window.__pmOutputRef || (window.__pmStorage ? window.__pmStorage.safeGet("pm.output.ref.v1", "") : localStorage.getItem("pm.output.ref.v1")) || ""; return /^data:image\//.test(String(e)) || /^https:\/\//.test(String(e)) ? String(e) : ""; } catch (e) { return ""; }
+  }
+  function shrinkRef(u) {
+    return new Promise(function (res) {
+      if (!/^data:image\//.test(u)) return res(u);
+      var im = new Image(); im.onload = function () { try { var k = Math.min(1, 1024 / Math.max(im.naturalWidth, im.naturalHeight)), cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round(im.naturalWidth * k)); cv.height = Math.max(1, Math.round(im.naturalHeight * k)); var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height); res(cv.toDataURL("image/jpeg", 0.85)); } catch (e) { res(u); } };
+      im.onerror = function () { res(u); }; im.src = u;
+    });
+  }
+  function fallbackBanner(j) {
+    if (!j || !j.fallback) return "";
+    var grok = /^grok|^xai/.test(String(j.requested || j.asked || "xai")), t = grok ? (j.moderated ? "🛡 Grok refused this prompt — showing free preview instead" : "⚠ Grok couldn't render this — showing free preview instead") : "⚠ That model isn't available — showing free preview instead";
+    return h("div", { "data-pm": "ai-fallback-banner", role: "alert", style: "background:linear-gradient(90deg,#7c2d12,#9d174d);border:2px solid #f97316;border-radius:10px;color:#fff;padding:12px 14px;margin:6px 0;font-size:15px;font-weight:700;line-height:1.35" },
+      [h("div", { text: t }), j.notice ? h("div", { style: "font-size:12px;font-weight:400;opacity:.9;margin-top:4px", text: j.notice }) : "", grok ? h("div", { style: "font-size:12px;font-weight:400;opacity:.9;margin-top:4px", text: "Tip: soften the prompt and try again, or use Send to Grok app below." }) : ""]);
+  }
   function mediaPane(api, kind, st) {
     var ta = h("textarea", { placeholder: kind === "image" ? "Image prompt (adults 21+, no real / named people)" : "Video prompt — describe the motion, camera move and light" });
     var sel = h("select", { "data-pm": "ai-provider-" + kind }), ar = h("select", {}, ["9:16", "1:1", "16:9", "3:4"].map(function (a) { return h("option", { value: a, text: a }); }));
     var dur = h("select", { "data-pm": "ai-video-duration" }, [3, 5, 6, 10].map(function (d) { return h("option", { value: d, text: d + " s" }); })), res = h("select", { "data-pm": "ai-video-res" }, ["480p", "720p"].map(function (r) { return h("option", { value: r, text: r }); }));
     dur.value = "5";
     var cost = h("div", { cls: "muted" }), out = h("div", { cls: "media" }), list = [];
+    var useRef = h("input", { type: "checkbox", "data-pm": "ai-use-ref-" + kind }), refThumb = h("img", { alt: "", style: "width:34px;height:34px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:6px" });
+    useRef.checked = true;
+    var refRow = h("label", { "data-pm": "ai-ref-row-" + kind, style: "display:none;align-items:center;gap:6px;font-size:12px;margin:6px 0;cursor:pointer" }, [useRef, refThumb, h("span", { text: kind === "image" ? "Use my reference photo (Grok edits it)" : "Animate my reference photo (Grok Imagine Video)" })]);
+    function refSync() { var r = loadRef(); refRow.style.display = r && sel.value === "xai" ? "flex" : "none"; if (r) refThumb.src = r; }
+    window.addEventListener("pm-output-ref", function () { setTimeout(refSync, 0); });
+    sel.addEventListener("change", refSync);
     function price(p) {
       if (!p) return "";
       if (kind === "image") return p.note;
@@ -482,7 +505,7 @@
         }));
         var first = list.filter(function (p) { return !(p.adult && !a) && p.ready; })[0] || list.filter(function (p) { return !(p.adult && !a); })[0];
         sel.value = keep && list.some(function (p) { return p.id === keep && !(p.adult && !a); }) ? keep : first ? first.id : "";
-        sync();
+        sync(); refSync();
       });
     }
     [sel, dur, res].forEach(function (e) { e.addEventListener("change", sync); });
@@ -495,12 +518,19 @@
       var p = ta.value.trim() || (api.current.getPrompt && api.current.getPrompt()) || ""; if (!p.trim()) return toast(api, "Type a prompt first"); ta.value = p;
       busy(go, true, kind === "image" ? "Generating…" : "Starting…");
       var body = { prompt: p, provider: sel.value, aspect: ar.value, mode: mode(api) }; if (kind === "video") { body.duration = +dur.value; body.resolution = res.value; }
-      call(kind, body, { timeout: kind === "image" ? 90000 : 40000 }).then(function (j) {
+      // Grok + reference photo -> the worker's Grok Imagine edit / reference->video path (studio_render), never a text-only provider.
+      var ref = sel.value === "xai" && useRef.checked ? loadRef() : "";
+      var req = ref ? shrinkRef(ref).then(function (u) { return call("studio_render", { model: kind === "image" ? "grok-imagine" : "grok-imagine-video-ref", mode: kind === "image" ? "image" : "i2v", prompt: p, imageUrl: u, aspectRatio: ar.value, contentMode: mode(api) }, { timeout: 120000 }); }).then(function (j) {
+        if (j && j._status === 200 && j.ok === false) { j.error = j.error || "Grok refused"; j.refused = !!j.filter; j._status = 400; }
+        if (j && j.kind === "video_job") { j.kind = "video"; j.engine = j.engine || "Grok Imagine Video (xAI)"; }
+        return j;
+      }) : call(kind, body, { timeout: kind === "image" ? 90000 : 40000 });
+      req.then(function (j) {
         busy(go, false);
         if (!j || j._status !== 200) return showErr(j || {});
         var c = j.cost ? h("div", { cls: "muted", text: (j.cost.est_usd ? "Charged ≈ $" + Number(j.cost.est_usd).toFixed(3) : "Free · $0") + " · " + j.model + (j.cost.cap_usd ? " · today $" + Number(j.cost.today_usd || 0).toFixed(2) + " of $" + j.cost.cap_usd + " cap" : "") }) : "";
         var eng = h("div", { cls: "badge " + (j.fallback ? "local" : "ai"), "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0" , text: "Engine: " + (j.engine || j.model || j.provider) });
-        var notice = j.notice ? h("div", { cls: "note", "data-pm": "ai-media-notice", title: j.xai_error || "", text: (j.moderated ? "🛡 " : "⚠ ") + j.notice }) : "";
+        var notice = j.fallback ? fallbackBanner(j) : j.notice ? h("div", { cls: "note", "data-pm": "ai-media-notice", title: j.xai_error || "", text: (j.moderated ? "🛡 " : "⚠ ") + j.notice }) : "";
         if (kind === "image" || j.kind === "image") { var wait = h("div", { cls: "muted", "data-pm": "ai-image-loading", text: j.cost && !j.cost.est_usd ? "Loading free image… (5–30 s)" : "Loading image…" });
           var im = h("img", { src: j.url, alt: "generated", "data-pm": "ai-image-result" }); im.addEventListener("load", function () { if (!polBusy(im, wait)) wait.remove(); }); im.addEventListener("error", function () { wait.textContent = "The image host didn't answer — click Generate again or copy the prompt."; });
           var getP = function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; };
@@ -510,7 +540,7 @@
           if (++tries > 60) { stat.textContent = "Still rendering — try again later."; return; }
           call("video_status", { provider: j.provider, job: j.job, download_url: j.download_url, mode: mode(api), prompt: j.prompt, aspect: j.aspect || ar.value }, { timeout: 60000 }).then(function (s) {
             if (s.status === "done" && s.url) { out.replaceChildren(h("video", { src: s.url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true, "data-pm": "ai-video-result" }), eng, c, h("div", { cls: "row" }, [h("a", { href: s.url, target: "_blank", rel: "noopener", text: "Open / download video", style: "color:#67e8f9;font-size:12px" })])); }
-            else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(h("div", { cls: "note", "data-pm": "ai-media-notice", title: s.error || "", text: (s.moderated ? "🛡 " : "⚠ ") + (s.notice || s.error) }), (fim = polWatch(h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }))), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c, grokSendBtn(fim, api, function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; })); }
+            else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(fallbackBanner({ fallback: true, moderated: s.moderated, requested: "xai", notice: s.notice || s.error }), (fim = polWatch(h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }))), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c, grokSendBtn(fim, api, function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; })); }
             else if (s.status === "failed") stat.textContent = "Video failed: " + (s.error || "unknown");
             else setTimeout(poll, 5000);
           });
@@ -519,7 +549,7 @@
     } } });
     var row2 = kind === "video" ? [dur, res] : [];
     return { el: h("div", {}, [ta, h("div", { cls: "row" }, [h("button", { cls: "sm", text: "⤓ Use Studio prompt", on: { click: function () { ta.value = (api.current.getPrompt && api.current.getPrompt()) || ta.value; } } })]),
-      h("div", { cls: "row" }, [sel, ar].concat(row2, [go])), cost, h("div", { cls: "muted", text: "Server guards: adults 21+ only · age / minor / family words stripped · refused if a minor is implied · no real or named person likeness. Uncensored providers unlock only in 18+ mode." }), out]),
+      h("div", { cls: "row" }, [sel, ar].concat(row2, [go])), refRow, cost, h("div", { cls: "muted", text: "Server guards: adults 21+ only · age / minor / family words stripped · refused if a minor is implied · no real or named person likeness. Uncensored providers unlock only in 18+ mode." }), out]),
       show: function () { if (!ta.value) ta.value = (api.current.getPrompt && api.current.getPrompt()) || ""; fill(); } };
   }
 

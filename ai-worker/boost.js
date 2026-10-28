@@ -466,11 +466,11 @@ function studioFromPreview(o, key, extra) {
     engine: o.engine, notice: o.notice + " (The free preview can't use your reference photo.)", prompt: o.prompt, cost: { est_usd: 0 } }, extra || {});
 }
 async function grokStudio(b, env, ip, key) {
-  const video = key === "grok-imagine-video-ref", adult = b.contentMode === "18+";
+  const video = /^grok-imagine-video/.test(key), adult = b.contentMode === "18+";
   if (!env.XAI_API_KEY) return { ok: false, code: "needs_key", error: "Grok Imagine needs the worker secret XAI_API_KEY." };
   let ref = String(b.imageUrl || "");
   if (ref && !(REF_DATA_RE.test(ref) && ref.length <= REF_MAX) && !/^https:\/\/[^\s"']{8,2000}$/.test(ref)) return { ok: false, code: "bad_ref", error: "Reference image must be a JPG/PNG under ~2 MB (the page shrinks it to 1024 px automatically) — re-upload it." };
-  if (video && !ref) return { ok: false, code: "needs_ref", error: "Grok Imagine Video (from reference) needs a reference image — upload one first." };
+  if (key === "grok-imagine-video-ref" && !ref) return { ok: false, code: "needs_ref", error: "Grok Imagine Video (from reference) needs a reference image — upload one first." };
   const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return { ok: false, code: g.refused || "error", error: g.err, filter: !!g.refused };
   if (ref) { const sc = await refScreen(env, ref); if (sc.err) return { ok: false, code: sc.refused, error: sc.err, filter: true }; }
   const [w, h] = STUDIO_AR[b.aspectRatio] || STUDIO_AR["9:16"];
@@ -495,12 +495,12 @@ async function grokStudio(b, env, ip, key) {
   const capErr = await capCheck(env, ip, "video", usd); if (capErr) return { ok: false, code: "capped", error: capErr };
   let job = "";
   try {
-    r = await fetch("https://api.x.ai/v1/videos/generations", { method: "POST", headers: hdr, body: JSON.stringify({ model: V.model, prompt: g.prompt, image: { url: ref }, duration: dur, resolution: res }) });
+    r = await fetch("https://api.x.ai/v1/videos/generations", { method: "POST", headers: hdr, body: JSON.stringify(Object.assign({ model: V.model, prompt: g.prompt, duration: dur, resolution: res }, ref ? { image: { url: ref } } : {}, ref ? {} : { aspect_ratio: ["9:16", "16:9", "1:1"].includes(b.aspectRatio) ? b.aspectRatio : "9:16" })) });
     d = await r.json().catch(() => null); job = d && d.request_id || "";
   } catch (e) { return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, "xAI unreachable", "video"), key); }
   if (!job) { const why = xaiErr(r, d), mod = XAI_MOD_RE.test(why); console.log(JSON.stringify({ action: "studio_grok_video", ok: false, why })); return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, why, "video", mod ? { moderated: true, adult } : undefined), key); }
   const tot = await capAdd(env, ip, "video", usd);
-  return { ok: true, kind: "video_job", job, provider: "xai", model: "Grok Imagine Video (xAI)", engine: V.label + " · " + V.model + " · from your reference · " + res + " · " + dur + " s", prompt: g.prompt, aspect: b.aspectRatio,
+  return { ok: true, kind: "video_job", job, provider: "xai", model: "Grok Imagine Video (xAI)", engine: V.label + " · " + V.model + (ref ? " · from your reference · " : " · text to video · ") + res + " · " + dur + " s", prompt: g.prompt, aspect: b.aspectRatio,
     adult, cost: { est_usd: usd, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
 }
 async function studioRender(b, env, ip) {
