@@ -202,6 +202,11 @@
     // 1) NSFW / XXX tiers lead (about half the set) only when that tier is chosen.
     var lead = tierTags.length ? Math.ceil(n / 2) : 0;
     addUpTo(tierTags.slice(0, lead), n);
+    // 1b) Noir / dark / editorial theme: ~40% from Zig's built-in Noir pool (pm-noir-tags.js), his exact spelling, no recent repeats.
+    var noirN = 0;
+    if (root.PMNoir && root.PMNoir.isCtx(theme)) {
+      root.PMNoir.pick(Math.max(1, Math.round(n * 0.4)), { adult: adult }).forEach(function (t) { var k = t.slice(1).toLowerCase(); if (out.length < n && !seen.has(k)) { seen.add(k); out.push(t); noirN++; } });
+    }
     // 2) Quotas on the remaining slots: ~45% theme, 1-3 platform, ~25% genre, then flavour, niche, leftovers.
     var rem = n - out.length;
     var tq = Math.max(2, Math.round(rem * 0.45)), pq = Math.min(3, Math.max(1, Math.round(rem * 0.2))), gq = Math.max(1, Math.round(rem * 0.25));
@@ -219,7 +224,7 @@
     var platLabel = { ig: "Instagram", tiktok: "TikTok", x: "X", youtube: "YouTube Shorts", threads: "Threads", grok: "Grok", facebook: "Facebook", all: "cross-platform" }[platformKey] || platformKey;
     var rationale = "Theme phrases + " + platLabel + " discovery tags + " +
       (tier === "xxx" ? "XXX 18+ explicit tier (consenting adults only)" : tier === "nsfw" ? "NSFW 18+ sensual tier (consenting adults only)" : tier + " tier") +
-      (mode && MODE_TAGS[mode] ? " + " + mode + " mode" : "") + " + " + (isMusic ? "music-producer/artist" : "creative/art") + " niche tags. Generated on-device.";
+      (mode && MODE_TAGS[mode] ? " + " + mode + " mode" : "") + " + " + (isMusic ? "music-producer/artist" : "creative/art") + " niche tags" + (noirN ? " + " + noirN + " from Zig's Noir pool" : "") + ". Generated on-device.";
     return { hashtags: out.slice(0, n), rationale: rationale, tier: tier, provider: "on-device" };
   }
 
@@ -242,6 +247,7 @@
     PSYCH_LOADING = Promise.all([get("psych-noir-tags.json"), get("psych-blanche-tags.json"), get("psych-colors-tags.json"), get("psych-aura-tags.json")]).then(function (a) {
       var b = {};
       if (a[0]) b.noir = { label: "Noir", sfw: a[0].sfw || [], adult: a[0].adult || [] };
+      else if (root.PMNoir) b.noir = { label: "Noir", sfw: root.PMNoir.SFW.slice(), adult: root.PMNoir.ADULT.slice() }; // built-in copy of Zig's list
       if (a[1]) b.blanche = { label: "Blanche", sfw: a[1].sfw || [], adult: a[1].adult || [] };
       var c = (a[2] && a[2].colors) || {}; Object.keys(c).forEach(function (k) { b[k] = c[k]; });
       var au = (a[3] && a[3].colors) || {};

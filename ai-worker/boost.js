@@ -145,6 +145,7 @@ const TAG_NAMES = /littlecaprice|caprice|erikalust|julesjordan|tobydick|mrsuprem
 const SFW_TAG = /nsfw|xxx|porn|nude|naked|sex|explicit|uncensored|adult|hentai|fetish|kink|cum(?!ent|ulat)|dick|cock|pussy|tits|boob|bigass|horny|onlyfans|spicy|21plus|thirsttrap|lingerie|booty|milf|bbw/i;
 const TEASE_BAD = /cum|dick|cock|pussy|creampie|blowjob|doggy|cowgirl|missionary|hardcore|squirt|orgasm|anal(?!og|ys)|gangbang|facial|xxx|fuck/i;
 const TAG_TECH = /iphon|flash(?!dance|mob)|photoshop|thumbnail|click|contrast|lens|35mm|camera|cinematic|render|prompt|colorpop|scrollstop|^clip$|^bold|lighting|pose$|candid(?!ate)/i;
+const RAND_BAD = /\b(?:young\w*|youthful|girlish|schoolgirl\w*|school|student\w*|college|coed\w*|campus|dorm\w*|cheerleader\w*|babysitter\w*|barely|virgin\w*|innocent|petite\s+young|tiny\s+(?:girl|teen)|baby[\s-]?doll|step[\s-]?(?:mom|mother|sis|bro|dad|father|daughter|son)\w*|incest\w*|non[\s-]?consen\w*|forced|asleep|sleeping|unconscious|drunk|drugged|hidden[\s-]?cam\w*|voyeur\w*|upskirt\w*|(?:1[0-9]|20)\s*(?:yo|y\/o|yrs?|years?))\b/i;
 function tagOkW(c, plat, sfw) {
   if (TAG_TECH.test(c) || !/^[A-Za-z0-9_]{2,30}$/.test(c) || TAG_BAD.test(c) || (TAG_NAMES.test(c) && !(plat === "fansly" && /^fansly$/i.test(c))) || MINOR_HARD.test(c) || LIKENESS_RE.test(c)) return false;
   if (sfw && SFW_TAG.test(c)) return false;
@@ -178,22 +179,79 @@ const TEXT = {
     const clean = (x) => String(x || "").replace(/^#+/, "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 30);
     const avoid = (Array.isArray(b.avoid) ? b.avoid : []).slice(0, 60).map(clean).filter(Boolean).map((x) => "#" + x.toLowerCase());
     const hints = (Array.isArray(b.hints) ? b.hints : []).slice(0, 12).map(clean).filter((x) => x && tagOkW(x, plat, sfw)).map((x) => "#" + x);
+    // Zig's Noir pool (v20261031b): sent by the page when the look/mood/style is noir, dark or editorial. His spelling is kept;
+    // only the 21+ / likeness guards apply to his tags (no tech-word filter, they are his words).
+    const noirOk = (c) => /^[A-Za-z0-9_]{2,30}$/.test(c) && !TAG_BAD.test(c) && !MINOR_HARD.test(c) && !LIKENESS_RE.test(c) && !(sfw && SFW_TAG.test(c));
+    const noirPool = (Array.isArray(b.noir_pool) ? b.noir_pool : []).slice(0, 40).map(clean).filter(noirOk);
+    const noirMap = new Map(noirPool.map((x) => [x.toLowerCase(), "#" + x]));
     const sys = "You write social/adult-platform HASHTAGS for one post. Platform: " + G.name + ". Platform rules (researched 2026): " + G.rule + ".\n" +
       "Return " + (n + 4) + " candidate hashtags, best first (the page keeps the top " + n + ")" + (G.req ? ", " + G.req.join(" ") + " first" : "") + ". Tags describe what is IN the post (subject, body/vibe, outfit, place/city, dance/act, scene, community) - never camera, lighting, photo-editing or prompt words (no iphone, flash, contrast, thumbnail, clickworthy), and never copy the look or preset names literally. Make them FRESH: none from the 'avoid' list, a different mix than usual, real tags people actually search/follow on that platform (no invented gibberish), accurate to the idea, look and selections given." +
       (G.camel ? " Use CamelCase." : " Use lowercase single words unless the platform rule says otherwise.") +
+      (noirPool.length ? " NOIR MODE: about half of the set must be copied VERBATIM (exact spelling and capitals) from noir_pool - the user's own tags, pick the ones that fit this post best and put them first; fill the rest per the platform rule." : "") +
       " Mix: broad discovery + niche community + content-specific per the rule. Heat tier: " + (heat === "sfw" ? "SFW - nothing sexual" : heat === "tease" ? "tease - suggestive only, no explicit act words" : heat === "spicy" ? "spicy - sensual adult, mild explicit OK" : "xxx - explicit search terms for consenting adults OK") + ".\n" +
       "Hard bans: anything teen/young/tiny/petite/schoolgirl/college/coed/cheerleader/babysitter/barely/virgin/innocent/girl-coded, any age under 21 (#18, #18plus), family or step roles, non-consent, sleeping/drunk/hidden-cam, real people or performer names, studio/site/brand names. Every person is an adult 21+.\n" +
       "Reply JSON {\"hashtags\":[\"#tag\", ...]}";
     const user = { idea: scrub(b.idea, adult, 200), look: scrub(b.look, adult, 80), lookGroup: scrub(b.group, adult, 40), lookStyle: scrub(b.styleName, adult, 120), mood: strList(b.mood, 3, 30, adult),
       style: scrub(b.style, adult, 40), realism: scrub(b.realism, adult, 80), format: b.tab === "video" ? "short video" : "image post", people: Math.max(1, Math.min(8, parseInt(b.people, 10) || 1)), avoid, hint_tags: hints };
+    if (noirPool.length) user.noir_pool = noirPool.map((x) => "#" + x);
     const r = await llm(env, sys, user, { pick: "grok", json: true, maxTokens: 220, temperature: 1.0, freeMax: 2, timeout: 12000 });
     if (r.err) return r;
     const seen = new Set(avoid), out = [];
     (G.req || []).forEach((t) => { seen.add(t); out.push(t); });
     const raw = Array.isArray(r.obj && r.obj.hashtags) ? r.obj.hashtags : Array.isArray(r.obj && r.obj.tags) ? r.obj.tags : [];
-    raw.slice(0, 30).forEach((t) => { const c = clean(t), k = "#" + c.toLowerCase(); if (c.length < 2 || seen.has(k) || !tagOkW(c, plat, sfw) || heat === "tease" && TEASE_BAD.test(c)) return; seen.add(k); out.push("#" + c); });
+    raw.slice(0, 30).forEach((t) => { const c = clean(t), k = "#" + c.toLowerCase(), z = noirMap.get(c.toLowerCase());
+      if (z) { if (!seen.has(k)) { seen.add(k); out.push(z); } return; }
+      if (c.length < 2 || seen.has(k) || !tagOkW(c, plat, sfw) || heat === "tease" && TEASE_BAD.test(c)) return; seen.add(k); out.push("#" + c); });
     const tags = out.slice(0, Math.max(n, (G.req || []).length + 1));
-    return tags.length ? { hashtags: tags, platform: plat, provider: r.usage.engine, model: r.usage.model, est_usd: r.usage.est_usd, usage: r.usage } : { err: "no usable hashtags", status: 502 };
+    return tags.length ? { hashtags: tags, noir: noirPool.length ? tags.filter((t) => noirMap.has(t.slice(1).toLowerCase())).length : undefined, platform: plat, provider: r.usage.engine, model: r.usage.model, est_usd: r.usage.est_usd, usage: r.usage } : { err: "no usable hashtags", status: 502 };
+  },
+  // 🎲 Randomize (v20261031b): one cheap Grok call per press (xAI grok-4.20 non-reasoning, ~$0.001, counted in the daily $ cap;
+  // over cap / xAI error -> free OpenRouter chain; the page falls back to its local pools). Picks one value per field from the
+  // options (or invents a fresh short one where allowed) that fits the user's top selections; avoids recent picks; keeps the
+  // user's own typed words; adults 21+ only, no real people.
+  async randomize(b, env, adult) {
+    const cap = (x, n) => scrub(String(x == null ? "" : x), adult, n || 60).replace(/["{}\[\]<>]/g, "").trim();
+    const bad = (x) => !x || MINOR_HARD.test(x) || LIKENESS_RE.test(x) || NAMED_RE.test(x) || RAND_BAD.test(x) || (FAMILY_RE.lastIndex = 0, FAMILY_RE.test(x)) || (!adult && (SFW_RE.lastIndex = 0, SFW_RE.test(x)));
+    const fIn = Array.isArray(b.fields) ? b.fields.slice(0, 24) : [];
+    const fields = [], spec = {};
+    fIn.forEach((f) => {
+      const k = String((f && f.k) || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40); if (!k || spec[k]) return;
+      const opts = (Array.isArray(f.options) ? f.options : []).slice(0, 40).map((o) => cap(o)).filter((o) => o && !bad(o));
+      const avoid = (Array.isArray(f.avoid) ? f.avoid : []).slice(0, 10).map((o) => cap(o)).filter(Boolean);
+      const n = Math.max(1, Math.min(4, parseInt(f.count, 10) || 1));
+      spec[k] = { opts, avoid: new Set(avoid.map((x) => x.toLowerCase())), fixed: !!f.fixed, multi: !!f.multi || n > 1, n, free: !!f.free, max: f.free ? 140 : 60 };
+      fields.push({ k, label: cap(f.label, 40), options: opts, avoid, pick: n > 1 ? n + " values" : "1 value", invent_ok: !f.fixed, free_text: !!f.free });
+    });
+    if (!fields.length) return { err: "no fields", status: 400 };
+    const kind = cap(b.kind || "look", 30), cx = b.ctx && typeof b.ctx === "object" ? b.ctx : {};
+    const ctx = { tier: cap(cx.tier, 30), style: cap(cx.style, 40), realism: cap(cx.realism, 60), platform: cap(cx.platform, 40), mood: cap(cx.mood, 60) };
+    const words = strList(b.words, 8, 60, adult).filter((x) => !bad(x));
+    const sys = "You are the 🎲 Randomize button of an AI image/video prompt machine. Section: " + kind + ". For EACH field pick a value that is DIFFERENT from its avoid list and that fits the user's top selections (heat tier, style, realism, platform) as one coherent look. " +
+      "Prefer the listed options; where invent_ok, about 1 in 3 picks may be a fresh short value (1-5 words, same kind as the options, vivid and specific, not a copy). free_text fields: one short vivid phrase. " +
+      (b.name ? "Also give the combination a short catchy name (2-4 words). " : "") +
+      "The user's own words (must_keep) are fixed - build around them, never contradict them. Every person is an adult 21+: never teen/young/girl-coded/school/college words, never family roles, never real or famous people, artists' or performers' names. " +
+      (adult ? "18+ mode: sensual adult wording is OK, consenting adults only." : "SFW: nothing sexual.") +
+      " Reply JSON {\"name\":\"...\",\"pick\":{\"field\":\"value\" or [\"v1\",\"v2\"]}}";
+    const r = await llm(env, sys, { ctx, must_keep: words, fields }, { pick: "grok", json: true, maxTokens: Math.min(600, 80 + fields.length * 28), temperature: 1.1, freeMax: 2, timeout: 10000 });
+    if (r.err) return r;
+    const raw = (r.obj && r.obj.pick && typeof r.obj.pick === "object") ? r.obj.pick : {};
+    const pick = {}, fresh = [];
+    Object.keys(spec).forEach((k) => {
+      const sp = spec[k], lo = new Map(sp.opts.map((o) => [o.toLowerCase(), o]));
+      let v = raw[k]; v = Array.isArray(v) ? v : v == null ? [] : [v];
+      const out = [];
+      v.slice(0, 6).forEach((x) => {
+        let c = cap(x, sp.max); if (!c || bad(c) || out.indexOf(c) >= 0) return;
+        if (lo.has(c.toLowerCase())) c = lo.get(c.toLowerCase());
+        else { if (sp.fixed) return; if (!sp.free && c.split(/\s+/).length > 6) return; fresh.push(k); }
+        if (sp.avoid.has(c.toLowerCase()) && !sp.free) return;
+        if (out.length < sp.n) out.push(c);
+      });
+      if (out.length) pick[k] = sp.multi ? out : out[0];
+    });
+    if (!Object.keys(pick).length) return { err: "no usable picks", status: 502 };
+    const name = b.name ? cap(r.obj && r.obj.name, 40) : "";
+    return { pick, name: name && !bad(name) ? name : "", fresh, provider: r.usage.engine, model: r.usage.model, est_usd: r.usage.est_usd, usage: r.usage };
   },
   async remix(b, env, adult) {
     const idea = scrub(b.idea || b.text, adult, 1200); if (!idea) return { err: "empty idea", status: 400 };
@@ -616,7 +674,7 @@ async function imgFetch(b, ch) {
     return new Response(buf, { status: 200, headers: Object.assign({ "Content-Type": ct, "Cache-Control": "no-store" }, ch) });
   } catch (e) { return J({ error: "image host unreachable" }, 502, ch); }
 }
-export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
+export const BOOST_ACTIONS = new Set(["chat", "randomize", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";

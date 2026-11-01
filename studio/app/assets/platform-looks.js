@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261031a";
+  var V = "20261031b";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -1504,7 +1504,7 @@
     }).slice(0, cap);
   }
 
-  // ---------- Platform-aware hashtag rotation (v20261031a) ----------
+  // ---------- Platform-aware hashtag rotation (v20261031b) ----------
   // Every Remix gets a fresh tag set that follows the selected platform's real hashtag conventions (researched Oct 2026).
   // Order: instant free local rotation -> Grok (xAI grok-4.20 non-reasoning, ~$0.001, worker daily $ cap) -> free OpenRouter
   // chain -> local stays. The last few sets per platform are kept in localStorage and avoided next time. Adults 21+ only:
@@ -1572,6 +1572,37 @@
   function tagHistPush(plat, tags) {
     try { var o = JSON.parse(localStorage.getItem(TAG_HIST) || "{}"); var a = Array.isArray(o[plat]) ? o[plat] : []; a.push(tags.map(function (t) { return t.toLowerCase(); })); o[plat] = a.slice(-TAG_HIST_N); localStorage.setItem(TAG_HIST, JSON.stringify(o)); } catch (e) {}
   }
+  // ---- Zig's Noir hashtag pool (v20261031b; assets/pm-noir-tags.js, 392 unique tags, his exact spelling) ----
+  // Used when the look / mood / style / idea is noir, dark or editorial (or Psych Mood Noir is on), and by the 🎲 Noir button.
+  function noirTagCtx(look, idea) {
+    if (!window.PMNoir) return false;
+    if (psychMood() === "noir") return true;
+    var t = [look && look.styleName, look && (look.mood || []).join(" "), look && look.label, idea, (STYLES.filter(function (c) { return c[0] === (S.style || "none"); })[0] || ["", ""])[1]].join(" ");
+    return window.PMNoir.isCtx(t.replace(/dark[\s-]?(?:skin\w*|complexion|brown|hair\w*|eyes?)/gi, " "));
+  }
+  // his words: only the 21+ / blocked-word guards apply (no tech/lens filter); seductive ones only in 18+ on adult platforms
+  function noirTagOk(t, plat, adult) {
+    var G = TAG_GUIDE[plat] || {}, N = window.PMNoir; t = String(t || "");
+    if (!N || !N.exact(t) || !/^#[A-Za-z0-9_]{2,30}$/.test(t) || TAG_BAD_RE.test(t) || hasBlocked(t)) return false;
+    if ((G.sfw || !adult) && N.ADULT.indexOf(t.slice(1)) >= 0) return false;
+    return true;
+  }
+  function typedTagSet() { var o = {}; try { parseExtra(extraGet(), S.result).tags.forEach(function (t) { o[String(t).toLowerCase()] = 1; }); } catch (e) {} return o; }
+  // 🎲 Noir: a fresh random set from Zig's pool, count per the selected platform's guide, never the last few presses
+  function noirRoll() {
+    var res = S.result, N = window.PMNoir; if (!res || !N) return;
+    var look = (S.looks || []).filter(function (l) { return l.id === res.look; })[0] || {}, plat = tagPlatform(look), G = TAG_GUIDE[plat];
+    var adult = isAdult() && !!look.adult && !G.sfw, req = (G.req || []).slice();
+    var n = G.n[0] + Math.floor(rnd() * (G.n[1] - G.n[0] + 1)), skip = typedTagSet();
+    req.forEach(function (t) { skip[t] = 1; });
+    var got = N.pick(Math.max(1, n - req.length) + 6, { adult: adult, skip: skip, keep: false }).filter(function (t) { return noirTagOk(t, plat, adult); }).slice(0, Math.max(1, n - req.length));
+    N.histPush(got);
+    res.tags = req.concat(got); res.tagPlat = plat; res.tagSrc = "\ud83c\udfb2 Noir pool (Zig's " + N.size + " tags)";
+    S._tagTok = (S._tagTok || 0) + 1; // a pending AI reply must not overwrite this roll
+    res.text = compose(res); save();
+    try { S.api.current.setPrompt(res.text); } catch (e) {}
+    tagHistPush(plat, res.tags); renderTagsOnly();
+  }
   function tagRecent(plat) { var s = {}; tagHistGet(plat).forEach(function (set) { (set || []).forEach(function (t) { s[String(t).toLowerCase()] = 1; }); }); return s; }
   // free local rotation: platform pools + the look/idea tags from tagsFor(), shuffled, skipping the last few sets
   function rotateTags(look, heat, idea, roll, people) {
@@ -1588,13 +1619,19 @@
       });
     }
     (G.req || []).forEach(function (t) { used[t.toLowerCase()] = 1; out.push(t); });
+    if (noirTagCtx(look, idea)) {
+      var nk = Math.max(1, Math.ceil(n / 2)), sk = Object.assign({}, used, recent);
+      window.PMNoir.pick(nk + 6, { adult: adult, skip: sk, keep: false }).forEach(function (t) { if (nk > 0 && out.length < n && noirTagOk(t, plat, adult)) { used[t.toLowerCase()] = 1; out.push(t); nk--; } });
+    }
     var heatPool = adult ? (heat === "tease" ? G.tease : (G.spicy || []).concat(G.tease || [])) : null;
     var plan = n <= 2 ? [[G.niche, 1], [content.slice(0, 8), 1], [G.broad, 1]]
       : [[content.slice(0, 6), Math.max(1, Math.round(n * 0.25))], [G.niche, Math.max(1, Math.round(n * 0.4))], [heatPool, adult ? Math.max(1, Math.round(n * 0.25)) : 0], [G.broad, 1], [G.trend, 1]];
     plan.forEach(function (p) { take(p[0], p[1], false); });
     [content, G.niche, heatPool, G.trend, G.broad].forEach(function (l) { take(l, n, false); });
     [G.niche, content, heatPool, G.broad].forEach(function (l) { take(l, n, true); });
-    return { tags: out.slice(0, n), plat: plat, src: "local" };
+    out = out.slice(0, n);
+    if (window.PMNoir) window.PMNoir.histPush(out.filter(function (t) { return window.PMNoir.exact(t); }));
+    return { tags: out, plat: plat, src: "local" };
   }
   function tagGuideLine(plat) { var G = TAG_GUIDE[plat]; return G.name + ": " + G.rule; }
   function aiTags(look, heat, idea, hints, token) {
@@ -1604,12 +1641,21 @@
       look: displayLabel(look), group: look.group, styleName: look.styleName || "", mood: (look.mood || []).slice(0, 3), idea: idea || "", heat: adult ? heat : "sfw",
       style: (STYLES.filter(function (c) { return c[0] === (S.style || "none"); })[0] || ["", ""])[1], realism: [realPornOn() ? "real-porn realism" : "", noAiOn() ? "no-AI look" : "", S.cam === "iphone" ? "candid iPhone" : ""].filter(Boolean).join(", "),
       tab: S.tab === "video" ? "video" : "image", people: S.people || 1, avoid: avoid, hints: hints.slice(0, 12), mode: adult ? "18+" : "sfw", contentMode: adult ? "18+" : "sfw" };
+    var noir = noirTagCtx(look, idea);
+    if (noir) body.noir_pool = window.PMNoir.pick(30, { adult: adult && !G.sfw, skip: tagRecent(plat), keep: false }).filter(function (t) { return noirTagOk(t, plat, adult && !G.sfw); });
     var p = window.PMAI && window.PMAI.call ? window.PMAI.call("hashtags", body, { timeout: 15000 })
       : fetch("https://zigflames-ai.zigflames.workers.dev", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ action: "hashtags" }, body)) }).then(function (r) { return r.json(); });
     return p.then(function (j) {
       if (token !== S._tagTok || !S.result || S.result.look !== look.id) return;
-      var got = (j && Array.isArray(j.hashtags) ? j.hashtags : []).map(function (t) { t = "#" + String(t || "").replace(/^#+/, "").replace(/[^A-Za-z0-9_]/g, ""); return G.camel || plat === "manyvids" ? t : t.toLowerCase(); })
-        .filter(function (t) { return tagOk(t, plat, adult && !G.sfw) || (G.req || []).indexOf(t.toLowerCase()) >= 0; });
+      var NX = window.PMNoir, aOk = adult && !G.sfw;
+      var got = (j && Array.isArray(j.hashtags) ? j.hashtags : []).map(function (t) { t = "#" + String(t || "").replace(/^#+/, "").replace(/[^A-Za-z0-9_]/g, ""); var ex = NX && NX.exact(t); if (ex) return ex; return G.camel || plat === "manyvids" ? t : t.toLowerCase(); })
+        .filter(function (t) { return (NX && NX.exact(t) ? noirTagOk(t, plat, aOk) : tagOk(t, plat, aOk)) || (G.req || []).indexOf(t.toLowerCase()) >= 0; });
+      if (noir && NX) {
+        // Zig's words first: his pool tags lead the AI's own; top up to about half the set from the pool
+        var mine = got.filter(function (t) { return NX.exact(t); }), rest = got.filter(function (t) { return !NX.exact(t); }), want = Math.ceil(G.n[1] / 2);
+        (body.noir_pool || []).forEach(function (t) { if (mine.length < want && mine.indexOf(t) < 0) mine.push(t); });
+        got = mine.concat(rest); NX.histPush(mine);
+      }
       var seen = {}, out = [];
       (G.req || []).concat(got).forEach(function (t) { var k = t.toLowerCase(); if (!seen[k]) { seen[k] = 1; out.push(t); } });
       out = out.slice(0, G.n[1]);
@@ -1617,7 +1663,7 @@
       if (aiN < 1) { S.result.tagSrc = "local rotation (AI " + (j && j.error ? "unavailable" : "returned none") + ")"; tagHistPush(plat, S.result.tags); renderTagsOnly(); return; }
       if (out.length < G.n[0]) S.result.tags.forEach(function (t) { var k = t.toLowerCase(); if (out.length < G.n[0] && !seen[k]) { seen[k] = 1; out.push(t); } });
       S.result.tags = out; S.result.tagPlat = plat;
-      S.result.tagSrc = (j.provider === "xai" ? "Grok AI" : "free AI") + (out.length - (G.req || []).length > aiN ? " + local" : "");
+      S.result.tagSrc = (j.provider === "xai" ? "Grok AI" : "free AI") + (noir ? " + Noir pool" : "") + (out.length - (G.req || []).length > aiN ? " + local" : "");
       S.result.text = compose(S.result); save();
       try { S.api.current.setPrompt(S.result.text); } catch (e) {}
       tagHistPush(plat, out);
@@ -2564,6 +2610,7 @@
         if (res.body) tr.appendChild(h("button", { cls: "pml-btn pml-addtags" + (res.withTags ? " on" : ""), type: "button", "data-pm": "look-add-tags", "aria-pressed": res.withTags ? "true" : "false",
           text: res.withTags ? "Remove tags" : "Add tags", title: "Insert the tag block into the prompt (params stay last)", on: { click: toggleTags } }));
         tr.appendChild(xr.chips);
+        if (window.PMNoir) tr.appendChild(h("button", { cls: "pml-btn", type: "button", "data-pm": "look-noir-tags", text: "\ud83c\udfb2 Noir", title: "Fresh random set from Zig's Noir hashtag pool (" + window.PMNoir.size + " tags), count per the platform guide, no repeats of recent presses", on: { click: noirRoll } }));
         tr.appendChild(h("button", { cls: "pml-btn", type: "button", "data-pm": "look-copy-tags", text: "Copy tags", on: { click: function () { copy(res.tags.concat(parseExtra(extraGet(), res).tags).join(" "), "Hashtags copied"); } } }));
         P.appendChild(tr);
       } else {
