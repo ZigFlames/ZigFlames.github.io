@@ -1,4 +1,4 @@
-/* Zig's Prompt Machine — ✨ AI Tighten (v20261028b)
+/* Zig's Prompt Machine — ✨ AI Tighten (v20261031a)
    window.PMTighten.run({prompt, negative, mode}) -> Promise<{prompt, negative, notes[], usage, source:"ai"|"local"}>
    Calls the zigflames-ai worker (action "tighten"); every AI result is re-checked here
    (params kept verbatim and last, ::weights valid, adult 21+ kept, no age/family words, never longer).
@@ -175,5 +175,5 @@
       return localResult(prompt, negative, why);
     }).catch(function (e) { return { prompt: prompt, negative: negative, notes: ["Tighten failed (" + (e && e.message) + ") — kept your prompt."], source: "none" }; });
   }
-  window.PMTighten = { run: run, local: function (p, n) { return localResult(p, n, "local only"); }, version: "20261028b" };
+  window.PMTighten = { run: run, local: function (p, n) { return localResult(p, n, "local only"); }, version: "20261031a" };
 })();

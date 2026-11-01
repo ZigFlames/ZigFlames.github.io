@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261028b";
+  var V = "20261031a";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -1504,6 +1504,141 @@
     }).slice(0, cap);
   }
 
+  // ---------- Platform-aware hashtag rotation (v20261031a) ----------
+  // Every Remix gets a fresh tag set that follows the selected platform's real hashtag conventions (researched Oct 2026).
+  // Order: instant free local rotation -> Grok (xAI grok-4.20 non-reasoning, ~$0.001, worker daily $ cap) -> free OpenRouter
+  // chain -> local stays. The last few sets per platform are kept in localStorage and avoided next time. Adults 21+ only:
+  // no teen / youth / family / non-consent tags, no real-person, studio or site names (except a platform's own required tag).
+  var TAG_HIST = "pm.looks.taghist.v1", TAG_HIST_N = 5;
+  var TAG_GUIDE = {
+    tiktok: { name: "TikTok", n: [3, 5], sfw: true, rule: "max 5 (TikTok cap since 2025), 2-3 is best: 1-2 core topic tags + 1 community 'Tok' tag (#DanceTok, #BaddieTok) + optional 1 trend/format tag (#pov, #grwm); #fyp optional, never the whole set; no sexual words",
+      broad: ["#fyp", "#foryou", "#viral", "#trending", "#foryoupage"], niche: ["#dancetok", "#baddietok", "#fashiontok", "#nightlifetok", "#outfitcheck", "#dancechallenge", "#twerktok", "#glowup", "#confidence", "#clubvibes", "#bodypositivity", "#curvytok", "#styletok", "#makeuptok", "#hairtok", "#nightout"], trend: ["#pov", "#grwm", "#transition", "#ootd", "#trend", "#duet", "#slowmo", "#trendingsound"] },
+    instagram: { name: "Instagram", n: [3, 5], sfw: true, rule: "hard max 5 (Instagram cap since Dec 2025), 3-5 targeted: 1 topic + 1 specific subject + 1 format + 1 community + 1 place/moment; skip generic #reels #explore #instagood #viral",
+      broad: ["#nightlife", "#fashion", "#dance", "#style", "#portrait"], niche: ["#nightlifestyle", "#clubnight", "#dancereel", "#curvyfashion", "#streetstyle", "#goldenhourportrait", "#outfitinspo", "#bodyconfidence", "#baddiestyle", "#editorialstyle", "#fashionreel", "#citynights", "#miamivibes", "#atlnightlife", "#londonnights", "#lagosnights"], trend: ["#ootn", "#reelsdance", "#behindthelook", "#fitcheck", "#weekendvibes", "#datenight"] },
+    youtube: { name: "YouTube Shorts", n: [3, 5], sfw: true, req: ["#shorts"], rule: "3-5 tags in the description, always #shorts; the first 3 show above the title so the 2 after #shorts must be the strongest topic tags; >60 tags = all ignored; no sexual or vulgar tags",
+      broad: ["#dance", "#fashion", "#nightlife", "#music", "#style"], niche: ["#dancevideo", "#clubdance", "#outfitideas", "#nightout", "#dancechallenge", "#partyvibes", "#streetdance", "#afrobeatsdance", "#dancehall", "#twerkdance", "#glowup", "#lookbook"], trend: ["#shortsvideo", "#viralshorts", "#trendingshorts", "#ytshorts", "#shortsfeed"] },
+    x: { name: "X (Twitter)", n: [1, 2], sfw: true, camel: true, rule: "1-2 tags only (X Help Center: more reads as spam), CamelCase, one topic + one real community/event tag, placed at the end",
+      broad: ["#NightLife", "#Fashion", "#DanceVideo", "#Music", "#Style"], niche: ["#ClubNight", "#FitCheck", "#DanceTwitter", "#NightOut", "#OOTD", "#WeekendVibes", "#StreetStyle", "#BaddieStyle", "#DanceChallenge", "#FridayNight", "#SaturdayNight"], trend: ["#ViralVideo", "#TrendingNow"] },
+    music: { name: "Music video (IG/TikTok/YouTube cross-post)", n: [4, 6], sfw: true, rule: "4-6 tags: 1 genre (#hiphop, #rnb, #afrobeats) + 1 format (#musicvideo, #visuals, #officialvideo) + 1-2 scene/city culture + 1 dance/community tag; no artist names",
+      broad: ["#hiphop", "#rnb", "#rap", "#afrobeats", "#dancehall", "#trap"], niche: ["#musicvideo", "#visuals", "#officialvideo", "#videovixen", "#hiphopculture", "#atlhiphop", "#nyhiphop", "#westcoast", "#dirtysouth", "#clubbanger", "#hiphopdance", "#90shiphop", "#y2kstyle", "#vegasnights", "#residency", "#nightclub"], trend: ["#newmusic", "#hiphopheads", "#rapvideo", "#dancetok", "#worldstarvibes", "#behindthescenes"] },
+    onlyfans: { name: "OnlyFans", n: [3, 6], rule: "OnlyFans has no hashtag discovery (tags only match plain-text search), so 3-6 niche keyword tags that also work in X/Reddit promo posts: body/vibe + outfit/fetish niche + content type; no 'onlyfans' brand spam",
+      broad: ["#contentcreator", "#newpost", "#linkinbio", "#exclusivecontent", "#subscribe"], niche: ["#curvy", "#lingerie", "#thickfit", "#bootyshorts", "#ebonybeauty", "#latinabaddie", "#redhead", "#tattooed", "#fitwoman", "#latex", "#heels", "#bodycon", "#confidentwoman", "#naturalbeauty"], tease: ["#tease", "#sultry", "#boudoir", "#lingerielover", "#spicy", "#21plus"], spicy: ["#nsfwcreator", "#adultcontent", "#spicycontent", "#21plus", "#adultsonly"] },
+    fansly: { name: "Fansly", n: [5, 8], rule: "up to 10 tags (5-7 works best), specific lowercase niche tags because Fansly's FYP/search runs on them: body type + outfit + kink/vibe + content type; accurate, no padding",
+      broad: ["#fansly", "#fyp", "#newcontent", "#exclusive"], niche: ["#curvy", "#thick", "#ebony", "#latina", "#redhead", "#tattoos", "#lingerie", "#stockings", "#heels", "#latex", "#cosplay", "#gymwoman", "#naturalbody", "#bigbooty", "#bbw", "#milf"], tease: ["#tease", "#boudoir", "#sensual", "#softcore", "#21plus"], spicy: ["#solo", "#couple", "#pov", "#joi", "#roleplay", "#adultsonly", "#explicit"] },
+    manyvids: { name: "ManyVids", n: [5, 8], rule: "up to 5 categories + keywords: Title-case category-style tags shoppers browse (#Lingerie, #POV, #Twerking, #Solo) + 2-3 precise keywords",
+      broad: ["#Solo", "#POV", "#Amateur", "#HD"], niche: ["#Lingerie", "#Twerking", "#Curvy", "#Ebony", "#Latina", "#BigBooty", "#Heels", "#Stockings", "#Roleplay", "#Cosplay", "#Striptease", "#Dancing", "#Oiled", "#Tattoos", "#Redhead", "#MILF"], tease: ["#Tease", "#Striptease", "#Boudoir", "#Softcore"], spicy: ["#JOI", "#Couple", "#Toys", "#Explicit", "#Creampie", "#Doggystyle"] },
+    tube: { name: "Pornhub / tube sites", n: [8, 14], rule: "2-16 tags (Pornhub; Shorties 2-8) + categories: plain lowercase searched terms that are ACCURATE to the clip: acts, positions, setting, objects, body attributes, production style (amateur, pov, hd, exclusive); no studio/performer names",
+      broad: ["#amateur", "#hd", "#exclusive", "#pov", "#verifiedamateurs", "#4k"], niche: ["#bigass", "#curvy", "#ebony", "#latina", "#redhead", "#tattooed", "#lingerie", "#stockings", "#heels", "#bedroom", "#hotel", "#outdoor", "#shower", "#couch", "#kitchen", "#natural", "#busty", "#milf", "#bbw", "#fitwoman"], tease: ["#solofemale", "#striptease", "#teasing", "#softcore", "#sensual", "#erotic"], spicy: ["#doggystyle", "#cowgirl", "#reversecowgirl", "#missionary", "#blowjob", "#creampie", "#hardcore", "#rough", "#couple", "#passionate", "#orgasm", "#closeup", "#squirt", "#riding"] },
+    clips: { name: "Clip stores (Clips4Sale / IWantClips)", n: [8, 14], rule: "up to 15 keywords + 1 primary and up to 5 related categories: precise fetish/kink keywords buyers search (consensual adult kinks only), clip type and wardrobe; no performer names",
+      broad: ["#fetish", "#customclip", "#clipstore", "#hd"], niche: ["#feet", "#footfetish", "#heels", "#nylons", "#latex", "#leather", "#femdom", "#domination", "#bodyworship", "#joi", "#roleplay", "#lingerie", "#spandex", "#oiled", "#muscle", "#giantess", "#sph", "#tease", "#asmr"], tease: ["#tease", "#teasing", "#denial", "#dancing"], spicy: ["#bondage", "#spanking", "#facesitting", "#strapon", "#toys", "#explicit"] },
+    creator: { name: "Creator sites (FapHouse / YourVids / SoloTouch)", n: [5, 9], rule: "5-9 accurate niche tags: creator/solo framing + body/outfit niche + content type + 1 production tag (pov, 4k, vertical)",
+      broad: ["#creator", "#solo", "#amateur", "#vertical", "#4k"], niche: ["#curvy", "#ebony", "#latina", "#redhead", "#lingerie", "#heels", "#tattoos", "#naturalbody", "#bigbooty", "#fitwoman", "#bedroom", "#hotelroom", "#mirror", "#selfshot"], tease: ["#tease", "#solotease", "#sensual", "#boudoir", "#21plus"], spicy: ["#solofemale", "#toys", "#pov", "#couple", "#explicit", "#adultsonly"] },
+    ai: { name: "AI companion apps", n: [5, 8], rule: "5-8 tags: AI framing (#aigirlfriend, #aimodel, #aiart) + character/persona vibe + style (photoreal, anime) + 1 niche; always clearly adult characters",
+      broad: ["#aiart", "#aimodel", "#aigirlfriend", "#aicompanion", "#aigenerated"], niche: ["#photorealai", "#virtualmodel", "#aiwaifu", "#digitalmodel", "#aibeauty", "#aifashion", "#cyberbabe", "#aiportrait", "#dreamgirlai", "#personaai"], tease: ["#aiboudoir", "#ailingerie", "#spicyai", "#21plus"], spicy: ["#nsfwai", "#aiadult", "#adultsonly", "#aispicy"] },
+    magazine: { name: "Magazine / pinup", n: [6, 10], rule: "6-10 tags: editorial/pinup framing (#pinup, #glamour, #centerfold) + era/style (#retro, #70sglam) + wardrobe + photo style",
+      broad: ["#pinup", "#glamour", "#editorial", "#centerfold", "#boudoir"], niche: ["#retroglam", "#70sglam", "#vintagepinup", "#glamourmodel", "#softfocus", "#filmphotography", "#magazinecover", "#busty", "#curves", "#lingerie", "#stockings", "#highheels", "#bombshell", "#goldenera"], tease: ["#artnude", "#sensual", "#tasteful", "#21plus"], spicy: ["#nudeart", "#explicit", "#adultsonly", "#hardcoreglam"] },
+    animated: { name: "Animated / hentai-style", n: [6, 10], rule: "6-10 tags: animation style (#3danimation, #animeart) + adult character type (clearly grown women) + scene + content type",
+      broad: ["#animation", "#3danimation", "#animeart", "#cgi"], niche: ["#animestyle", "#fantasy", "#monstergirl", "#elf", "#succubus", "#cyberpunk", "#cosplay", "#adultcharacter"], tease: ["#ecchi", "#tease", "#21plus"], spicy: ["#hentai", "#adultanimation", "#explicit", "#adultsonly"] }
+  };
+  var TAG_PLAT_ID = { "tiktok": "tiktok", "tiktok-thirst-trap": "tiktok", "instagram-reels": "instagram", "instagram-reel-polish": "instagram", "youtube-shorts": "youtube", "x-video": "x",
+    "onlyfans-creator": "onlyfans", "fansly-premium": "fansly", "manyvids-studio": "manyvids", "pornhub-thumbnail": "tube", "pornhub-premium-4k": "tube", "xvideos-red": "tube", "xvideos-amateur": "tube" };
+  var TAG_PLAT_GROUP = { "Social": "instagram", "Music/Culture": "music", "Creator": "creator", "AI": "ai", "Fetish/Clips": "clips", "Magazine": "magazine", "Animated": "animated" };
+  function tagPlatform(look) { return TAG_PLAT_ID[look.id] || TAG_PLAT_GROUP[look.group] || "tube"; }
+  // substring test (tags have no spaces, so word boundaries miss "#teenbody"); 21+ floor, nothing teen / family / non-consent coded
+  var TAG_BAD_RE = /teen|tween|young|youth|tiny|petite(?!5ft)|barely|(?<!old)school|college|coed|campus|dorm|cheer|babysit|nubile|seventeen|lolita|loli|shota|minor|underage|child|kid|baby(?!doll|lon)|innocent|virgin|first ?time|little|smallgirl|girl(?!friend|summer|boss)|boys?$|daughter|sister|brother|^#(?:sis|bro|mom|dad)$|stepmo|stepda|stepsi|stepbr|stepso|stepfa|family|incest|taboo|niece|nephew|cousin|auntie|^#?aunts?$|uncle|daddy|mommy|freeuse|nonconsen|forced|(?:^|[^dgt#])rape|^#rape|asleep|sleeping|drunk|passedout|hiddencam|spycam|voyeur|upskirt|creep|18yo|19yo|20yo|18plus|^#1[89]$|^#20$|^#18/i;
+  var TAG_TECH_RE = /iphon|flash(?!dance|mob)|photoshop|thumbnail|click|contrast|lens|35mm|camera|cinematic|render|prompt|colorpop|scrollstop|^clip$|^bold|lighting|pose$|candid(?!ate)/i;
+  // body / heritage attribute tags only rotate in when the idea mentions them (accuracy over randomness)
+  var TAG_ATTR = [[/^#?(?:ebony\w*)$/i, /ebony|black|dark[\s-]?skin/i], [/^#?latina\w*$/i, /latina|latin|hispanic|dominican|puerto|mexican|colombian/i], [/^#?redhead$/i, /red[\s-]?hair|redhead|ginger/i], [/^#?tattoo\w*$/i, /tattoo|ink/i], [/^#?(?:bbw|plussize)$/i, /bbw|plus[\s-]?size|thick|curvy/i], [/^#?milf$/i, /milf|mature|40|cougar/i], [/^#?busty$/i, /busty|bust|chest|boob|tits/i], [/^#?(?:bigass|bigbooty|bootyshorts)$/i, /ass|booty|twerk|thick/i], [/^#?(?:fitwoman|gymwoman|thickfit)$/i, /fit|gym|athlet|muscle/i], [/^#?(?:curvy|thick)$/i, /curv|thick|bbw|plus/i], [/^#?(?:latex|leather|stockings|heels|nylons|spandex|cosplay)$/i, /latex|leather|stocking|heel|nylon|spandex|cosplay|costume/i]];
+  function attrOk(t, idea) { for (var i = 0; i < TAG_ATTR.length; i++) if (TAG_ATTR[i][0].test(t)) return TAG_ATTR[i][1].test(String(idea || "")); return true; }
+  function tagNames() {
+    if (S._tagNames) return S._tagNames;
+    var o = {}; (S.looks || []).forEach(function (l) {
+      [l.id, l.label, String(l.label || "").replace(/\s*\(.*\)\s*/g, "")].forEach(function (x) { var k = String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (k.length > 3) o[k] = 1; });
+      String(l.label || "").split(/\s+/).forEach(function (w) { w = w.toLowerCase().replace(/[^a-z0-9]/g, ""); if (w.length > 6 && /^(?:caprice|supremo|jordan|riggs|lust)$/.test(w)) o[w] = 1; });
+    });
+    ["littlecaprice", "caprice", "erikalust", "julesjordan", "tobydick", "mrsupremo", "riggsfilms", "onlyfans", "pornhub", "xvideos", "brazzers", "manyvids", "fansly", "clips4sale", "iwantclips"].forEach(function (k) { o[k] = 1; });
+    return (S._tagNames = o);
+  }
+  function tagOk(t, plat, adult) {
+    t = String(t || "").trim(); if (!/^#[A-Za-z0-9_]{2,30}$/.test(t)) return false;
+    var k = t.slice(1).toLowerCase(), G = TAG_GUIDE[plat] || {};
+    if (TAG_TECH_RE.test(k) || TAG_BAD_RE.test(t) || hasBlocked(t) || FRAMING_RE.test(k)) return false;
+    if (tagNames()[k] && !(plat === "fansly" && k === "fansly")) return false;
+    if ((G.sfw || !adult) && /nsfw|xxx|porn|nude|naked|sex|explicit|uncensored|adult|hentai|fetish|kink|cum(?!ent|ulat)|dick|cock|pussy|tits|boob|ass$|bigass|horny|onlyfans|spicy|21plus|thirsttrap|lingerie|booty|milf|bbw/i.test(k)) return false;
+    if (adult && S.result && S.result.heat === "tease" || adult && S._tagHeat === "tease") { if (/cum(?!ent|ulat)|dick|cock|pussy|creampie|blowjob|doggy|cowgirl|missionary|hardcore|squirt|orgasm|anal(?!og|ys)|gangbang|facial|xxx|fuck/i.test(k)) return false; }
+    return true;
+  }
+  function tagHistGet(plat) { try { var o = JSON.parse(localStorage.getItem(TAG_HIST) || "{}"); return Array.isArray(o[plat]) ? o[plat] : []; } catch (e) { return []; } }
+  function tagHistPush(plat, tags) {
+    try { var o = JSON.parse(localStorage.getItem(TAG_HIST) || "{}"); var a = Array.isArray(o[plat]) ? o[plat] : []; a.push(tags.map(function (t) { return t.toLowerCase(); })); o[plat] = a.slice(-TAG_HIST_N); localStorage.setItem(TAG_HIST, JSON.stringify(o)); } catch (e) {}
+  }
+  function tagRecent(plat) { var s = {}; tagHistGet(plat).forEach(function (set) { (set || []).forEach(function (t) { s[String(t).toLowerCase()] = 1; }); }); return s; }
+  // free local rotation: platform pools + the look/idea tags from tagsFor(), shuffled, skipping the last few sets
+  function rotateTags(look, heat, idea, roll, people) {
+    var plat = tagPlatform(look), G = TAG_GUIDE[plat], adult = isAdult() && !!look.adult && !G.sfw;
+    var content = tagsFor(look, heat, idea, roll, people).filter(function (t) { return !/^#(?:18plus|nsfw|xxx|explicit|uncensored|adultcontent)$/i.test(t); });
+    var recent = tagRecent(plat), used = {}, out = [];
+    var n = G.n[0] + Math.floor(rnd() * (G.n[1] - G.n[0] + 1));
+    function fmt(t) { return G.camel ? "#" + t.replace(/^#/, "").replace(/(^|_)([a-z])/g, function (m, a, b) { return b.toUpperCase(); }) : t; }
+    function take(list, k, allowRecent) {
+      shuffled(list || []).forEach(function (t) {
+        if (k <= 0 || out.length >= n) return; t = fmt(t); var key = t.toLowerCase();
+        if (used[key] || (!allowRecent && recent[key]) || !tagOk(t, plat, adult) || !attrOk(t, idea)) return;
+        used[key] = 1; out.push(t); k--;
+      });
+    }
+    (G.req || []).forEach(function (t) { used[t.toLowerCase()] = 1; out.push(t); });
+    var heatPool = adult ? (heat === "tease" ? G.tease : (G.spicy || []).concat(G.tease || [])) : null;
+    var plan = n <= 2 ? [[G.niche, 1], [content.slice(0, 8), 1], [G.broad, 1]]
+      : [[content.slice(0, 6), Math.max(1, Math.round(n * 0.25))], [G.niche, Math.max(1, Math.round(n * 0.4))], [heatPool, adult ? Math.max(1, Math.round(n * 0.25)) : 0], [G.broad, 1], [G.trend, 1]];
+    plan.forEach(function (p) { take(p[0], p[1], false); });
+    [content, G.niche, heatPool, G.trend, G.broad].forEach(function (l) { take(l, n, false); });
+    [G.niche, content, heatPool, G.broad].forEach(function (l) { take(l, n, true); });
+    return { tags: out.slice(0, n), plat: plat, src: "local" };
+  }
+  function tagGuideLine(plat) { var G = TAG_GUIDE[plat]; return G.name + ": " + G.rule; }
+  function aiTags(look, heat, idea, hints, token) {
+    var plat = tagPlatform(look), G = TAG_GUIDE[plat], adult = isAdult() && !!look.adult;
+    var avoid = Object.keys(tagRecent(plat)).slice(-40);
+    var body = { platform: plat, platformName: G.name, guide: G.rule, count: G.n, required: G.req || [], camel: !!G.camel, sfwPlatform: !!G.sfw,
+      look: displayLabel(look), group: look.group, styleName: look.styleName || "", mood: (look.mood || []).slice(0, 3), idea: idea || "", heat: adult ? heat : "sfw",
+      style: (STYLES.filter(function (c) { return c[0] === (S.style || "none"); })[0] || ["", ""])[1], realism: [realPornOn() ? "real-porn realism" : "", noAiOn() ? "no-AI look" : "", S.cam === "iphone" ? "candid iPhone" : ""].filter(Boolean).join(", "),
+      tab: S.tab === "video" ? "video" : "image", people: S.people || 1, avoid: avoid, hints: hints.slice(0, 12), mode: adult ? "18+" : "sfw", contentMode: adult ? "18+" : "sfw" };
+    var p = window.PMAI && window.PMAI.call ? window.PMAI.call("hashtags", body, { timeout: 15000 })
+      : fetch("https://zigflames-ai.zigflames.workers.dev", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ action: "hashtags" }, body)) }).then(function (r) { return r.json(); });
+    return p.then(function (j) {
+      if (token !== S._tagTok || !S.result || S.result.look !== look.id) return;
+      var got = (j && Array.isArray(j.hashtags) ? j.hashtags : []).map(function (t) { t = "#" + String(t || "").replace(/^#+/, "").replace(/[^A-Za-z0-9_]/g, ""); return G.camel || plat === "manyvids" ? t : t.toLowerCase(); })
+        .filter(function (t) { return tagOk(t, plat, adult && !G.sfw) || (G.req || []).indexOf(t.toLowerCase()) >= 0; });
+      var seen = {}, out = [];
+      (G.req || []).concat(got).forEach(function (t) { var k = t.toLowerCase(); if (!seen[k]) { seen[k] = 1; out.push(t); } });
+      out = out.slice(0, G.n[1]);
+      var aiN = out.length - (G.req || []).length;
+      if (aiN < 1) { S.result.tagSrc = "local rotation (AI " + (j && j.error ? "unavailable" : "returned none") + ")"; tagHistPush(plat, S.result.tags); renderTagsOnly(); return; }
+      if (out.length < G.n[0]) S.result.tags.forEach(function (t) { var k = t.toLowerCase(); if (out.length < G.n[0] && !seen[k]) { seen[k] = 1; out.push(t); } });
+      S.result.tags = out; S.result.tagPlat = plat;
+      S.result.tagSrc = (j.provider === "xai" ? "Grok AI" : "free AI") + (out.length - (G.req || []).length > aiN ? " + local" : "");
+      S.result.text = compose(S.result); save();
+      try { S.api.current.setPrompt(S.result.text); } catch (e) {}
+      tagHistPush(plat, out);
+      renderTagsOnly();
+    }, function () { if (token === S._tagTok && S.result) { S.result.tagSrc = "local rotation (AI offline)"; tagHistPush(plat, S.result.tags); renderTagsOnly(); } });
+  }
+  function renderTagsOnly() {
+    try {
+      if (!S.el || !S.result) return;
+      var a = document.activeElement, row = S.el.querySelector("[data-pm=look-tags]");
+      if (!(a && S.el.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || !row) { renderPanel(); return; }
+      // the user is typing (e.g. in "Your words / #tags"): patch the tag chips + prompt text in place, keep focus
+      Array.prototype.slice.call(row.querySelectorAll(".pml-htag")).forEach(function (x) { x.remove(); });
+      var first = row.querySelector(".pml-k");
+      S.result.tags.slice().reverse().forEach(function (t) { first.insertAdjacentElement("afterend", h("span", { cls: "pml-htag", text: t })); });
+      var src = S.el.querySelector("[data-pm=look-tags-src]"); if (src) src.textContent = tagSrcText(S.result);
+      if (R.result) R.result.textContent = S.result.text;
+    } catch (e) {}
+  }
+  function tagSrcText(res) { var G = TAG_GUIDE[res.tagPlat] || {}; return (res.tagSrc || "local rotation") + (G.name ? " \u00b7 " + G.name + " guide (" + G.n[0] + "\u2013" + G.n[1] + " tags)" : ""); }
+
   // ---- Style examples (Zig's liked prompts) -------------------------------------------------
   // Edit ./assets/data/style-examples.json (no code change). Matching entries add one phrase to the prompt and their tags first.
   function examplesFor(look, idea) {
@@ -2425,6 +2560,7 @@
       if (res.tags && res.tags.length) {
         var tr = h("div", { cls: "pml-row", style: "margin-top:10px", "data-pm": "look-tags" }, [h("span", { cls: "pml-k", text: "Hashtags" })]);
         res.tags.forEach(function (t) { tr.appendChild(h("span", { cls: "pml-htag", text: t })); });
+        if (res.tagSrc) tr.appendChild(h("span", { cls: "pml-k", "data-pm": "look-tags-src", style: "letter-spacing:.06em;opacity:.75;flex-basis:100%", text: tagSrcText(res) }));
         if (res.body) tr.appendChild(h("button", { cls: "pml-btn pml-addtags" + (res.withTags ? " on" : ""), type: "button", "data-pm": "look-add-tags", "aria-pressed": res.withTags ? "true" : "false",
           text: res.withTags ? "Remove tags" : "Add tags", title: "Insert the tag block into the prompt (params stay last)", on: { click: toggleTags } }));
         tr.appendChild(xr.chips);
@@ -2616,9 +2752,10 @@
     if (S.tab === "video") body = assembleVideo(l, idea, cast, heat);
     else body = assembleMJ(l, idea, cast, seed, heat);
     var motion = motionFor(l, idea), bank = bankFor(l, seed, heat, S.tab, motion);
-    var tags = tagsFor(l, heat, idea, r, cast.length);
+    S._tagHeat = heat;
+    var rot = rotateTags(l, heat, idea, r, cast.length), tags = rot.tags;
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { noirWord: noirOn() ? S._noirUsed || "" : "", body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), eye: eyeMode(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags };
+    S.result = { noirWord: noirOn() ? S._noirUsed || "" : "", body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), eye: eyeMode(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags, tagPlat: rot.plat, tagSrc: "local rotation \u00b7 Grok AI picking fresh tags\u2026" };
     S.result.art = S._artUsed || null; if (S._artUsed) S.artLast = S._artUsed.credit; if (S._artUsed) S.result.params = artNo(S.result.params);
     S.result.text = compose(S.result);
     save();
@@ -2626,6 +2763,7 @@
     applyBank(bank);  // MJ settings panel shows the same params (both tabs)
     S.notice = msg;
     renderPanel();
+    S._tagTok = (S._tagTok || 0) + 1; aiTags(l, heat, idea, tagsFor(l, heat, idea, r, cast.length), S._tagTok);
     var who = cast.length > 1 ? cast.length + " adults" : r.skinTone + " " + r.heritageRegion;
     toast(S.tab === "video" ? "Video prompt remixed" : "Look remixed", displayLabel(l) + " \u00b7 " + (S.mash ? "Mash-up: " + mashLabel() : who) + " \u00b7 written to Prompt Output");
   }

@@ -123,6 +123,34 @@ function ctxLines(b, adult) {
 }
 
 // ---------- text actions ----------
+// Per-platform hashtag guide (researched Oct 2026; mirrored in studio/app/assets/platform-looks.js TAG_GUIDE)
+const TAG_GUIDES = {
+  tiktok: { name: "TikTok", n: [3, 5], sfw: true, rule: "max 5 (cap since 2025), 2-3 is best: 1-2 core topic tags + 1 community 'Tok' tag (DanceTok, BaddieTok) + optional trend/format tag (pov, grwm); #fyp optional, never the whole set; no sexual words" },
+  instagram: { name: "Instagram", n: [3, 5], sfw: true, rule: "hard max 5 (cap since Dec 2025), 3-5 targeted: topic + specific subject + format + community + place/moment; skip generic #reels #explore #instagood #viral" },
+  youtube: { name: "YouTube Shorts", n: [3, 5], sfw: true, req: ["#shorts"], rule: "3-5 description tags, always #shorts; first 3 show above the title so the next 2 must be the strongest topic tags; no sexual or vulgar tags" },
+  x: { name: "X (Twitter)", n: [1, 2], sfw: true, camel: true, rule: "1-2 tags only (more reads as spam), CamelCase, one topic + one real community/event tag" },
+  music: { name: "Music video (IG/TikTok/YouTube cross-post)", n: [4, 6], sfw: true, rule: "4-6: 1 genre (hiphop, rnb, afrobeats) + 1 format (musicvideo, visuals) + 1-2 scene/city culture + 1 dance/community tag; no artist names" },
+  onlyfans: { name: "OnlyFans", n: [3, 6], rule: "no hashtag discovery on OnlyFans (tags only match plain-text search), so 3-6 niche keyword tags that also work in X/Reddit promo: body/vibe + outfit/fetish niche + content type; no brand spam" },
+  fansly: { name: "Fansly", n: [5, 8], rule: "up to 10 (5-7 best), specific lowercase niche tags that feed Fansly FYP/search: body type + outfit + kink/vibe + content type" },
+  manyvids: { name: "ManyVids", n: [5, 8], rule: "up to 5 categories + keywords: TitleCase category-style tags shoppers browse (Lingerie, POV, Twerking, Solo) + 2-3 precise keywords" },
+  tube: { name: "Pornhub / tube sites", n: [8, 14], rule: "2-16 tags (Shorties 2-8) plus categories: plain lowercase searched terms ACCURATE to the clip - acts, positions, setting, objects, body attributes, production style (amateur, pov, hd)" },
+  clips: { name: "Clip stores (Clips4Sale / IWantClips)", n: [8, 14], rule: "up to 15 keywords + 1 primary and up to 5 related categories: precise consensual-adult fetish/kink keywords buyers search, clip type, wardrobe" },
+  creator: { name: "Creator sites (FapHouse / YourVids / SoloTouch)", n: [5, 9], rule: "5-9 accurate niche tags: solo/creator framing + body/outfit niche + content type + 1 production tag (pov, 4k, vertical)" },
+  ai: { name: "AI companion apps", n: [5, 8], rule: "5-8: AI framing (aigirlfriend, aimodel, aiart) + persona vibe + style (photoreal, anime) + 1 niche; clearly adult characters" },
+  magazine: { name: "Magazine / pinup", n: [6, 10], rule: "6-10: editorial/pinup framing (pinup, glamour, centerfold) + era/style (retro, 70sglam) + wardrobe + photo style" },
+  animated: { name: "Animated / hentai-style", n: [6, 10], rule: "6-10: animation style (3danimation, animeart) + clearly grown-woman character type + scene + content type" },
+};
+const TAG_BAD = /teen|tween|young|youth|tiny|petite|barely|(?<!old)school|college|coed|campus|dorm|cheer|babysit|nubile|seventeen|lolita|loli|shota|minor|underage|child|kid|baby(?!doll|lon)|innocent|virgin|firsttime|little|smallgirl|girl(?!friend|summer|boss)|boys?$|daughter|sister|brother|^(?:sis|bro|mom|dad)$|stepmo|stepda|stepsi|stepbr|stepso|stepfa|family|incest|taboo|niece|nephew|cousin|auntie|^#?aunts?$|uncle|daddy|mommy|freeuse|nonconsen|forced|(?:^|[^dgt#])rape|^#rape|asleep|sleeping|drunk|passedout|hiddencam|spycam|voyeur|upskirt|creep|1[89]yo|20yo|18plus|^1[89]$|^20$|^18/i;
+const TAG_NAMES = /littlecaprice|caprice|erikalust|julesjordan|tobydick|mrsupremo|riggs|clubseventeen|nubiles|tiny4k|familystrokes|sislovesme|teamskeet|brazzers|realitykings|bangbros|vixen|blacked|tushy|onlyfans|pornhub|xvideos|manyvids|clips4sale|iwantclips|fakehub|mofos|naughtyamerica|evilangel|fansly/i;
+const SFW_TAG = /nsfw|xxx|porn|nude|naked|sex|explicit|uncensored|adult|hentai|fetish|kink|cum(?!ent|ulat)|dick|cock|pussy|tits|boob|bigass|horny|onlyfans|spicy|21plus|thirsttrap|lingerie|booty|milf|bbw/i;
+const TEASE_BAD = /cum|dick|cock|pussy|creampie|blowjob|doggy|cowgirl|missionary|hardcore|squirt|orgasm|anal(?!og|ys)|gangbang|facial|xxx|fuck/i;
+const TAG_TECH = /iphon|flash(?!dance|mob)|photoshop|thumbnail|click|contrast|lens|35mm|camera|cinematic|render|prompt|colorpop|scrollstop|^clip$|^bold|lighting|pose$|candid(?!ate)/i;
+function tagOkW(c, plat, sfw) {
+  if (TAG_TECH.test(c) || !/^[A-Za-z0-9_]{2,30}$/.test(c) || TAG_BAD.test(c) || (TAG_NAMES.test(c) && !(plat === "fansly" && /^fansly$/i.test(c))) || MINOR_HARD.test(c) || LIKENESS_RE.test(c)) return false;
+  if (sfw && SFW_TAG.test(c)) return false;
+  return true;
+}
+
 const TEXT = {
   async chat(b, env, adult) {
     const hist = (Array.isArray(b.messages) ? b.messages : []).slice(-8).map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: scrub(m && m.content, adult, 1500) })).filter((m) => m.content);
@@ -140,6 +168,32 @@ const TEXT = {
     if (r.err) return r;
     const out = frame21(scrub(r.obj.text, adult, 1500));
     return out ? { text: out, usage: r.usage } : { err: "empty", status: 502 };
+  },
+  // Platform Looks hashtags (Oct 31 2026): one cheap Grok call per Remix (xAI grok-4.20 non-reasoning, ~$0.001, counted in the
+  // site-wide daily $ cap by chatFetch; over the cap / xAI error -> free OpenRouter chain; the page keeps its free local rotation).
+  async hashtags(b, env, adult) {
+    const plat = TAG_GUIDES[b.platform] ? b.platform : "tube", G = TAG_GUIDES[plat];
+    const sfw = !adult || G.sfw, heat = sfw ? "sfw" : ["tease", "spicy", "xxx"].includes(b.heat) ? b.heat : "tease";
+    const lo = G.n[0], hi = G.n[1], n = lo + Math.floor(Math.random() * (hi - lo + 1));
+    const clean = (x) => String(x || "").replace(/^#+/, "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 30);
+    const avoid = (Array.isArray(b.avoid) ? b.avoid : []).slice(0, 60).map(clean).filter(Boolean).map((x) => "#" + x.toLowerCase());
+    const hints = (Array.isArray(b.hints) ? b.hints : []).slice(0, 12).map(clean).filter((x) => x && tagOkW(x, plat, sfw)).map((x) => "#" + x);
+    const sys = "You write social/adult-platform HASHTAGS for one post. Platform: " + G.name + ". Platform rules (researched 2026): " + G.rule + ".\n" +
+      "Return " + (n + 4) + " candidate hashtags, best first (the page keeps the top " + n + ")" + (G.req ? ", " + G.req.join(" ") + " first" : "") + ". Tags describe what is IN the post (subject, body/vibe, outfit, place/city, dance/act, scene, community) - never camera, lighting, photo-editing or prompt words (no iphone, flash, contrast, thumbnail, clickworthy), and never copy the look or preset names literally. Make them FRESH: none from the 'avoid' list, a different mix than usual, real tags people actually search/follow on that platform (no invented gibberish), accurate to the idea, look and selections given." +
+      (G.camel ? " Use CamelCase." : " Use lowercase single words unless the platform rule says otherwise.") +
+      " Mix: broad discovery + niche community + content-specific per the rule. Heat tier: " + (heat === "sfw" ? "SFW - nothing sexual" : heat === "tease" ? "tease - suggestive only, no explicit act words" : heat === "spicy" ? "spicy - sensual adult, mild explicit OK" : "xxx - explicit search terms for consenting adults OK") + ".\n" +
+      "Hard bans: anything teen/young/tiny/petite/schoolgirl/college/coed/cheerleader/babysitter/barely/virgin/innocent/girl-coded, any age under 21 (#18, #18plus), family or step roles, non-consent, sleeping/drunk/hidden-cam, real people or performer names, studio/site/brand names. Every person is an adult 21+.\n" +
+      "Reply JSON {\"hashtags\":[\"#tag\", ...]}";
+    const user = { idea: scrub(b.idea, adult, 200), look: scrub(b.look, adult, 80), lookGroup: scrub(b.group, adult, 40), lookStyle: scrub(b.styleName, adult, 120), mood: strList(b.mood, 3, 30, adult),
+      style: scrub(b.style, adult, 40), realism: scrub(b.realism, adult, 80), format: b.tab === "video" ? "short video" : "image post", people: Math.max(1, Math.min(8, parseInt(b.people, 10) || 1)), avoid, hint_tags: hints };
+    const r = await llm(env, sys, user, { pick: "grok", json: true, maxTokens: 220, temperature: 1.0, freeMax: 2, timeout: 12000 });
+    if (r.err) return r;
+    const seen = new Set(avoid), out = [];
+    (G.req || []).forEach((t) => { seen.add(t); out.push(t); });
+    const raw = Array.isArray(r.obj && r.obj.hashtags) ? r.obj.hashtags : Array.isArray(r.obj && r.obj.tags) ? r.obj.tags : [];
+    raw.slice(0, 30).forEach((t) => { const c = clean(t), k = "#" + c.toLowerCase(); if (c.length < 2 || seen.has(k) || !tagOkW(c, plat, sfw) || heat === "tease" && TEASE_BAD.test(c)) return; seen.add(k); out.push("#" + c); });
+    const tags = out.slice(0, Math.max(n, (G.req || []).length + 1));
+    return tags.length ? { hashtags: tags, platform: plat, provider: r.usage.engine, model: r.usage.model, est_usd: r.usage.est_usd, usage: r.usage } : { err: "no usable hashtags", status: 502 };
   },
   async remix(b, env, adult) {
     const idea = scrub(b.idea || b.text, adult, 1200); if (!idea) return { err: "empty idea", status: 400 };
@@ -562,7 +616,7 @@ async function imgFetch(b, ch) {
     return new Response(buf, { status: 200, headers: Object.assign({ "Content-Type": ct, "Cache-Control": "no-store" }, ch) });
   } catch (e) { return J({ error: "image host unreachable" }, 502, ch); }
 }
-export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
+export const BOOST_ACTIONS = new Set(["chat", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";
