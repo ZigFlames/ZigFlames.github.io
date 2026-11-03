@@ -49,14 +49,34 @@ function firstObj(t) {
 function J(obj, status, ch) { return new Response(JSON.stringify(obj), { status: status || 200, headers: Object.assign({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }, ch || {}) }); }
 
 // ---------- shared house rules for every text action ----------
-function rules(adult) {
+// ---------- Dance / Twerk / Hip-Hop Heat Block (v20261102a; mirrors studio/app/assets/pm-heatblock.js) ----------
+const DANCE_RE = /\b(twerk\w*|hip[\s-]?hop\w*|dance(?:s|rs?|hall)?|dancing|choreo\w*|perreo|reggaeton|krump\w*|booty[\s-]?(?:shak\w*|bounc\w*|pop\w*|clap\w*)|bounce[\s-]music|video[\s-]vixens?|tiktok[\s-]trends?|dance[\s-]?trends?|club[\s-]bounce|hip[\s-]roll\w*|body[\s-]roll\w*)\b/i;
+function isDance(...xs) {
+  const flat = (x) => (x == null ? "" : typeof x === "string" ? x : Array.isArray(x) ? x.map(flat).join(" ") : typeof x === "object" ? Object.values(x).map(flat).join(" ") : String(x));
+  return xs.some((x) => DANCE_RE.test(flat(x).slice(0, 6000)));
+}
+const DANCE_HEAT = "spicy, kinky, raunchy, physics-focused adult content; suggestive language is acceptable when it preserves heat";
+function danceBlock(adult) {
+  return [
+    "Dance / Twerk / Hip-Hop Heat Block (this request is dance / twerk / hip-hop themed: apply it to EVERY output):",
+    adult
+      ? "- Heat (adult tier): " + DANCE_HEAT + ". The word 'explicit' is allowed. Subjects: curvy voluptuous thick women, heavy jiggle physics on ass and thighs, oiled sweaty skin, tiny shorts or sports bras riding up, looking back over shoulder into camera, provocative flirty but raw adult energy, not modest or family-friendly."
+      : "- Safe tier (toned down, clothed, non-explicit): curvy confident women with real curves, natural bounce and movement in the dance, glowing skin, fitted athletic shorts or crop tops and streetwear, looking back over shoulder into camera, bold flirty confident energy.",
+    "- Camera / style default (ONLY when the user did not name another camera, lens, film, lighting or art style; their words always win): photorealistic, direct flash photography or golden hour, 35mm disposable camera, film grain, harsh shadows, candid, raw, unretouched.",
+    "- Hard limits: all subjects adult women 21+ (never teen or young-looking wording), unique realistic faces, mixed ethnicities and body types, no real people or celebrities, anatomically accurate.",
+    "- Downweight / avoid: joyful group fitness, " + (adult ? "modest clothing, family-friendly, " : "") + "overly polished, static clean studio energy.",
+  ].join("\n");
+}
+
+function rules(adult, dance) {
   return [
     "House rules (never break, never mention):",
     "- Every person is a consenting adult, 21 or older. Write 'adult' or '21+' where people appear. Never use the words teen, girl, young, schoolgirl, petite-young or any age under 21; say woman / man.",
     "- No minors, no family roles (step-, sister, mom, daddy...), no non-consent, no sleeping/drunk/hidden-camera, no real or named people (no celebrity names or lookalikes).",
-    adult ? "- Adult (18+/21+) mode is ON: sensual and explicit wording about consenting adults is allowed when the user asks for it." : "- SFW mode: keep everything non-explicit (no nudity, no sex words).",
+    adult ? "- Adult (21+) mode is ON: sensual and explicit wording about consenting adults is allowed when the user asks for it" + (dance ? "; " + DANCE_HEAT + "." : ".") : "- SFW mode: keep everything non-explicit (no nudity, no sex words).",
     "- Zig's taste: realistic real-camera photos (iPhone, 35mm, flash, CCTV, 90s camcorder), varied lighting every time (never the same light twice), raw unpolished natural skin with pores and texture most of the time (~75%), real places, specific outfits and brands. Zig's own words and DNA always win over your defaults: keep them verbatim.",
-  ].join("\n");
+    dance ? danceBlock(adult && dance !== "safe") : "",   // dance === "safe": toned-down block (e.g. After dark tier)
+  ].filter(Boolean).join("\n");
 }
 
 async function llm(env, system, user, opt) {
@@ -156,14 +176,14 @@ const TEXT = {
   async chat(b, env, adult) {
     const hist = (Array.isArray(b.messages) ? b.messages : []).slice(-8).map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: scrub(m && m.content, adult, 1500) })).filter((m) => m.content);
     if (!hist.length || hist[hist.length - 1].role !== "user") return { err: "empty message", status: 400 };
-    const sys = "You are the AI assistant inside Zig's Prompt Machine (an image / video / music prompt studio). Help write and clean up text, build and improve image and video prompts (Midjourney, Grok Imagine, Sora, Kling, Flux), captions and Suno music prompts. Be direct and brief. When you write a prompt, put it alone in a ```prompt fenced block so it can be copied; keep Midjourney --params at the very end.\n" + rules(adult);
+    const sys = "You are the AI assistant inside Zig's Prompt Machine (an image / video / music prompt studio). Help write and clean up text, build and improve image and video prompts (Midjourney, Grok Imagine, Sora, Kling, Flux), captions and Suno music prompts. Be direct and brief. When you write a prompt, put it alone in a ```prompt fenced block so it can be copied; keep Midjourney --params at the very end.\n" + rules(adult, isDance(hist[hist.length - 1].content));
     const r = await llmPick(env, sys, hist, { maxTokens: Math.min(600, parseInt(env.CHAT_MAX_TOKENS || "600", 10)), temperature: 0.7 }, b);
     if (r.err) return r;
     return { reply: scrub(r.text, adult, 6000), usage: r.usage };
   },
   async cleanup(b, env, adult) {
     const text = scrub(b.text, adult, 2000); if (!text) return { err: "empty text", status: 400 };
-    const sys = "Clean up the user's idea text for an image/video prompt: fix spelling, grammar and wording, make it clear and vivid, one short paragraph or comma phrases. KEEP every specific detail and every word the user chose (names of places, brands, outfits, colours, camera). Do not add new subjects. Reply JSON {\"text\":\"...\"}.\n" + rules(adult);
+    const sys = "Clean up the user's idea text for an image/video prompt: fix spelling, grammar and wording, make it clear and vivid, one short paragraph or comma phrases. KEEP every specific detail and every word the user chose (names of places, brands, outfits, colours, camera). Do not add new subjects. Reply JSON {\"text\":\"...\"}.\n" + rules(adult, isDance(text, b.context && b.context.genres));
     const cx = b.tier || b.context ? ctxLines(b, adult).lines.join("\n") : "";
     const r = await llmPick(env, sys + (cx ? "\nSelections to respect:\n" + cx : ""), { text, kind: b.kind || "idea" }, { json: true, maxTokens: 400, temperature: 0.3 }, b);
     if (r.err) return r;
@@ -184,11 +204,12 @@ const TEXT = {
     const noirOk = (c) => /^[A-Za-z0-9_]{2,30}$/.test(c) && !TAG_BAD.test(c) && !MINOR_HARD.test(c) && !LIKENESS_RE.test(c) && !(sfw && SFW_TAG.test(c));
     const noirPool = (Array.isArray(b.noir_pool) ? b.noir_pool : []).slice(0, 40).map(clean).filter(noirOk);
     const noirMap = new Map(noirPool.map((x) => [x.toLowerCase(), "#" + x]));
+    const dance = isDance(b.idea, b.look, b.styleName, b.style);
     const sys = "You write social/adult-platform HASHTAGS for one post. Platform: " + G.name + ". Platform rules (researched 2026): " + G.rule + ".\n" +
       "Return " + (n + 4) + " candidate hashtags, best first (the page keeps the top " + n + ")" + (G.req ? ", " + G.req.join(" ") + " first" : "") + ". Tags describe what is IN the post (subject, body/vibe, outfit, place/city, dance/act, scene, community) - never camera, lighting, photo-editing or prompt words (no iphone, flash, contrast, thumbnail, clickworthy), and never copy the look or preset names literally. Make them FRESH: none from the 'avoid' list, a different mix than usual, real tags people actually search/follow on that platform (no invented gibberish), accurate to the idea, look and selections given." +
       (G.camel ? " Use CamelCase." : " Use lowercase single words unless the platform rule says otherwise.") +
       (noirPool.length ? " NOIR MODE: about half of the set must be copied VERBATIM (exact spelling and capitals) from noir_pool - the user's own tags, pick the ones that fit this post best and put them first; fill the rest per the platform rule." : "") +
-      " Mix: broad discovery + niche community + content-specific per the rule. Heat tier: " + (heat === "sfw" ? "SFW - nothing sexual" : heat === "tease" ? "tease - suggestive only, no explicit act words" : heat === "spicy" ? "spicy - sensual adult, mild explicit OK" : "xxx - explicit search terms for consenting adults OK") + ".\n" +
+      " Mix: broad discovery + niche community + content-specific per the rule. Heat tier: " + (heat === "sfw" ? "SFW - nothing sexual" : heat === "tease" ? (dance ? "tease - flirty, suggestive dance heat (twerk / jiggle / booty-shake community tags OK), no explicit act words" : "tease - suggestive only, no explicit act words") : heat === "spicy" ? (dance ? "spicy - raunchy adult dance heat (twerk, jiggle physics, thick / curvy body tags), explicit OK" : "spicy - sensual adult, mild explicit OK") : "xxx - explicit search terms for consenting adults OK") + ".\n" +
       "Hard bans: anything teen/young/tiny/petite/schoolgirl/college/coed/cheerleader/babysitter/barely/virgin/innocent/girl-coded, any age under 21 (#18, #18plus), family or step roles, non-consent, sleeping/drunk/hidden-cam, real people or performer names, studio/site/brand names. Every person is an adult 21+.\n" +
       "Reply JSON {\"hashtags\":[\"#tag\", ...]}";
     const user = { idea: scrub(b.idea, adult, 200), look: scrub(b.look, adult, 80), lookGroup: scrub(b.group, adult, 40), lookStyle: scrub(b.styleName, adult, 120), mood: strList(b.mood, 3, 30, adult),
@@ -266,7 +287,7 @@ const TEXT = {
       (words.length ? "Use the provided word list (already chosen to fit the selections; 'use' says why): weave 2-4 of them into EACH variation and use every word at least once across the set, verbatim.\n" : "") +
       (avoid.length ? "Never include: " + avoid.join(", ") + ".\n" : "") +
       (invent ? "Also invent exactly 8 NEW vocabulary words or phrases (1-4 words each) for newWords that fit these exact selections: specific outfits, places, props, poses, camera or lighting terms. They must NOT repeat any word from the word list or the seed.\n" : "") +
-      "Reply JSON {\"ideas\":[\"...\"]" + (invent ? ",\"newWords\":[\"...\"]" : "") + "}.\n" + rules(adult && cx.tier !== "sfw");
+      "Reply JSON {\"ideas\":[\"...\"]" + (invent ? ",\"newWords\":[\"...\"]" : "") + "}.\n" + rules(adult && cx.tier !== "sfw", isDance(idea, b.style, b.context && b.context.genres, b.context && b.context.platform) && (cx.tier === "nsfw" || cx.tier === "xxx" ? true : "safe"));
     const r = await llmPick(env, sys, { seed: idea, style: scrub(b.style, adult, 120), count: n, words }, { json: true, maxTokens: 1300, temperature: 1.0 }, b);
     if (r.err) return r;
     const ideas = strList(r.obj.ideas, n, 600, adult).map(frame21);
@@ -289,7 +310,7 @@ const TEXT = {
   async expand(b, env, adult) {
     const seeds = strList(b.seeds || [b.text], 12, 300, adult); if (!seeds.length) return { err: "empty seeds", status: 400 };
     const n = Math.max(1, Math.min(20, parseInt(b.count || 10, 10)));
-    const sys = "You are a seed expander. From the user's seed ideas, invent " + n + " NEW seed ideas (6-16 words each): new scenarios, locations, outfits, camera formats and lighting in the same spirit, never repeats or near-duplicates of each other or the input. Reply JSON {\"seeds\":[\"...\"]}.\n" + rules(adult);
+    const sys = "You are a seed expander. From the user's seed ideas, invent " + n + " NEW seed ideas (6-16 words each): new scenarios, locations, outfits, camera formats and lighting in the same spirit, never repeats or near-duplicates of each other or the input. Reply JSON {\"seeds\":[\"...\"]}.\n" + rules(adult, isDance(seeds));
     const r = await llmPick(env, sys, { seeds, count: n, avoid: strList(b.avoid, 40, 80, adult) }, { json: true, maxTokens: 900, temperature: 1.05 }, b);
     if (r.err) return r;
     const out = strList(r.obj.seeds, n, 240, adult);
@@ -298,7 +319,7 @@ const TEXT = {
   async vocab(b, env, adult) {
     const cat = scrub(b.category, adult, 60); if (!cat) return { err: "empty category", status: 400 };
     const n = Math.max(5, Math.min(60, parseInt(b.count || 30, 10)));
-    const sys = "List " + n + " specific, real, visual items for the vocabulary category the user names (for image prompts). Short chips of 1-5 words, concrete and describable (models, styles, colourways, materials), no numbering, no duplicates, none from the 'have' list. Reply JSON {\"items\":[\"...\"]}.\n" + rules(adult);
+    const sys = "List " + n + " specific, real, visual items for the vocabulary category the user names (for image prompts). Short chips of 1-5 words, concrete and describable (models, styles, colourways, materials), no numbering, no duplicates, none from the 'have' list. Reply JSON {\"items\":[\"...\"]}.\n" + rules(adult, isDance(cat));
     const r = await llmPick(env, sys, { category: cat, have: strList(b.have, 80, 60, adult), count: n }, { json: true, maxTokens: 800, temperature: 0.7 }, b);
     if (r.err) return r;
     const seen = new Set(), items = strList(r.obj.items, n, 60, adult).filter((x) => { const k = x.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
@@ -307,7 +328,7 @@ const TEXT = {
   async trending(b, env, adult) {
     // Live: cheap model + web search (~$0.0075/call, exa 5 results). Fallback: Grok from model knowledge (may lag).
     const today = new Date().toISOString().slice(0, 10);
-    const sys = "Today is " + today + ". List 8 dance / TikTok / Reels trends and viral video formats that are popular RIGHT NOW (use the web results; prefer the last 4 weeks). For each: name, a one-line how-it-looks description, a photoreal video prompt idea (under 40 words) with one adult (21+) performer, a real camera and specific lighting, and when it peaked. Reply JSON {\"items\":[{\"name\":\"\",\"how\":\"\",\"prompt\":\"\",\"when\":\"\"}]}.\n" + rules(adult);
+    const sys = "Today is " + today + ". List 8 dance / TikTok / Reels trends and viral video formats that are popular RIGHT NOW (use the web results; prefer the last 4 weeks). For each: name, a one-line how-it-looks description, a photoreal video prompt idea (under 40 words) with one adult (21+) performer, a real camera and specific lighting, and when it peaked. Reply JSON {\"items\":[{\"name\":\"\",\"how\":\"\",\"prompt\":\"\",\"when\":\"\"}]}.\n" + rules(adult, true);
     const focus = scrub(b.focus, adult, 120) || "dance and creator video trends", region = scrub(b.region, adult, 60);
     const q = "viral TikTok dance trends " + (region ? region + " " : "") + new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
     let r = tier(env) === "free" ? { err: "web search needs credit" } : await llm(env, sys, { focus, region }, { json: true, maxTokens: 2200, temperature: 0.5, timeout: 30000,
@@ -329,7 +350,7 @@ const TEXT = {
     return { genre: scrub(o.genre, true, 80), bpm, key: scrub(o.key, true, 30), instruments: strList(o.instruments, 12, 60, true), style: scrub(o.style, true, 1000), exclude: scrub(o.exclude, true, 400), structure: String(o.structure || "").replace(/[^\S\n]{2,}/g, " ").slice(0, 1500), samples: strList(o.samples, 5, 400, true), usage: r.usage };
   },
   async seeds(b, env, adult) {
-    const sys = "Give 12 short variation details (4-12 words, under 120 characters each) that make each new image of the same prompt look like a DIFFERENT real adult (21+) person and a different real photo: face shape, features, skin texture (raw, unretouched most of the time), hair, expression, framing, and a different lighting each. No names, no ages. Reply JSON {\"details\":[\"...\"]}.\n" + rules(adult);
+    const sys = "Give 12 short variation details (4-12 words, under 120 characters each) that make each new image of the same prompt look like a DIFFERENT real adult (21+) person and a different real photo: face shape, features, skin texture (raw, unretouched most of the time), hair, expression, framing, and a different lighting each. No names, no ages. Reply JSON {\"details\":[\"...\"]}.\n" + rules(adult, isDance(b.prompt));
     const r = await llmPick(env, sys, { prompt: scrub(b.prompt, adult, 600) }, { json: true, maxTokens: 500, temperature: 1.0 }, b);
     if (r.err) return r;
     const d = strList(r.obj.details, 16, 160, adult);

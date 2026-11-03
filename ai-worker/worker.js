@@ -153,7 +153,7 @@ Rules:
 - Every value MUST be an id copied exactly from the "options" you are given (switches: an object of {switchId:true|false} using ids from options.switches). If nothing fits, leave the key out. Never invent ids.
 - Only include settings the user asked for or that clearly follow from their words; do not list switches they did not mention.
 - Only change what the user asked for. Keep "people" 1 unless they ask for more.
-- "idea": the user's scene from THIS request only (never reuse current.idea), at most 14 plain words. Keep outfit, brand, place and time words exactly as the user said them (e.g. "McDonald's uniform", "penthouse"), e.g. "McDonald's uniform on a rooftop at night". No explicit or sexual wording, no body-part words, no ages.
+- "idea": the user's scene from THIS request only (never reuse current.idea), at most 14 plain words. Keep outfit, brand, place and time words exactly as the user said them (e.g. "McDonald's uniform", "penthouse"), e.g. "McDonald's uniform on a rooftop at night". Keep dance / twerk / hip-hop words (dance names, trends) when the user says them: the machine adds its Dance Heat Block itself. SFW mode: no explicit or sexual wording. 18+ mode: suggestive wording is fine when it preserves the user's heat, but leave heat levels to the heat button. No body-part words, no ages.
 - Leave out of "idea" anything a button already handles (neon colors, messy/clean room, camera, real porn look, no AI look, heat words); the idea is only who, outfit, place, time and action.
 - Only change "heat" if the user names a heat level or clearly asks for more or less explicit.
 - "extra_words": 0-3 short descriptive words; prefer the user's "my_words" when they fit.
@@ -175,6 +175,7 @@ Input: {"mode","cgi_style","segments":[{"weight","phrases":[[id,"phrase"],...]}]
 - KEEP every specific detail: outfits, brands, places, rooms, people count, faces/features, hair, tattoos, nails, neon colours, actions; real-camera cues (iPhone, 90s, 24mm/50mm, ISO, film grain, raw, candid, motion blur, sensor noise); raw unpolished skin wording (pores, peach fuzz, sweat, imperfections, unretouched); every "adult 21+" tag.
 - "trim" (optional, max 12 pairs): shorten a wordy kept phrase by DELETING words only (no new words), e.g. "shot on iPhone 18 Pro on a tripod" -> "iPhone 18 Pro on a tripod". Keep the specific words.
 - "negative": ids of negative phrases to keep (drop only duplicates).
+- Dance Heat Block: when the prompt is dance / twerk / hip-hop themed, KEEP its phrases (curvy / thick women, jiggle physics, oiled sweaty skin, shorts or sports bras riding up, looking back over shoulder into camera, flirty raw adult energy, direct flash or golden hour, 35mm disposable camera, film grain, harsh shadows) and its limits (adult women 21+, unique realistic faces, mixed ethnicities and body types, no real people or celebrities, anatomically accurate); drop only exact duplicates.
 Zig likes: photorealistic, real camera, raw unpolished skin, varied real lighting, nothing generic. Adults 21+ only.`;
 
 function cors(origin) {

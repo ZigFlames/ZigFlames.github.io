@@ -1323,6 +1323,16 @@
     no: "low contrast, washed out colors, boring palette"
   };
   function twerkOn() { return S.twerk === true; }
+  // Dance / Twerk / Hip-Hop Heat Block (pm-heatblock.js): dance-themed idea, look or Twerk show -> heat block + hard limits.
+  // A picked look is a style pick, so the block's camera defaults are skipped here (the look keeps its own camera).
+  function heatBlock(look, idea, body, params) {
+    var H = window.PMHeatBlock; look = look || {};
+    if (!H || !(twerkOn() || H.detect(idea, look.id, look.name, look.title))) return { body: body, params: params };
+    var all = H.apply(String(body || "") + (params ? " " + params : ""), { force: true, adult: isAdult() && !!look.adult, camPicked: true, men: S.castMix === "men" });
+    if (!params) return { body: all, params: params };
+    var k = all.search(/\s--(?:ar|v|no|stylize|chaos|seed|style|q|quality|weird|motion|niji|iw|repeat|tile|raw|s)\b/);
+    return k >= 0 ? { body: all.slice(0, k), params: all.slice(k).trim() } : { body: all, params: params };
+  }
   function twerkIdea(idea) { idea = String(idea || ""); return /\btwerk/i.test(idea) ? idea : (idea ? idea + ", twerk show" : "twerk show"); }
 
   // ---- Fresh faces (default OFF): a brand-new face every Remix + real skin, never plastic. Adults 21+ only. -------------
@@ -2802,7 +2812,8 @@
     S._tagHeat = heat;
     var rot = rotateTags(l, heat, idea, r, cast.length), tags = rot.tags;
     var keepTags = !!(S.result && S.result.withTags);
-    S.result = { noirWord: noirOn() ? S._noirUsed || "" : "", body: body, params: withMotion(bankText(bank), S.tab, motion), motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), eye: eyeMode(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags, tagPlat: rot.plat, tagSrc: "local rotation \u00b7 Grok AI picking fresh tags\u2026" };
+    var hbk = heatBlock(l, idea, body, withMotion(bankText(bank), S.tab, motion));
+    S.result = { noirWord: noirOn() ? S._noirUsed || "" : "", body: hbk.body, params: hbk.params, motion: motion, withTags: keepTags, tab: S.tab, look: l.id, heat: heat, cam: S.cam, clean: cleanOn(), beauty: beautyOn(), style: S.style || "club", twerk: twerkOn(), fresh: freshOn(), crowd: crowdOn(), multitone: multiOn(), eye: eyeMode(), mash: S.mash === true, mashMix: mashLabel(), seed: seed, roll: r, people: cast.length, tags: tags, tagPlat: rot.plat, tagSrc: "local rotation \u00b7 Grok AI picking fresh tags\u2026" };
     S.result.art = S._artUsed || null; if (S._artUsed) S.artLast = S._artUsed.credit; if (S._artUsed) S.result.params = artNo(S.result.params);
     S.result.text = compose(S.result);
     save();
@@ -2859,7 +2870,8 @@
       S.people = Math.max(1, Math.min(PEOPLE_MAX, o.people || (o.group ? 2 : 1))); S.groupScene = S.people > 1; S.castMix = o.mix || "women"; S._forceAdult = o.adult == null ? null : !!o.adult;
       var i = sanitizeIdea(stripBlocked(idea).text); S._ideaNow = i; var heat = heatFor(l), cast = rollCast(l), seed = seed32(), tab = o.tab === "video" ? "video" : "mj";
       var body = tab === "video" ? assembleVideo(l, i, cast, heat) : assembleMJ(l, i, cast, seed, heat), mo = motionFor(l, i);
-      var res = { body: body, params: withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo), tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags, noExtra: true }; if (S._artUsed) res.params = artNo(res.params);
+      var hbk = heatBlock(l, i, body, withMotion(bankText(bankFor(l, seed, heat, tab, mo)), tab, mo));
+      var res = { body: hbk.body, params: hbk.params, tags: tagsFor(l, heat, i, cast[0], cast.length), withTags: !!o.withTags, noExtra: true }; if (S._artUsed) res.params = artNo(res.params);
       var out = compose(res);
       S.heat = keep[0]; S.groupScene = keep[1]; S._forceAdult = keep[2]; S.cam = keep[3]; S.cleanSkin = keep[4]; S.people = keep[5]; S.castMix = keep[6]; S.beauty = keep[7]; S.style = keep[8]; S.twerk = keep[9]; var mixL = mashLabel(); S.mash = keep[10]; S.fresh = keep[11]; S.crowd = keep[12]; S.multitone = keep[13]; S.eye = keep[14]; S.noir = keep[15]; S.psych = keep[16]; S.anatomy = keep[17]; S.dnaW = keep[18]; S.noAi = keep[19]; S.realPorn = keep[20]; S.neon = keep[21]; S.neonPick = keep[22]; S.room = keep[23]; S.antiGeneric = keep[24]; S.uniqueFaces = keep[25]; S.eyeSet = keep[26]; S._mashPrimary = null; S.artOn = keepArt[0]; S.artCat = keepArt[1];
       return o.full ? { faces: (S._cast || []).map(function (c) { return { sig: c._faceSig || "", eyes: c.eyes, micro: c.micro, heritage: c.heritageRegion, tone: c.skinTone, man: !!c.man }; }), details: (S._agUsed || []).slice(), neon: S._neonUsed || "brand", room: S._roomUsed || "", art: S._artUsed ? S._artUsed.credit : "", noirWord: S._noirUsed || "", text: out, tags: res.tags, params: res.params, mash: mixL, cast: cast.map(function (c) { return { tone: c.skinTone, region: c.heritageRegion, man: !!c.man, eyes: c.eyes }; }) } : out;
