@@ -49,7 +49,7 @@ function firstObj(t) {
 function J(obj, status, ch) { return new Response(JSON.stringify(obj), { status: status || 200, headers: Object.assign({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }, ch || {}) }); }
 
 // ---------- shared house rules for every text action ----------
-// ---------- Dance / Twerk / Hip-Hop Heat Block (v20261102a; mirrors studio/app/assets/pm-heatblock.js) ----------
+// ---------- Dance / Twerk / Hip-Hop Heat Block (v20261106a; mirrors studio/app/assets/pm-heatblock.js) ----------
 const DANCE_RE = /\b(twerk\w*|hip[\s-]?hop\w*|dance(?:s|rs?|hall)?|dancing|choreo\w*|perreo|reggaeton|krump\w*|booty[\s-]?(?:shak\w*|bounc\w*|pop\w*|clap\w*)|bounce[\s-]music|video[\s-]vixens?|tiktok[\s-]trends?|dance[\s-]?trends?|club[\s-]bounce|hip[\s-]roll\w*|body[\s-]roll\w*)\b/i;
 function isDance(...xs) {
   const flat = (x) => (x == null ? "" : typeof x === "string" ? x : Array.isArray(x) ? x.map(flat).join(" ") : typeof x === "object" ? Object.values(x).map(flat).join(" ") : String(x));
@@ -60,11 +60,11 @@ function danceBlock(adult) {
   return [
     "Dance / Twerk / Hip-Hop Heat Block (this request is dance / twerk / hip-hop themed: apply it to EVERY output):",
     adult
-      ? "- Heat (adult tier): " + DANCE_HEAT + ". The word 'explicit' is allowed. Subjects: curvy voluptuous thick women, heavy jiggle physics on ass and thighs, oiled sweaty skin, tiny shorts or sports bras riding up, looking back over shoulder into camera, provocative flirty but raw adult energy, not modest or family-friendly."
-      : "- Safe tier (toned down, clothed, non-explicit): curvy confident women with real curves, natural bounce and movement in the dance, glowing skin, fitted athletic shorts or crop tops and streetwear, looking back over shoulder into camera, bold flirty confident energy.",
-    "- Camera / style default (ONLY when the user did not name another camera, lens, film, lighting or art style; their words always win): photorealistic, direct flash photography or golden hour, 35mm disposable camera, film grain, harsh shadows, candid, raw, unretouched.",
-    "- Hard limits: all subjects adult women 21+ (never teen or young-looking wording), unique realistic faces, mixed ethnicities and body types, no real people or celebrities, anatomically accurate.",
-    "- Downweight / avoid: joyful group fitness, " + (adult ? "modest clothing, family-friendly, " : "") + "overly polished, static clean studio energy.",
+      ? "- Heat (adult tier): " + DANCE_HEAT + ". The word 'explicit' is allowed. Subject: ONE curvy voluptuous thick woman (singular unless the user explicitly asked for a duo/group), heavy jiggle physics on ass and thighs, oiled sweaty skin, tiny shorts or sports bras riding up, looking back over shoulder into camera, provocative flirty but raw adult energy, not modest or family-friendly."
+      : "- Safe tier (toned down, clothed, non-explicit): ONE curvy confident woman with real curves, natural bounce and movement in the dance, glowing healthy skin, fitted athletic shorts or crop tops and streetwear, looking back over shoulder into camera, bold flirty confident energy.",
+    "- Camera / style default (ONLY when the user did not name another camera, lens, film, lighting or art style; their words always win): photorealistic, direct flash photography or golden hour, soft natural film grain, candid, authentic real-camera look, healthy radiant skin with natural texture. NEVER use disposable-camera mugshot / harsh-shadow / raw-unretouched stacks that read as crackhead or gaunt.",
+    "- Hard limits: adult woman 21+ (never teen or young-looking wording), ONE unique realistic face, gorgeous and photogenic, healthy radiant skin, bright clear eyes, healthy straight natural white teeth when smiling, no real people or celebrities, anatomically accurate. Default to a SINGLE solo woman (one woman only, no extra people in background, no background bystanders, no duplicate/cloned women) unless the user explicitly asked for a duo/group/crowd. NEVER write 'mixed ethnicities and body types' into a single image prompt (that makes image models spawn clones or average every ethnicity into the same generic brown-skinned woman). When ethnicity is not locked by the user, pick ONE clear distinct heritage/skin tone per woman and rotate freshly across presses.",
+    "- Downweight / avoid: joyful group fitness, " + (adult ? "modest clothing, family-friendly, " : "") + "overly polished, static clean studio energy, missing teeth, bad teeth, crooked teeth, meth mouth, gaunt hollow face, strung-out look, sunken eyes, haggard, extra people in background, photobomber, cloned faces, multiple copies of same person, background bystanders.",
   ].join("\n");
 }
 
@@ -74,7 +74,7 @@ function rules(adult, dance) {
     "- Every person is a consenting adult, 21 or older. Write 'adult' or '21+' where people appear. Never use the words teen, girl, young, schoolgirl, petite-young or any age under 21; say woman / man.",
     "- No minors, no family roles (step-, sister, mom, daddy...), no non-consent, no sleeping/drunk/hidden-camera, no real or named people (no celebrity names or lookalikes).",
     adult ? "- Adult (21+) mode is ON: sensual and explicit wording about consenting adults is allowed when the user asks for it" + (dance ? "; " + DANCE_HEAT + "." : ".") : "- SFW mode: keep everything non-explicit (no nudity, no sex words).",
-    "- Zig's taste: realistic real-camera photos (iPhone, 35mm, flash, CCTV, 90s camcorder), varied lighting every time (never the same light twice), raw unpolished natural skin with pores and texture most of the time (~75%), real places, specific outfits and brands. Zig's own words and DNA always win over your defaults: keep them verbatim.",
+    "- Zig's taste: realistic real-camera photos (iPhone, 35mm, flash, CCTV, 90s camcorder), varied lighting AND mood every time (never the same light or expression twice), healthy radiant natural skin with real pores and texture (gorgeous, never gaunt/haggard/crackhead, never missing/bad teeth), LIVE expressive eyes (never dead eyes / blank stare / lifeless / mannequin), real places, specific outfits and brands. Default ONE solo beautiful woman per frame unless he asked for a group. Zig's clear signal (his idea text, chosen platform look DNA, heat tier, style/dance switches) ALWAYS leads — never bury it under generic filler. Zig's own words and DNA always win over your defaults: keep them verbatim.",
     dance ? danceBlock(adult && dance !== "safe") : "",   // dance === "safe": toned-down block (e.g. After dark tier)
   ].filter(Boolean).join("\n");
 }

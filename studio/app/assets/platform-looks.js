@@ -5,7 +5,7 @@
  */
 (function () {
   "use strict";
-  var V = "20261031b";
+  var V = "20261106a";
   var STORE = "pm.looks.v1";
   var FALLBACK_P = 0.25; // variety.json rule: fall back to shared pools on a 25% chance
 
@@ -157,7 +157,72 @@
   var DRAB_WARDROBE_RE = /\b(scrubs|tracksuit|velour|pajamas?|sweat\w*|hoodies?|band tee|tee dress|cardigan|overalls|uniforms?|baggy|oversized|parka|fleece)\b/i;
   var BEAUTY_LINE = ["stunningly beautiful, gorgeous, model-level attractive, magnetic sex appeal", "breathtakingly beautiful, glamorous, smoldering sex appeal, camera-ready", "drop-dead gorgeous, sultry and confident, bombshell energy", "strikingly beautiful bombshell, alluring gaze, irresistible sex appeal"];
   var BEAUTY_REAL = "flattering light on her face, camera-ready glow, gorgeous and photogenic";
-  var BEAUTY_NO = "unattractive, plain, homely, aged, tired, frumpy, double chin, bad teeth";
+  var BEAUTY_NO = "unattractive, plain, homely, aged, tired, frumpy, double chin, bad teeth, missing teeth, crooked teeth, meth mouth, gaunt hollow face, strung-out look, sunken eyes, haggard, crackhead look";
+  var BASE_BEAUTY = "gorgeous stunning strikingly attractive adult woman 21+, healthy radiant skin with natural texture, bright clear eyes, full healthy hair, harmonious feminine facial structure, healthy proportional figure, clean straight natural white teeth when smiling, photogenic and camera-ready";
+  var BASE_SOLO = "single solo woman, one woman only, no extra people in background, no background bystanders, no duplicate or cloned women, no photobomber";
+  var BASE_NO = "missing teeth, bad teeth, crooked teeth, meth mouth, gaunt hollow face, strung-out look, sunken eyes, haggard, crackhead look, extra people in background, photobomber, cloned faces, multiple copies of same person, background bystanders, identical faces, dead eyes, blank stare, lifeless expression, stiff pose, boring static standing pose, mannequin, passport photo, flat affect";
+  var FLAW_RE = /\b(gap (in |between )?(the )?front teeth|chipped (front )?tooth|crooked (lower )?teeth|gold tooth|meth mouth|missing teeth|hollow[- ]cheek|gaunt|sunken eyes|dark circles under the eyes|bloodshot|acne scarring|pockmark|strung[- ]out|haggard|asymmetric(?:al)? (?:oval )?face|uneven (?:jawline|lips|ear)|crooked[- ]from[- ]a[- ]break|chip in a front-tooth|gummy smile|under-eye bags|double chin, soft jawline)\b/i;
+  var UGLY_IDEA_RE = /\b(ugly|hideous|horrifying|horror|zombie|corpse|decay|grotesque|disfigured|crackhead|meth|strung[- ]out|mugshot)\b/i;
+  function flawDrop(arr) {
+    if (!arr) return arr;
+    var out = arr.filter(function (x) { return !FLAW_RE.test(String(x)); });
+    return out.length ? out : arr;
+  }
+  function beautyBaseOn(idea) { return !UGLY_IDEA_RE.test(String(idea || S._ideaNow || "")); }
+  // Tone bands so consecutive Remixes jump across the spectrum (never the same brown girl 5x).
+  var SKIN_BAND_RE = {
+    deep: /ebony|espresso|dark brown|cool umber|mahogany|deep warm/i,
+    rich: /copper|golden brown|caramel|honey|bronze|rich brown/i,
+    olive: /olive|tan|light tan|warm beige/i,
+    fair: /porcelain|pale|freckled fair|ruddy fair|fair olive|light olive/i
+  };
+  var SKIN_BAND_ORDER = ["deep", "rich", "olive", "fair"];
+  function toneBandOf(tone) {
+    var t = String(tone || "");
+    for (var i = 0; i < SKIN_BAND_ORDER.length; i++) { var k = SKIN_BAND_ORDER[i]; if (SKIN_BAND_RE[k].test(t)) return k; }
+    return "rich";
+  }
+  function pickToneRotated(pool, avoid) {
+    pool = flawDrop(pool || []);
+    var recent = (HIST.toneBand || []).slice();
+    var prefer = SKIN_BAND_ORDER.filter(function (b) { return recent.indexOf(b) < 0; });
+    if (!prefer.length) prefer = SKIN_BAND_ORDER.slice();
+    // try preferred bands first
+    for (var i = 0; i < prefer.length; i++) {
+      var band = prefer[i];
+      var sub = pool.filter(function (x) { return toneBandOf(x) === band; });
+      if (sub.length) {
+        var chosen = (function (arr, bad) {
+          var p2 = arr.filter(function (x) { return bad.indexOf(x) < 0; });
+          if (!p2.length) p2 = arr;
+          return p2[Math.floor(rnd() * p2.length)];
+        })(sub, Array.isArray(avoid) ? avoid : []);
+        remember("toneBand", band);
+        return chosen;
+      }
+    }
+    return pick(pool, avoid);
+  }
+
+  var LIVE_ENERGY = [
+    "playful smirk with bright alive catchlights in the eyes",
+    "biting her lower lip, sultry side-eye into camera",
+    "mid-laugh with sparkling lively eyes",
+    "fierce locked-in gaze, fully present",
+    "flirty over-the-shoulder look, magnetic attitude",
+    "knowing seductive smirk, eyes sharp and alive",
+    "come-hither stare with parted lips, real heat",
+    "caught mid-motion mid-gesture, electric energy",
+    "mischievous side-eye with a half-grin",
+    "sultry lidded look with real life in the eyes",
+    "coy lip-bite glance, teasing the camera",
+    "bold chin-up confidence, eyes locked on lens"
+  ];
+  function liveEnergy() {
+    var e = pick(LIVE_ENERGY, HIST.liveEnergy);
+    remember("liveEnergy", e);
+    return e;
+  }
   var MATURE_LOOKS = { mylf: 1, milfed: 1 };   // themed looks keep 33-50 bands
   function beautyOn() { return S.beauty === true; }
   function glamPool(arr, k) {
@@ -181,18 +246,18 @@
   // ---- Candid DNA (Beauty OFF, default): Zig's target look for every real-camera platform look -----------
   // Candid iPhone snapshot in a packed indoor venue, IG-model thicc body, adult woman 21+. Rendered (virtual) looks keep their own style.
   var DNA = {
-    real: "candid iPhone photo, slight motion blur, dirty sensor spots, ordinary mixed indoor lighting, not studio, not beauty lighting, unretouched skin with pores, peach fuzz, uneven tone, sweat sheen only where bodies heat, flyaway hairs, real body weight in motion",
+    real: "candid iPhone photo, natural available light, healthy radiant skin with natural texture and real pores, soft peach fuzz, natural sweat sheen only where bodies heat, flyaway hairs, real body weight in motion, gorgeous and photogenic",
     crowd: "packed indoor venue, spectators and phones in soft background bokeh",
     solo: "empty indoor venue, no spectators, no phones, no crowd, just her",
     soloVenues: ["empty nightclub floor after hours", "empty backstage hallway", "empty indoor pool at night", "empty hotel ballroom after the party", "empty bikini contest stage, house lights on", "empty house-party living room the morning after", "empty strip-club main floor before opening", "empty dance hall, chairs stacked"],
-    tail: "unique face, natural proportions pushed but plausible, photoreal, documentary fashion snapshot, amateur framing, imperfect exposure",
+    tail: "one unique face, natural proportions pushed but plausible, photoreal, documentary fashion snapshot, gorgeous and photogenic, healthy straight natural white teeth when smiling, single solo woman, one woman only",
     body: "UAE women IG model style body: busty, big tits, wide hips, thicc, curvy, thick ass, bubble butt, fake tits, narrow waist",
     heatBody: {
       tease: "huge ass bouncing, vulgar confident walk, barefoot or thin heels",
       spicy: "heavy G-cup swinging, puffy nipples through strained bikini, huge ass bouncing, thong cutting in, cameltoe, vulgar confident walk, barefoot or thin heels",
       xxx: "heavy G-cup swinging and slapping, dark areolas, puffy nipples, huge ass bouncing, thong cutting in, cameltoe, vulgar confident walk, barefoot or thin heels"
     },
-    builds: ["thicc curvy build", "busty hourglass with wide hips", "slim-thick with a bubble butt", "thick BBW-leaning curves", "voluptuous thick build"],
+    builds: ["thicc curvy build", "busty hourglass with wide hips", "slim-thick with a bubble butt", "voluptuous thick hourglass", "toned athletic-curvy build"],
     venues: ["packed indoor nightclub floor", "crowded backstage hallway at an indoor event", "packed indoor pool party", "crowded hotel ballroom afterparty", "packed indoor bikini contest stage", "crowded house party living room", "packed strip-club main floor", "crowded indoor booty-shake contest"],
     wardrobe: {
       tease: ["tight bodycon mini dress riding up", "bikini top and tiny thong shorts", "stretched crop top and booty shorts", "tight micro skirt and bandeau top"],
@@ -205,8 +270,9 @@
     // studio / beauty lighting from a look's own text fights the candid DNA
     dropRe: /\b(softbox\w*|three-point|high-key|studio\w*|glossy|polished|beauty\b|retouch\w*|strobe\w*|ring light|key light|warm key|soft key|fill light|rim light|lamp|catchlights?|\d{4}K|LED|spotless|no dark corners|flattering|clean whites|saturated|lifted shadows|staged|luxury|clean white set|office or gym|wide masters|punch-ins|mediums|sharp focus|warm skin|16:9|9:16|4:5|1:1)\b/i,
     // picks that fight the IG-model body (face / hair / nails); everything else stays random and unretouched
-    poolDrop: { hairColor: /gray|grey|silver|salt|roots/i, distinctiveFeature: /gold tooth|under-eye|glasses|ears that/i, nails: /bitten|chipped|short bare/i,
-      makeupLevel: /sweat-worn|day-old/i, heightFeel: /heavy-set|short-legged/i, hairTexture: /wiry|gray/i }
+    poolDrop: { hairColor: /gray|grey|silver|salt|roots/i, distinctiveFeature: /gold tooth|under-eye|glasses|ears that|gap (in |between )?(the )?front teeth|chipped|crooked teeth|meth|gummy smile/i, nails: /bitten|chipped|short bare/i,
+      makeupLevel: /sweat-worn|day-old/i, heightFeel: /heavy-set|short-legged/i, hairTexture: /wiry|gray/i,
+      faceShape: /hollow-cheek|asymmetr|gaunt/i, jawCheekbones: /hollow cheek|double chin/i, complexionDetail: /acne scar|blemishes|pockmark|haggard/i, build: /plus-size|BBW|obese|stocky|chubby/i }
   };
   // Style "None": no style preset and no candid Club DNA; the platform's own look + focus DNA drive the prompt.
   function noneOn() { return S.style === "none" && S.mash !== true; }
@@ -280,18 +346,18 @@
   function buildFace(r, used, recent) {
     var F = FACES, man = !!r.man, clean = cleanOn();
     for (var tries = 0; tries < 12; tries++) {
-      r.faceShape = facePick(man && F.male ? F.male.faceShape : F.faceShape, used.faceShape);
-      r._eyeShape = facePick(F.eyeShape, used.eyeShape);
+      r.faceShape = facePick(flawDrop(man && F.male ? F.male.faceShape : F.faceShape), used.faceShape);
+      r._eyeShape = facePick(flawDrop(F.eyeShape), used.eyeShape);
       var fam = F.eyeColor[eyeFamily(r)] || F.eyeColor.brown, col = facePick(fam);
       r.eyes = r._eyeShape + " " + col + " eyes"; r.eyeTint = col;
-      r.brows = facePick(F.brows, used.brows); r.nose = facePick(F.nose, used.nose); r.lips = facePick(F.lips, used.lips);
-      r._jaw = facePick(F.jaw, used.jaw);
+      r.brows = facePick(flawDrop(F.brows), used.brows); r.nose = facePick(flawDrop(F.nose), used.nose); r.lips = facePick(flawDrop(F.lips), used.lips);
+      r._jaw = facePick(flawDrop(F.jaw), used.jaw);
       var sig = faceSig(r); if (!recent[sig] && used.sigs.indexOf(sig) < 0) break;
     }
     // 4-6 extra traits; always 1-2 distinctive marks (Clean skin keeps marks that don't fight its negatives)
-    var marks = (F.marks || []).filter(function (m) { return !clean || !/birthmark|vitiligo|blotch|patch|depigment|hyperpigment|rosacea/i.test(m); });
+    var marks = flawDrop((F.marks || []).filter(function (m) { return !clean || !/birthmark|vitiligo|blotch|patch|depigment|hyperpigment|rosacea/i.test(m); }));
     var ex = [], nM = rnd() < 0.5 ? 1 : 2, m1 = facePick(marks, used.marks); ex.push(m1); if (nM > 1) ex.push(facePick(marks, used.marks.concat([m1])));
-    var opt = [["cheek", F.cheekbones], ["eyeD", F.eyeDetail], ["skin", F.skinTexture], ["expr", F.expression], ["hair", F.hairline]];
+    var opt = [["cheek", flawDrop(F.cheekbones)], ["eyeD", flawDrop(F.eyeDetail)], ["skin", flawDrop(F.skinTexture)], ["expr", flawDrop(F.expression)], ["hair", flawDrop(F.hairline)]];
     if (man && F.male) opt.push(["male", F.male.extra]);
     opt = shuffled(opt); var nX = 4 + Math.floor(rnd() * 3) - ex.length;
     var got = {}; opt.slice(0, Math.max(2, nX)).forEach(function (o) { got[o[0]] = facePick(o[1], used[o[0]] || []); });
@@ -465,24 +531,48 @@
   function focusDnaRaw(look) {
     if (!look) return []; var e = dnaEdits()[look.id]; if (Array.isArray(e)) return e;
     var d = dnaEntry(look); if (!d) return []; if (Array.isArray(d)) return d;
-    return dnaRich(look) ? d.keys : (d.sfw || []);
+    // Adult mode + adult look: full keys. Otherwise prefer sfw keys, else keys (signature still needed).
+    if (dnaRich(look)) return d.keys || [];
+    return (d.sfw && d.sfw.length ? d.sfw : (d.keys || []));
   }
   function dnaRotate(look) {
-    if (!dnaRich(look)) return [];
-    var rot = dnaEntry(look).rotate || {}, heat = heatFor(look), out = [];
+    var d = dnaEntry(look); if (!d || Array.isArray(d) || !d.rotate) return [];
+    var rot = d.rotate || {}, heat = heatFor(look), out = [];
     var sabOn = walkStyle(look);   // the style owns set + wardrobe
     var ideaFit = ideaOutfit(S._ideaNow), ideaSetR = !sabOn && ideaSetting(S._ideaNow);
-    Object.keys(rot).forEach(function (k) { if (sabOn && /^(location|wardrobe|setting|outfit)$/.test(k)) return; if (ideaFit && /^(wardrobe|outfit|styling)$/.test(k)) return; if (ideaSetR && /^(location|setting|scene|venue)$/.test(k)) return; var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || []; var t = cleanDnaToken(pick(pool)); if (k === "location" && t) S._dnaLoc = t; if (t && !(sabOn && walkMuted(t))) out.push(t); });
+    // Prefer lighting/mood/energy/camera/content first so consecutive Remixes never share the same vibe
+    var order = ["lighting", "mood", "energy", "camera", "content", "location", "wardrobe"].concat(Object.keys(rot));
+    var seen = {};
+    order.forEach(function (k) {
+      if (seen[k] || !rot[k]) return; seen[k] = 1;
+      if (sabOn && /^(location|wardrobe|setting|outfit)$/.test(k)) return;
+      if (ideaFit && /^(wardrobe|outfit|styling)$/.test(k)) return;
+      if (ideaSetR && /^(location|setting|scene|venue)$/.test(k)) return;
+      var pool = rot[k]; if (!Array.isArray(pool)) pool = pool[heat] || pool.tease || [];
+      var t = cleanDnaToken(pick(pool, HIST["dnaRot_" + k])); if (!t) return;
+      remember("dnaRot_" + k, t);
+      if (k === "location") S._dnaLoc = t;
+      if (!(sabOn && walkMuted(t))) out.push(t);
+    });
     S._dnaLast = out.join(", ");
     return out;
   }
   function focusDna(look, withRotate) {
     var keys = focusDnaRaw(look).map(cleanDnaToken).filter(Boolean);
     var mute = walkStyle(look);
-    return uniqList(keys).filter(function (t) {
-      if (mute && walkMuted(t)) return false;   // walk styles own camera + scene; keep the look's lighting / grade
-      return S.cam !== "iphone" || !GEAR_RE.test(t);   // iPhone mode: one camera only, drop lens/camera keys
-    }).slice(0, 8).concat(withRotate ? dnaRotate(look) : []);
+    // Keep the platform's clear signature (non-lighting) tight — max 4 — so rotate mood/light/energy can breathe
+    var LIGHT_KEY_RE = /\b(light|lighting|lit|flash|sun|daylight|golden[- ]hour|lamp|neon|fairy|string lights|ring[- ]light|moody light|window|backlight|practical|catchlights?|glow|illuminat|beauty-dish|frontal fill)\b/i;
+    var sig = [], lightFixed = [];
+    uniqList(keys).forEach(function (t) {
+      if (mute && walkMuted(t)) return;
+      if (S.cam === "iphone" && GEAR_RE.test(t)) return;
+      if (LIGHT_KEY_RE.test(t)) lightFixed.push(t); else sig.push(t);
+    });
+    // At most one fixed lighting cue (prefer "alive catchlights"); the rest comes from rotate.lighting
+    var keepLight = lightFixed.filter(function (t) { return /alive catchlights|catchlights in the eyes/i.test(t); }).slice(0, 1);
+    if (!keepLight.length && lightFixed.length) keepLight = [lightFixed[0]];
+    var rotated = withRotate ? dnaRotate(look) : [];
+    return sig.slice(0, 4).concat(keepLight).concat(rotated);
   }
   function dnaEdited(look) { return !!(look && Array.isArray(dnaEdits()[look.id])); }
   var DNA_LIGHT_RE = /\b(light|lighting|lit|flash|sun|daylight|golden[- ]hour|key|backlight|gels?|strobes?|neon|haze|practicals?|lamp)\b/i;
@@ -623,7 +713,7 @@
   // top Focus DNA traits) at the Focus DNA weight, adds 1-2 oddly specific real-life micro details per Remix, and
   // anti-generic negatives (same conflict filter as above). Adult-only details; clutter details skipped on Room=Clean
   // and on walk styles (their empty room stays empty).
-  var AG_NO = ["generic", "stock pose", "cliché", "basic composition", "centered portrait", "default AI face", "same-face", "bland", "cookie-cutter", "overused pose"];
+  var AG_NO = ["generic", "stock pose", "cliché", "basic composition", "centered portrait", "default AI face", "same-face", "bland", "cookie-cutter", "overused pose", "dead eyes", "blank stare", "lifeless expression", "stiff pose", "boring static standing pose", "mannequin", "passport photo"];
   var AG_DETAILS = ["chipped nail polish on one nail", "sweat on the upper lip", "hair tie on her wrist", "slightly smudged mascara", "faint tan line at the shoulder", "wrinkled shirt hem", "a stray hair across her cheek",
     "lip balm shine slightly uneven", "a small healed scar on the knee", "freckles across the nose", "a bra strap mark on the shoulder", "goosebumps on the forearms", "a loose thread on the sleeve", "faint crease lines from a pillow on the cheek",
     "one earring slightly crooked", "a ring on the thumb", "a smartwatch with a scratched face", "a thin gold anklet", "flyaway fine hairs at the hairline", "a faint sock-line mark on the ankles",
@@ -633,7 +723,7 @@
     "a smear of lip gloss on a cup rim", "car keys clipped to a lanyard", "a cracked phone screen protector", "a coffee cup with a lipstick mark", "a crumpled receipt", "a half-drunk water bottle with condensation", "a phone with a chunky case",
     "a hoodie string chewed at the end", "a tote bag slumped by the door", "sunglasses pushed up into the hair", "a bandage on one finger", "a hair strand stuck to lip gloss", "a small tattoo slightly faded", "shoe straps leaving a mark on the ankle",
     "a dusting of glitter left on the cheekbone", "a damp towel over the shoulder", "an iced coffee sweating a ring onto the surface", "headphones around the neck", "a tangle of necklaces", "a phone in the back pocket",
-    "socks with a hole at the toe", "a sunburn line on the nose", "a slightly uneven eyeliner wing", "a tiny chip in a front-tooth veneer", "a jacket slipping off one shoulder", "a lighter and keys on a ledge", "a takeout cup with a bent straw"];
+    "socks with a hole at the toe", "a sunburn line on the nose", "a slightly uneven eyeliner wing", "a jacket slipping off one shoulder", "a lighter and keys on a ledge", "a takeout cup with a bent straw"];
   var AG_CLUTTER = ["a phone charger cable on the floor", "a receipt on the dresser", "an open makeup bag spilling onto the counter", "a pile of clothes on a chair", "a half-eaten snack bag on the bed", "an empty energy drink can on the nightstand",
     "a hairbrush with hair in it on the counter", "a tangle of cables behind the TV", "shoes kicked off by the door", "an overflowing laundry basket", "a crumpled bedsheet corner", "takeout boxes on the table", "a bobby-pin dish knocked over",
     "sticky notes on the mirror", "a ring light cable taped to the floor", "a used towel on the bathroom floor"];
@@ -641,7 +731,7 @@
   function agOn() { return S.antiGeneric !== false; }
   function agCleanRoom(look) { return S._roomUsed === "clean" || walkStyle(look) || S.style === "sabaddie" || S.style === "roomwalk"; }
   function agDetails(look) {
-    var pool = AG_DETAILS.concat(agCleanRoom(look) ? [] : AG_CLUTTER), out = [], n = Math.random() < 0.5 ? 1 : 2;
+    var pool = AG_DETAILS.concat(agCleanRoom(look) ? [] : AG_CLUTTER), out = [], n = 1;  // one micro-detail only — never bury Zig's clear signal
     if (ideaOutfit(S._ideaNow)) pool = pool.filter(function (d) { return !new RegExp("\\b" + OTHER_GARMENT + "\\b|\\b(bra strap|jacket|socks|hoodie)\\b", "i").test(d); });   // idea outfit: no other garments
     var spD = !agCleanRoomWalk(look) && settingPhrase(S._ideaNow);
     if (spD) { var reD = settingScrubRe(spD); pool = pool.filter(function (d) { return !reD.test(d); }); }   // idea setting: no details from another room
@@ -797,6 +887,7 @@
     var dna = focusDna(look, true); if (!dna.length) return text;
     text = dnaDeconflict(text, dna);
     S._focusW = "::" + DNA_W[dnaW()] + " ";
+    // Clear signal first: platform look name + signature DNA (rotated mood/light/energy). Anatomy rides along.
     var seg = lookName(look) + " look, " + dna.join(", ") + (anatomyOn() ? ", " + ANATOMY_MJ : "") + S._focusW;
     var k = text.indexOf("::2 "), chip = dnaChip(look, null).join(", ");
     // right after the idea segment (idea::2); with no idea typed it goes at the very front
@@ -1132,7 +1223,7 @@
   // Style casts are voluptuous IG-type bodies: skip face picks that fight that (faces stay unique and unretouched).
   var STYLE_SOFT = { eyes: /heterochrom|small bright|laugh lines/i, brows: /unibrow|scar|uneven/i, nose: /hooked|crooked|flared/i, lips: /thin|uneven|downturned|gap|crooked/i,
     jawCheekbones: /double chin|hollow|low flat/i, faceShape: /asymmetric|pear-shaped/i, hairColor: /gray|grey|silver|salt|roots/i, hairStyle: /buzz/i, hairTexture: /wiry|gray|frizz/i };
-  function stylePool(k) { var P = S.variety.pools, a = cleanPool(glamPool(P[k], k), k) || []; return STYLE_SOFT[k] ? a.filter(function (x) { return !STYLE_SOFT[k].test(x); }) : a; }
+  function stylePool(k) { var P = S.variety.pools, a = flawDrop(cleanPool(glamPool(P[k], k), k)) || []; return STYLE_SOFT[k] ? a.filter(function (x) { return !STYLE_SOFT[k].test(x); }) : a; }
   // Every woman in a style cast gets her own features: no two share a face shape, eyes, nose, lips, jaw or hairstyle.
   function distinctCast(cast, keys) {
     var P = S.variety.pools;
@@ -1328,7 +1419,7 @@
   function heatBlock(look, idea, body, params) {
     var H = window.PMHeatBlock; look = look || {};
     if (!H || !(twerkOn() || H.detect(idea, look.id, look.name, look.title))) return { body: body, params: params };
-    var all = H.apply(String(body || "") + (params ? " " + params : ""), { force: true, adult: isAdult() && !!look.adult, camPicked: true, men: S.castMix === "men" });
+    var all = H.apply(String(body || "") + (params ? " " + params : ""), { force: true, adult: isAdult() && !!look.adult, camPicked: true, men: S.castMix === "men", people: peopleN() });
     if (!params) return { body: all, params: params };
     var k = all.search(/\s--(?:ar|v|no|stylize|chaos|seed|style|q|quality|weird|motion|niji|iw|repeat|tile|raw|s)\b/);
     return k >= 0 ? { body: all.slice(0, k), params: all.slice(k).trim() } : { body: all, params: params };
@@ -1342,13 +1433,13 @@
   var FRESH_SIG = ["faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "hairStyle", "hairColor", "skinTone", "heritageRegion"];
   // Small structural traits (no skin marks) that make each face one-off; 2 per face.
   var FRESH_MICRO = ["slightly asymmetric smile", "wide-set eyes", "close-set eyes", "low nose bridge", "high nose bridge", "faint chin cleft", "single dimple on the left cheek",
-    "pronounced philtrum", "upturned outer eye corners", "downturned outer eye corners", "heavier upper eyelids", "slight overbite", "small gap between front teeth", "strong brow ridge",
+    "pronounced philtrum", "upturned outer eye corners", "downturned outer eye corners", "heavier upper eyelids", "slight overbite", "strong brow ridge",
     "soft rounded chin", "pointed chin", "broad forehead", "short forehead", "slightly uneven eyebrows", "one eyebrow a little higher", "full cheeks", "sharp cupid's bow",
     "wide nostrils", "narrow nostrils", "long philtrum", "short upper lip", "fuller upper lip", "prominent cheekbones on one side", "small ears close to the head", "visible smile lines",
-    "deep-set eyes", "slightly crooked smile", "rounded nose tip", "subtle bump on the nose bridge", "square jaw corners", "soft jaw corners", "long neck", "wide mouth"];
-  var FRESH_SKIN = "real human skin: visible pores, peach fuzz, uneven tone, natural sweat sheen, fine texture and tiny natural imperfections, never plastic, never waxy, never airbrushed, no beauty filter";
+    "deep-set eyes", "warm bright smile", "rounded nose tip", "subtle bump on the nose bridge", "square jaw corners", "soft jaw corners", "long neck", "wide mouth"];
+  var FRESH_SKIN = "real human skin: visible pores, soft peach fuzz, healthy radiant tone, natural sweat sheen, fine natural texture, never plastic, never waxy, never airbrushed, no beauty filter, never gaunt or haggard";
   var FRESH_FACE = "a brand-new one-off face never seen before, not a stock model face, not a generic AI face";
-  var FRESH_NO = "plastic skin, waxy skin, airbrushed skin, beauty filter, porcelain doll skin, smooth CGI skin, overly retouched skin, generic model face, same face, doll face";
+  var FRESH_NO = "plastic skin, waxy skin, airbrushed skin, beauty filter, porcelain doll skin, smooth CGI skin, overly retouched skin, generic model face, same face, doll face, missing teeth, bad teeth, gaunt hollow face, strung-out look, cloned faces, extra people in background";
   function freshOn() { return S.fresh === true; }
   function freshStore() { try { return JSON.parse(localStorage.getItem(FRESH_KEY) || "[]"); } catch (e) { return []; } }
   function freshSave(a) { try { localStorage.setItem(FRESH_KEY, JSON.stringify(a.slice(-FRESH_MAX))); } catch (e) {} }
@@ -1371,7 +1462,7 @@
           // re-roll the core face features first, then a random extra (clean-skin + glam/style filters still apply)
           var core = keys.filter(function (k) { return FRESH_SIG.indexOf(k) < 6; }).sort(function () { return rnd() - 0.5; }).slice(0, 3);
           core.concat(keys.slice().sort(function () { return rnd() - 0.5; }).slice(0, 1)).forEach(function (k) {
-            var pool = cleanPool(glamPool(P[k], k), k) || []; if (STYLE_SOFT[k] && st !== "club") pool = pool.filter(function (x) { return !STYLE_SOFT[k].test(x); });
+            var pool = flawDrop(cleanPool(glamPool(P[k], k), k)) || []; if (STYLE_SOFT[k] && st !== "club") pool = pool.filter(function (x) { return !STYLE_SOFT[k].test(x); });
             if (pool.length) r[k] = pick(pool);
           });
         }
@@ -1726,7 +1817,7 @@
     return pool[Math.floor(rnd() * pool.length)];
   }
   var HIST = {};
-  function remember(k, v) { var a = HIST[k] || (HIST[k] = []); a.push(v); if (a.length > 4) a.shift(); }
+  function remember(k, v) { var a = HIST[k] || (HIST[k] = []); a.push(v); var lim = (k === "skinTone" || k === "heritageRegion" || k === "toneBand") ? 8 : 4; if (a.length > lim) a.shift(); }
   function fill(tpl, o) { return String(tpl).replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ""; }); }
 
   // ---- State ----------------------------------------------------------------------
@@ -1782,15 +1873,18 @@
     r.wardrobe = (lw.length && rnd() >= FALLBACK_P) ? pick(lw, L.wardrobe) : pick(glam ? GLAM.wardrobe : (P.wardrobe || []).filter(ok), L.wardrobe);
     r.spicyWardrobe = pick(SPICY_WARDROBE, L.spicyWardrobe);
     r.xxxWardrobe = pick(XXX_WARDROBE, L.xxxWardrobe);
-    ["skinTone", "heritageRegion", "faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "complexionDetail", "distinctiveFeature",
-      "hairColor", "hairStyle", "hairTexture", "build", "heightFeel", "makeupLevel", "nails", "tattoosPiercings"].forEach(function (k) { r[k] = pick(cleanPool(glamPool(P[k], k), k), L[k]); });
+    ["heritageRegion", "faceShape", "eyes", "brows", "nose", "lips", "jawCheekbones", "complexionDetail", "distinctiveFeature",
+      "hairColor", "hairStyle", "hairTexture", "build", "heightFeel", "makeupLevel", "nails", "tattoosPiercings"].forEach(function (k) { r[k] = pick(flawDrop(cleanPool(glamPool(P[k], k), k)), L[k]); });
+    r.skinTone = pickToneRotated(cleanPool(glamPool(P.skinTone, "skinTone"), "skinTone"), L.skinTone);
     // ageBand: adult bands only (all 21+); refuse anything that isn't.
     var bands = (P.ageBand || []).filter(function (b) { var n = parseInt(b, 10); return n >= 21; });
     if (glam) bands = MATURE_LOOKS[look.id] ? ["33-40", "41-50"] : ["21-25", "21-25", "26-32", "26-32", "33-40"];  // all 21+
     r.ageBand = pick(bands.length ? bands : ["26-32"], L.ageBand);
     if (glam) r.beauty = pick(BEAUTY_LINE);
+    else if (beautyBaseOn()) r.beauty = BASE_BEAUTY;
+    // Always scrub tooth/gaunt/crackhead / unflattering body tokens from the roll
+    Object.keys(DNA.poolDrop).forEach(function (k) { if (r[k] && DNA.poolDrop[k].test(r[k])) { var o = flawDrop(cleanPool(P[k], k)).filter(function (x) { return !DNA.poolDrop[k].test(x); }); if (o.length) r[k] = pick(o); } });
     if (dnaOn(look)) {
-      Object.keys(DNA.poolDrop).forEach(function (k) { if (DNA.poolDrop[k].test(r[k] || "")) { var o = cleanPool(P[k], k).filter(function (x) { return !DNA.poolDrop[k].test(x); }); if (o.length) r[k] = pick(o); } });
       r.dna = true; r.build = pick(DNA.builds, L.dnaBuild); remember("dnaBuild", r.build);
       if (leanOn(look) || rnd() < 0.6) r.venue = pick(crowdOn() ? DNA.venues : DNA.soloVenues, L.dnaVenue); remember("dnaVenue", r.venue);
       if (!crowdOn() && CROWD_RE.test(r.venue)) r.venue = pick(DNA.soloVenues);
@@ -1804,18 +1898,22 @@
   }
   function realism(look, heat) {
     if (dnaOn(look)) {
-      var grpD = S.groupScene ? (S.people > 1 ? S.people + " distinct adults 21+ in frame" : "group scene") + ", every person a distinct adult 21+ with a unique face" : "one woman per frame preferred";
-      return [DNA.real, grpD, "adult woman 21+", DNA.tail].join(", ");   // his exact wording (clean-skin pool filter still applies to the random picks)
+      var grpD = S.groupScene ? (S.people > 1 ? S.people + " distinct adults 21+ in frame" : "group scene") + ", every person a distinct adult 21+ with a unique face" : BASE_SOLO;
+      return [DNA.real, grpD, "adult woman 21+", BASE_BEAUTY, DNA.tail].join(", ");
     }
     var b = String(look.realismBlock || "").replace(/photoreal documentary snapshot/gi, "photoreal candid snapshot");
-    if (heat && heat !== "tease") b = b.replace(/natural sweat sheen only where skin heats/gi, "glistening skin, natural sweat sheen").replace(/,\s*dirty sensor spots/gi, "").replace(/,\s*imperfect exposure/gi, "");
+    // Scrub mugshot/crackhead camera stack from look realism blocks
+    b = b.replace(/,?\s*dirty sensor spots/gi, "").replace(/,?\s*imperfect exposure/gi, "").replace(/,?\s*amateur framing/gi, "").replace(/,?\s*slight motion blur/gi, "").replace(/ordinary mixed available light/gi, "natural available light").replace(/not studio,?\s*not beauty lighting/gi, "natural real-camera light");
+    if (heat && heat !== "tease") b = b.replace(/natural sweat sheen only where skin heats/gi, "glistening skin, natural sweat sheen");
     if (S.groupScene) {
       var grp = (S.people > 1 ? S.people + " distinct adults 21+ in frame" : "group scene") + ", every person a distinct adult 21+ with a unique face, different skin tones, hair and outfits";
       b = b.replace(/one (woman|character) per frame( unless the group toggle is on)?/gi, grp);
       if (b.indexOf(grp) < 0) b += ", " + grp;
     } else {
       b = b.replace(/one (woman|character|person) per frame unless the group toggle is on/gi, "one $1 per frame");
-      if (!/one (woman|character|person) per frame/i.test(b)) b += ", one woman per frame";
+      if (b.indexOf("single solo woman") < 0) b += ", " + BASE_SOLO;
+      if (beautyBaseOn() && b.indexOf("gorgeous") < 0) b += ", " + BASE_BEAUTY;
+      if (beautyBaseOn() && b.indexOf("healthy straight natural white teeth") < 0) b += ", healthy straight natural white teeth when smiling";
     }
     return beautySoften(cleanSkinText(b.replace(/\s*unless the group toggle is on/gi, "")));
   }
@@ -1827,6 +1925,7 @@
     suf = suf.replace(/--stylize\s+\d+/i, "--stylize " + stylizeOf(look));
     if (/--v\s+6/.test(suf) && !/--style raw/.test(suf)) suf = suf.replace(/(--v\s+[\d.]+)/, "$1 --style raw");
     suf = addCleanNo(suf);
+    suf = addBaseNo(suf);
     if (beautyOn()) suf = /--no\s+/i.test(suf) ? suf.replace(/--no\s+(.*)$/i, function (_, l) { return addBeautyNo("--no " + l); }) : suf + " " + addBeautyNo("");
     return suf + " --seed " + seed;
   }
@@ -1835,6 +1934,11 @@
     if (!on) return suf;
     if (/--no\s+/i.test(suf)) return suf.replace(/--no\s+(.*)$/i, function (_, list) { list = list.replace(/[,\s]+$/, ""); return "--no " + (list ? list + ", " : "") + CLEAN_SKIN_NO; });
     return (suf ? suf + " " : "") + "--no " + CLEAN_SKIN_NO;
+  }
+  function addBaseNo(suf) {
+    if (!beautyBaseOn()) return suf;
+    if (/--no\s+/i.test(suf)) return suf.replace(/--no\s+(.*)$/i, function (_, list) { list = list.replace(/[,\s]+$/, ""); return "--no " + (list ? list + ", " : "") + BASE_NO; });
+    return (suf ? suf + " " : "") + "--no " + BASE_NO;
   }
   // Wardrobe for this roll: idea clothing > heat wardrobe > look/pool wardrobe.
   function wardrobeFor(idea, heat, r) {
@@ -1938,6 +2042,10 @@
     var tw = crowdOn() ? "crowd or judges hyping her up" : "solo show straight to camera";
     var o = twerkOn() ? assembleMJ0(look, twerkIdea(idea), r, seed, heat) + ", " + TWERK.mj.replace("{crowd}", tw) : assembleMJ0(look, idea, r, seed, heat);
     if (crowdOn() && styleOf(look) !== "club") o += ", " + CROWD_LINE;
+    // Style paths (non-club) may skip assembleMJ0 energy — guarantee live eyes/energy here once
+    if (o.indexOf("alive") < 0 && o.indexOf("mid-laugh") < 0 && o.indexOf("smirk") < 0 && o.indexOf("locked-in") < 0 && o.indexOf("side-eye") < 0 && o.indexOf("lip-bite") < 0 && o.indexOf("come-hither") < 0 && o.indexOf("mid-motion") < 0) {
+      o += ", " + liveEnergy();
+    }
     return realMJ(artApply(stampMJ(chipMJ(pluralCast(noCrowdList(o + mashLine("mj")) + (freshOn() ? ", " + FRESH_FACE + ", " + FRESH_SKIN : ""), Array.isArray(r) ? r : [r]), look, Array.isArray(r) ? r : [r]), look), "mj", look), look);
   }
   function assembleMJ0(look, idea, r, seed, heat) {
@@ -1958,11 +2066,13 @@
     head = camScrubList(head, look, "mj"); real = dna ? real : camScrubList(real, look, "mj");
     if (dna) head = dnaList(head);  // only one camera in the prompt
     var lean = leanOn(look); if (lean) head = "";   // his DNA leads: no generic look camera / set / lighting / framing text
+    var energy = liveEnergy();
     var parts = [
-      cast.length > 1 ? cast.length + " distinct adults 21+ together in one frame" : "",
+      cast.length > 1 ? cast.length + " distinct adults 21+ together in one frame" : BASE_SOLO,
       beat,                                   // one idea-matched beat (generic setup beats dropped)
       ex,                                     // a phrase from Zig's liked examples, if any
       pick(HEAT_LEADS[heat] || [HEAT[heat].lead]),  // heat wording (Tease / Spicy / XXX), varied per roll
+      energy,                                 // live eyes / expression / mid-motion — never dead-eyed
       lean && dna ? "" : camLine(look, "mj"), // camera: platform gear or iPhone (DNA already says candid iPhone)
       head,                                   // mjPrompt without {idea}
       lean && !dna && !crowdOn() && CROWD_RE.test(r.venue || "") ? "" : fill(V2.venue, r),   // venue
@@ -2054,6 +2164,8 @@
     // a rotated Focus DNA lighting pick (e.g. softbox high-key) must not be negated by the look's own --no list
     if (dnaRich(look) && /softbox/i.test(S._dnaLast || "") && bk.no) bk.no = bk.no.replace(/,?\s*studio softbox/i, "");
     if (anatomyOn()) { var hvA = String(bk.no || "").toLowerCase(), adA = ANATOMY_NO.filter(function (x) { return hvA.indexOf(x) < 0; }).join(", "); if (adA) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adA : "--no " + adA; }
+    if (beautyBaseOn()) { var hvB = String(bk.no || "").toLowerCase(), adB = BASE_NO.split(", ").filter(function (x) { return hvB.indexOf(x.toLowerCase()) < 0; }).join(", "); if (adB) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adB : "--no " + adB; }
+    if (beautyOn()) { var hvG = String(bk.no || "").toLowerCase(), adG = BEAUTY_NO.split(", ").filter(function (x) { return hvG.indexOf(x.toLowerCase()) < 0; }).join(", "); if (adG) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adG : "--no " + adG; }
     if (S._roomUsed === "clean" && !walkStyle(look) && S.style !== "sabaddie" && S.style !== "roomwalk") { var hvC = String(bk.no || "").toLowerCase(), adC = ["messy room", "unmade bed", "trash on the floor"].filter(function (x) { return hvC.indexOf(x) < 0; }).join(", "); if (adC) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adC : "--no " + adC; }
     var rN = realNoTerms(look, S._lastBody);
     if (rN.length) { var hvR = String(bk.no || "").toLowerCase(), adR = rN.filter(function (x) { return hvR.indexOf(x.toLowerCase()) < 0; }).join(", "); if (adR) bk.no = bk.no ? bk.no.replace(/[,\s]+$/, "") + ", " + adR : "--no " + adR; }

@@ -1,47 +1,58 @@
-/* Dance / Twerk / Hip-Hop Heat Block (v20261102a)
+/* Dance / Twerk / Hip-Hop Heat Block (v20261106a)
  * One shared block that every prompt path (Builder, Remix, Platform Looks) appends when the prompt
  * is dance / twerk / hip-hop themed. Adult tiers (NSFW / XXX, or the Builder's 18+ toggle with the
  * age check) get the full heat wording; every other tier gets a toned-down, clothed version.
- * Hard limits always ride along: adult women 21+, unique realistic faces, mixed ethnicities and
- * body types, no real people or celebrities, anatomically accurate.
- * The user's own camera / style / lighting / body picks always win over the defaults here.
+ * Hard limits always ride along: adult women 21+, one unique realistic face per subject, healthy
+ * radiant skin + healthy teeth, no real people or celebrities, anatomically accurate.
+ * NEVER inject "mixed ethnicities and body types" into a single image prompt (that makes image
+ * models spawn clones or average every ethnicity into the same generic brown-skinned woman).
+ * NEVER stack disposable-camera + harsh shadows + raw unretouched into a mugshot/crackhead look.
+ * The user's own camera / style / lighting / body / cast picks always win over the defaults here.
  */
 (function () {
   "use strict";
-  var V = "20261102a";
+  var V = "20261106a";
   var DANCE_RE = /\b(twerk\w*|hip[\s-]?hop\w*|dance(?:s|rs?|hall)?|dancing|choreo\w*|perreo|reggaeton|krump\w*|booty[\s-]?(?:shak\w*|bounc\w*|pop\w*|clap\w*)|bounce[\s-]music|video[\s-]vixens?|tiktok[\s-]trends?|dance[\s-]?trends?|club[\s-]bounce|hip[\s-]roll\w*|body[\s-]roll\w*)\b/i;
 
   var ADULT = {
-    subject: "curvy voluptuous thick women, heavy jiggle physics on ass and thighs, oiled sweaty skin, tiny shorts or sports bras riding up, looking back over shoulder into camera, provocative flirty but raw adult energy, not modest or family-friendly",
+    subject: "one curvy voluptuous thick woman, heavy jiggle physics on ass and thighs, oiled sweaty skin, tiny shorts or sports bras riding up, looking back over shoulder into camera, provocative flirty but raw adult energy, not modest or family-friendly",
     subjectNoBody: "heavy jiggle physics on ass and thighs, oiled sweaty skin, tiny shorts or sports bras riding up, looking back over shoulder into camera, provocative flirty but raw adult energy, not modest or family-friendly",
     heat: "spicy, kinky, raunchy, physics-focused adult content",
-    avoid: ["joyful group fitness", "modest clothing", "family-friendly", "overly polished", "static clean studio energy"]
+    avoid: ["joyful group fitness", "modest clothing", "family-friendly", "overly polished", "static clean studio energy", "missing teeth", "bad teeth", "crooked teeth", "meth mouth", "gaunt hollow face", "strung-out look", "sunken eyes", "haggard", "extra people in background", "photobomber", "cloned faces", "multiple copies of same person", "background bystanders"]
   };
   var SAFE = {
-    subject: "curvy confident women with real curves, natural bounce and movement in the dance, glowing skin, fitted athletic shorts or crop tops and streetwear, looking back over shoulder into camera, bold flirty confident energy",
-    subjectNoBody: "natural bounce and movement in the dance, glowing skin, fitted athletic shorts or crop tops and streetwear, looking back over shoulder into camera, bold flirty confident energy",
+    subject: "one curvy confident woman with real curves, natural bounce and movement in the dance, glowing healthy skin, fitted athletic shorts or crop tops and streetwear, looking back over shoulder into camera, bold flirty confident energy",
+    subjectNoBody: "natural bounce and movement in the dance, glowing healthy skin, fitted athletic shorts or crop tops and streetwear, looking back over shoulder into camera, bold flirty confident energy",
     heat: "",
-    avoid: ["joyful group fitness", "overly polished", "static clean studio energy"]
+    avoid: ["joyful group fitness", "overly polished", "static clean studio energy", "missing teeth", "bad teeth", "gaunt hollow face", "strung-out look", "haggard", "extra people in background", "photobomber", "cloned faces", "multiple copies of same person", "background bystanders"]
   };
-  var CAMERA = "photorealistic, direct flash photography or golden hour, 35mm disposable camera, film grain, harsh shadows, candid, raw, unretouched";
-  var CAMERA_NO_LIGHT = "photorealistic, 35mm disposable camera, film grain, harsh shadows, candid, raw, unretouched";
-  var LIMITS_W = "all subjects adult women 21+, unique realistic faces, mixed ethnicities and body types, no real people or celebrities, anatomically accurate";
-  var LIMITS_A = "all subjects adults 21+, unique realistic faces, mixed ethnicities and body types, no real people or celebrities, anatomically accurate";
+  // Beauty-safe candid camera: real-camera heat WITHOUT disposable-camera mugshot / harsh-shadow crackhead triggers.
+  var CAMERA = "photorealistic, direct flash photography or golden hour, soft natural film grain, candid, authentic real-camera look, healthy radiant skin with natural texture";
+  var CAMERA_NO_LIGHT = "photorealistic, soft natural film grain, candid, authentic real-camera look, healthy radiant skin with natural texture";
+  // Singular face + beauty anchors. NO "mixed ethnicities and body types" (causes clones / same brown girl).
+  var LIMITS_W = "one adult woman 21+, one unique realistic face, gorgeous and photogenic, healthy radiant skin, bright clear eyes, healthy straight natural white teeth when smiling, no real people or celebrities, anatomically accurate, single solo woman, one woman only, no extra people in background, no background bystanders, no duplicate or cloned women";
+  var LIMITS_A = "all subjects adults 21+, each with one unique realistic face, gorgeous and photogenic, healthy radiant skin, healthy straight natural white teeth when smiling, no real people or celebrities, anatomically accurate, no duplicate or cloned faces, no extra bystanders";
+  var LIMITS_W_GROUP = "all subjects adult women 21+, each with one unique realistic face, gorgeous and photogenic, healthy radiant skin, healthy straight natural white teeth when smiling, no real people or celebrities, anatomically accurate, no duplicate or cloned faces";
   var MARK = "looking back over shoulder into camera";
 
   function detect() { for (var i = 0; i < arguments.length; i++) { var a = arguments[i]; if (a != null && DANCE_RE.test(String(a))) return true; } return false; }
   function ctxAdult() { try { return !!(window.PMCtx && window.PMCtx.read().adult); } catch (e) { return false; } }
 
-  // o: { adult, camPicked, lightPicked, bodyPicked, men }
+  // o: { adult, camPicked, lightPicked, bodyPicked, men, people }
   function blocks(o) {
     o = o || {};
     var P = o.adult ? ADULT : SAFE;
+    var n = parseInt(o.people, 10) || 1;
+    var limits;
+    if (o.men) limits = LIMITS_A;
+    else if (n > 1) limits = LIMITS_W_GROUP;
+    else limits = LIMITS_W;
     return {
       adult: !!o.adult,
       subject: o.bodyPicked ? P.subjectNoBody : P.subject,
       heat: P.heat,
       camera: o.camPicked ? "" : (o.lightPicked ? CAMERA_NO_LIGHT : CAMERA),
-      limits: o.men ? LIMITS_A : LIMITS_W,
+      limits: limits,
       avoid: P.avoid.slice()
     };
   }
@@ -87,7 +98,8 @@
       camPicked: !!(t.lens || t.filmStock || t.medium || t.styleTag || t.renderEngine || (t.artistRefs && t.artistRefs.length)),
       lightPicked: !!lp,
       bodyPicked: !!(t.bodyType || t.build),
-      men: t.gender === "male"
+      men: t.gender === "male",
+      people: 1
     });
     b.add = adds(b).filter(function (x) { return !has(text, x); });
     return b;

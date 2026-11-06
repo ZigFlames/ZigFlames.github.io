@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "20261106a",
   "description": "Shared randomizer pools for the Prompt Machine Remix. One pick per pool per Remix. All people are adults 21+; no real or celebrity names; no youthful cues.",
   "rules": [
     "one person per frame unless the group toggle is on",
@@ -26,7 +26,7 @@
     "body": "{hairColor} {hairTexture} hair in {hairStyle}, {build}, {heightFeel}, adult woman aged {ageBand}",
     "styling": "{wardrobe}, {makeupLevel}, {nails}, {tattoosPiercings}"
   },
-  "candidSkeleton": "candid iPhone photo, slight motion blur, dirty sensor spots, ordinary mixed indoor lighting, not studio, not beauty lighting, unretouched skin with pores, peach fuzz, uneven tone, sweat sheen only where bodies heat, flyaway hairs, real body weight in motion, unique face, natural proportions pushed but physically plausible, one woman per frame, adult woman 21+, photoreal, documentary fashion snapshot, amateur framing, imperfect exposure",
+  "candidSkeleton": "candid iPhone photo, natural available light, healthy radiant skin with natural texture and real pores, soft peach fuzz, natural sweat sheen only where bodies heat, flyaway hairs, real body weight in motion, unique face, natural proportions pushed but physically plausible, one woman per frame, adult woman 21+, photoreal, documentary fashion snapshot, gorgeous and photogenic, healthy straight natural white teeth when smiling",
   "candidParamsExample": "--ar 2:3 --style raw --s 40 --q 1 --c 8 --v 6.1",
   "antiCloneCore": [
     "text",
@@ -43,7 +43,20 @@
     "CGI",
     "3D render",
     "extra limbs",
-    "melted anatomy"
+    "melted anatomy",
+    "missing teeth",
+    "bad teeth",
+    "crooked teeth",
+    "meth mouth",
+    "gaunt hollow face",
+    "strung-out look",
+    "sunken eyes",
+    "haggard",
+    "extra people in background",
+    "photobomber",
+    "cloned faces",
+    "multiple copies of same person",
+    "background bystanders"
   ],
   "antiCloneByTier": {
     "candid_add": [
@@ -121,7 +134,7 @@
       "narrow and angular",
       "pear-shaped jaw-forward",
       "triangular with broad forehead",
-      "asymmetric features"
+      "softly balanced features"
     ],
     "eyes": [
       "deep-set dark brown eyes",
@@ -188,8 +201,8 @@
       "wide jaw",
       "low flat cheekbones",
       "dimpled chin",
-      "double chin, soft jawline",
-      "hollow cheeks",
+      "soft full jawline",
+      "soft defined cheeks",
       "rounded apple cheeks",
       "angular jaw with defined masseter"
     ],
@@ -216,17 +229,16 @@
     "complexionDetail": [
       "visible pores",
       "freckles across nose",
-      "acne scars",
       "faint rosacea",
       "sun spots",
       "stretch marks",
       "fine lines at eyes",
-      "uneven pigmentation",
       "peach fuzz",
       "beauty mark on cheek",
       "oily T-zone shine",
-      "dry patches",
-      "hyperpigmentation around mouth"
+      "healthy radiant glow",
+      "natural skin texture with a soft sheen",
+      "clear even-toned skin with real micro-texture"
     ],
     "hairColor": [
       "jet black",
@@ -283,20 +295,25 @@
       "silky fine waves"
     ],
     "build": [
-      "slim small-boned adult frame",
+      "toned curvy figure",
+      "fit model build",
+      "voluptuous hourglass",
+      "athletic toned curves",
+      "slim-thick hourglass",
+      "slim elegant frame",
       "slim",
       "athletic",
       "toned muscular",
       "curvy hourglass",
       "pear-shaped",
-      "apple-shaped",
-      "soft and full-figured",
-      "plus-size",
+      "curvy with a soft midsection",
+      "soft curvy hourglass",
+      "voluptuous full-figured hourglass",
       "broad-shouldered",
       "long and lanky",
       "thick thighs and wide hips",
       "bodybuilder physique",
-      "average soft body"
+      "naturally toned soft curves"
     ],
     "heightFeel": [
       "below-average height",
@@ -391,22 +408,22 @@
       "faded old tattoo"
     ],
     "distinctiveFeature": [
-      "gap in front teeth",
       "prominent beauty mark",
       "dimples",
-      "slightly crooked nose",
       "freckles on shoulders",
       "scar through eyebrow",
       "prominent collarbones",
       "strong laugh lines",
       "heavy eyebrows",
-      "big gummy smile",
       "ears that stick out slightly",
       "birthmark on neck",
-      "gold tooth",
-      "under-eye bags",
       "sun-bleached hair ends",
-      "reading-glasses crease"
+      "reading-glasses crease",
+      "striking healthy smile with straight natural white teeth",
+      "tiny beauty mark above the lip",
+      "bright clear eyes",
+      "deep dimples",
+      "elegant collarbones"
     ]
   }
 }
