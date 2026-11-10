@@ -356,6 +356,20 @@ const TEXT = {
     const d = strList(r.obj.details, 16, 160, adult);
     return d.length ? { details: d, usage: r.usage } : { err: "empty", status: 502 };
   },
+  // T-Shirt Studio (v20261110a): shirt-artwork prompts for Grok Imagine from the user's idea + Vocabulary Bank picks.
+  // Output = the isolated graphic only (no shirt / mockup / wearer) on a flat removable background, ready for DTF prep.
+  async tee(b, env, adult) {
+    const idea = scrub(b.idea, adult, 400), words = strList(b.words, 30, 80, adult), locked = strList(b.locked, 12, 80, adult);
+    const style = scrub(b.style, adult, 80), method = scrub(b.method, adult, 60), subject = scrub(b.subject, adult, 300), lettering = scrub(b.text, adult, 80);
+    const shirt = scrub(b.shirt, false, 30) || "black", bg = /black/i.test(b.bg) ? "pure flat black (#000000)" : /green/i.test(b.bg) ? "pure flat chroma green (#00FF00)" : "pure flat white (#FFFFFF)";
+    const n = Math.max(1, Math.min(4, parseInt(b.count || 3, 10)));
+    if (!idea && !words.length && !subject && !lettering) return { err: "empty idea", status: 400 };
+    const sys = "You are a streetwear / merch art director. Write " + n + " distinct prompts (45-95 words each) for an AI image generator (Grok Imagine) that will create T-SHIRT ARTWORK to be printed by " + (method || "DTF transfer") + ". Each prompt describes ONLY the isolated graphic: no T-shirt, no mockup, no hanger, no person wearing it, no room. Centered composition, bold clean shapes, crisp hard edges, strong silhouette, limited cohesive color palette that pops on a " + shirt + " shirt, high contrast, fills most of the frame, isolated on a " + bg + " background with nothing else (no shadow, no gradient, no texture, no frame) so the background can be cut away. No watermark, no signature, no mockup. If lettering is given, quote the exact words once and ask for bold, legible, correctly spelled lettering; otherwise ask for no text. Use the user's idea, subject and their Vocabulary Bank words (locked words MUST appear); the user's own words always win over your taste. Vary composition and art style between prompts unless a style is given. Original characters only. Reply JSON {\"title\":\"2-4 word design name\",\"prompts\":[\"...\"]}.\n" + rules(adult, false).split("\n").filter((l) => !/Zig's taste/.test(l)).join("\n") + "\n- Merch art: graphic illustration / print art styles are welcome here (not only photos). Any person drawn is an original adult (21+) character.";
+    const r = await llmPick(env, sys, { idea, subject, lettering, style, print_method: method || "DTF", shirt_color: shirt, words, locked, remix: !!b.remix }, { json: true, maxTokens: 1100, temperature: b.remix ? 1.05 : 0.85 }, b);
+    if (r.err) return r;
+    const prompts = strList(r.obj.prompts, n, 900, adult).map((x) => (/\b(?:wom[ae]n|m[ae]n|person|people|lady|ladies|guy|girl|model|dancer|rapper|singer|character|couple)\b/i.test(x) ? frame21(x) : x)); // image path re-frames people as adults 21+ anyway
+    return prompts.length ? { title: scrub(r.obj.title, adult, 60), prompts, usage: r.usage } : { err: "empty", status: 502 };
+  },
 };
 
 // ---------- media providers ----------
@@ -682,7 +696,7 @@ async function studioRender(b, env, ip) {
 }
 // "Send to Grok app": fetch a result image server-side so the page can hand it to the iOS share sheet (xAI's image host sends no CORS headers).
 // Only our own result hosts, images only, <= 12 MB.
-const IMG_HOSTS = /^(?:imgen\.x\.ai|image\.pollinations\.ai|gen\.pollinations\.ai)$/;
+const IMG_HOSTS = /^(?:imgen\.x\.ai|image\.pollinations\.ai|gen\.pollinations\.ai|(?:[a-z0-9-]+\.)?fal\.media)$/; // + fal.media (T-Shirt Studio import)
 async function imgFetch(b, ch) {
   let u; try { u = new URL(String(b.url || "")); } catch (e) { return J({ error: "bad url" }, 400, ch); }
   if (u.protocol !== "https:" || !IMG_HOSTS.test(u.hostname)) return J({ error: "host not allowed" }, 400, ch);
@@ -695,7 +709,7 @@ async function imgFetch(b, ch) {
     return new Response(buf, { status: 200, headers: Object.assign({ "Content-Type": ct, "Cache-Control": "no-store" }, ch) });
   } catch (e) { return J({ error: "image host unreachable" }, 502, ch); }
 }
-export const BOOST_ACTIONS = new Set(["chat", "randomize", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
+export const BOOST_ACTIONS = new Set(["chat", "randomize", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "tee", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";

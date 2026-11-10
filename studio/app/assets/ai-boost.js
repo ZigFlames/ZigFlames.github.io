@@ -57,6 +57,8 @@
   }
   function polWatch(im) { var note = h("div", { cls: "muted", "data-pm": "ai-media-wait" }); im.addEventListener("load", function () { if (!note.parentNode && im.parentNode) im.parentNode.insertBefore(note, im); polBusy(im, note); }); return im; }
 
+  // ---------- Send to T-Shirt Studio (pm-tee-bridge.js) ----------
+  function teeBtn(url, meta) { try { return window.PMTee && url ? window.PMTee.button(url, meta) : ""; } catch (e) { return ""; } }
   // ---------- Send to Grok app (image result -> Photos / Grok app + spicy companion prompt on the clipboard) ----------
   var HARD_MINOR = /\b(?:child\w*|kids?|minors?|under[\s-]?age\w*|teen\w*|tweens?|preteen\w*|loli\w*|shota\w*|school\s*girls?|schoolboys?|jail[\s-]?bait|barely[\s-]+legal|juvenile\w*|pubescen\w*|adolescen\w*|little\s+girls?|little\s+boys?|baby[\s-]?fac\w*|childlike|(?:[1-9]|1[0-7])\s*(?:-|\s)?(?:yo|y\/o|yrs?|years?)(?:[\s-]*old)?)\b/i;
   var HARD_LIKE = /\b(?:celebrit\w*|celeb|look[\s-]?alike|lookalike|deep[\s-]?fake\w*|face[\s-]?swap\w*|real\s+person|real\s+people|likeness\s+of|in\s+the\s+likeness|(?:looks?\s+like|resembling|dressed\s+as|styled\s+as)\s+[A-Z][a-z'’-]+\s+[A-Z][a-z'’-]+)\b/;
@@ -534,13 +536,13 @@
         if (kind === "image" || j.kind === "image") { var wait = h("div", { cls: "muted", "data-pm": "ai-image-loading", text: j.cost && !j.cost.est_usd ? "Loading free image… (5–30 s)" : "Loading image…" });
           var im = h("img", { src: j.url, alt: "generated", "data-pm": "ai-image-result" }); im.addEventListener("load", function () { if (!polBusy(im, wait)) wait.remove(); }); im.addEventListener("error", function () { wait.textContent = "The image host didn't answer — click Generate again or copy the prompt."; });
           var getP = function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; };
-          out.replaceChildren(notice, wait, im, eng, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })]), grokSendBtn(im, api, getP)); return; }
+          out.replaceChildren(notice, wait, im, eng, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })]), grokSendBtn(im, api, getP), teeBtn(j.url, { source: (j.fallback ? "Free preview (not Grok)" : "Grok AI Studio · " + (j.model || "image")), prompt: j.prompt || "", name: "AI Studio image" })); return; }
         var stat = h("div", { cls: "muted", "data-pm": "ai-video-status", text: "Rendering video… (usually 30–120 s)" }); out.replaceChildren(stat, eng, c);
         var tries = 0, fim; (function poll() {
           if (++tries > 60) { stat.textContent = "Still rendering — try again later."; return; }
           call("video_status", { provider: j.provider, job: j.job, download_url: j.download_url, mode: mode(api), prompt: j.prompt, aspect: j.aspect || ar.value }, { timeout: 60000 }).then(function (s) {
             if (s.status === "done" && s.url) { out.replaceChildren(h("video", { src: s.url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true, "data-pm": "ai-video-result" }), eng, c, h("div", { cls: "row" }, [h("a", { href: s.url, target: "_blank", rel: "noopener", text: "Open / download video", style: "color:#67e8f9;font-size:12px" })])); }
-            else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(fallbackBanner({ fallback: true, moderated: s.moderated, requested: "xai", notice: s.notice || s.error }), (fim = polWatch(h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }))), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c, grokSendBtn(fim, api, function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; })); }
+            else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(fallbackBanner({ fallback: true, moderated: s.moderated, requested: "xai", notice: s.notice || s.error }), (fim = polWatch(h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }))), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c, grokSendBtn(fim, api, function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; }), teeBtn(s.fallback_url, { source: "Free preview (not Grok)", prompt: j.prompt || "", name: "Free preview" })); }
             else if (s.status === "failed") stat.textContent = "Video failed: " + (s.error || "unknown");
             else setTimeout(poll, 5000);
           });
@@ -573,6 +575,7 @@
   function grokMount(el, res) {
     if (!el || !res || !res.url || el.getAttribute("data-for") === res.url) return;
     el.setAttribute("data-for", res.url);
+    try { window.PMTee && window.PMTee.button(res.url, {}); } catch (e) {} // registers the URL so the 👕 badge doesn't double the row's "👕 T-Shirt Studio" button
     var im = h("img", { src: res.url, alt: "", style: "display:none" });
     var w = grokSendBtn(im, { current: {} }, function () { return res.prompt || ""; });
     el.replaceChildren(im, w);
