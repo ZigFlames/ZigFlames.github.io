@@ -177,13 +177,37 @@ const SPARKS = ["an unexpected location", "a tiny story moment", "a bold color s
   "a texture-first detail", "a candid in-between moment", "a cinematic reflection", "a street-level documentary feel", "a luxury editorial twist", "a gritty nightlife edge", "a dreamy soft-focus mood", "a high-contrast graphic look",
   "a travel postcard feel", "a behind-the-scenes angle", "a music-video energy", "a minimal negative-space frame"];
 function sparks(n) { const a = SPARKS.slice().sort(() => Math.random() - 0.5).slice(0, n); return { angles: a, nonce: Math.random().toString(36).slice(2, 8) }; }
+// Non-Generic · 2027 switch (v20261110d). Only applied when the page sends nongeneric:true (switch default ON client-side); OFF = old behavior.
+// Directions rotate per press (the page sends ng_last so the same direction never repeats back to back).
+const NG_TEE = ["Y2K chrome revival (liquid-metal type, airbrushed highlights)", "brutalist type (huge cropped grotesk, grid, raw black/white + one signal color)", "acid graphics (rave-flyer distortion, warped type, toxic gradients)", "risograph + halftone (2-3 spot inks, misregistration, coarse dots)",
+  "collage + cut-paper (torn edges, photocopy textures, layered scraps)", "glitch + datamosh (pixel sort, RGB split, broken scanlines)", "hand-drawn tattoo flash with a modern twist (fine-line, unexpected subject)", "3D inflated / puffy type (soft balloon letters, matte vinyl look)",
+  "anime-manga panel (screentone, speed lines, panel borders)", "blueprint + technical (exploded-view diagram, callouts, measurement lines)", "maximalist sticker-bomb (dense overlapping stickers, die-cut outlines)", "minimalist luxury (tiny precise mark, lots of negative space, tonal)", "grainy photo-print (high-grain halftone photo graphic, crop marks)"];
+const NG_PHOTO = ["direct-flash night editorial (hard on-camera flash, deep shadows)", "Y2K digicam (CCD noise, date stamp feel, cool cast)", "Cinestill 800T halation (tungsten night, red glow around lights)", "brutalist architecture set (concrete, hard geometry, single color accent)",
+  "documentary street with motion blur (slow shutter, real crowd)", "fisheye skate-video energy (low, close, curved horizon)", "colored gel split lighting (two bold gels, modern club feel)", "minimal luxury negative space (one subject, huge empty plane)",
+  "riso-tinted grainy print look (two-tone, coarse grain)", "high-fashion overhead / unusual top-down angle", "hyper-real macro detail on texture (fabric, skin, metal)", "rain-soaked neon reflections shot through glass"];
+const NG_AVOID = "generic stock-vector look, clip-art, a centered mascot with a banner of text, vintage sunset badges, default distressed-retro texture, cliché skulls / roses / flames / wings / lions / eagles (unless the user asked for them), AI-slop glossy over-rendered sheen, plastic airbrushed skin, Etsy-style quote tees, symmetrical poster templates, gibberish text";
+function ngPick(list, last, n) { const l = String(last || "").toLowerCase(); const pool = list.filter((d) => !l || l.indexOf(d.slice(0, 18).toLowerCase()) < 0).sort(() => Math.random() - 0.5); return pool.slice(0, Math.max(1, n)); }
+function ng(b, kind, n) {
+  if (b.nongeneric !== true) return { sys: "", dirs: [] };
+  const tee = kind === "tee", dirs = ngPick(tee ? NG_TEE : NG_PHOTO, b.ng_last, n);
+  return { dirs, sys: "\nNON-GENERIC · 2027 MODE (ON) — this has priority over default taste: no generic or stock output. Every " + (tee ? "prompt" : "variation") + " gets ONE strong, specific, surprising idea (not the obvious first idea for the topic) and uses its assigned art_directions entry (in order, one each) so the set looks current for 2026-2027 " + (tee ? "streetwear / graphic design" : "image-making") + ". " +
+    "Every one must name concrete specifics: the subject, the composition, the palette with hex feel (2-4 real hex codes chosen fresh for THIS design — never default to orange/black), " + (tee ? "the linework, the type treatment (or 'no type'), and the print technique (DTF / screen print / puff etc.)" : "the camera / lens, the light, the texture") + ". " +
+    "Never use: " + NG_AVOID + ". End each " + (tee ? "prompt" : "variation") + " with a short 'Avoid:' list of the clichés it dodges. The user's own words still win: if they ask for a skull, roses, vintage or anything above, do it — in a fresh, modern way.\n" };
+}
+function ngImg(b, p) { // appended to the prompt sent to grok-imagine-image when the switch is ON
+  if (b.nongeneric !== true) return p;
+  const tee = b.ng_kind === "tee";
+  return (p + (tee ? " Modern 2026-2027 streetwear graphic, one specific unexpected idea, precise intentional linework and palette, print-ready." : " Specific, modern 2026-2027 look with real texture and an intentional palette, not a stock photo.") +
+    " Avoid: generic stock " + (tee ? "vector / clip-art, centered mascot with banner text, vintage sunset badge, default distressed texture" : "photo look, plastic airbrushed skin, over-smoothed HDR") + ", AI-slop glossy sheen.").slice(0, 2400);
+}
 const BANK_OFF = "Vocab Bank is OFF: write freely — invent every detail yourself from the seed, the selections and your own imagination; do not rely on any word list.";
 const TEXT = {
   async chat(b, env, adult) {
     const hist = (Array.isArray(b.messages) ? b.messages : []).slice(-8).map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: scrub(m && m.content, adult, 1500) })).filter((m) => m.content);
     if (!hist.length || hist[hist.length - 1].role !== "user") return { err: "empty message", status: 400 };
     const sys = "You are the AI assistant inside Zig's Prompt Machine (an image / video / music prompt studio). Help write and clean up text, build and improve image and video prompts (Midjourney, Grok Imagine, Sora, Kling, Flux), captions and Suno music prompts. Be direct and brief. When you write a prompt, put it alone in a ```prompt fenced block so it can be copied; keep Midjourney --params at the very end.\n" + rules(adult, isDance(hist[hist.length - 1].content));
-    const r = await llmPick(env, sys, hist, { maxTokens: Math.min(600, parseInt(env.CHAT_MAX_TOKENS || "600", 10)), temperature: 0.7 }, b);
+    const NG = ng(b, "photo", 1);
+    const r = await llmPick(env, sys + (NG.sys ? NG.sys.replace("uses its assigned art_directions entry (in order, one each)", "picks a fresh modern direction such as " + NG_PHOTO.slice(0, 5).join("; ")) : ""), hist, { maxTokens: Math.min(600, parseInt(env.CHAT_MAX_TOKENS || "600", 10)), temperature: 0.7 }, b);
     if (r.err) return r;
     return { reply: scrub(r.text, adult, 6000), usage: r.usage };
   },
@@ -296,12 +320,13 @@ const TEXT = {
       (avoid.length ? "Never include: " + avoid.join(", ") + ".\n" : "") +
       (invent ? "Also invent exactly 8 NEW vocabulary words or phrases (1-4 words each) for newWords that fit these exact selections: specific outfits, places, props, poses, camera or lighting terms. They must NOT repeat any word from the word list or the seed.\n" : "") +
       "Reply JSON {\"ideas\":[\"...\"]" + (invent ? ",\"newWords\":[\"...\"]" : "") + "}.\n" + rules(adult && cx.tier !== "sfw", isDance(idea, b.style, b.context && b.context.genres, b.context && b.context.platform) && (cx.tier === "nsfw" || cx.tier === "xxx" ? true : "safe"));
-    const r = await llmPick(env, sys, { seed: idea, must_keep: strList(b.must_keep, 12, 80, adult), style: scrub(b.style, adult, 120), count: n, words, spark: sparks(Math.min(n, 4)) }, { json: true, maxTokens: 1300, temperature: 1.05 }, b);
+    const NG = ng(b, "photo", n);
+    const r = await llmPick(env, sys + NG.sys, { art_directions: NG.dirs, seed: idea, must_keep: strList(b.must_keep, 12, 80, adult), style: scrub(b.style, adult, 120), count: n, words, spark: sparks(Math.min(n, 4)) }, { json: true, maxTokens: 1300, temperature: 1.05 }, b);
     if (r.err) return r;
     const ideas = strList(r.obj.ideas, n, 600, adult).map(frame21);
     const have = new Set(words.map((x) => x.w.toLowerCase())), seedL = idea.toLowerCase();
     const newWords = invent ? strList(r.obj.newWords || r.obj.new_words, 12, 50, adult).filter((w) => w.split(/\s+/).length <= 5 && !have.has(w.toLowerCase()) && seedL.indexOf(w.toLowerCase()) < 0) : [];
-    return ideas.length ? { ideas, newWords, tier: cx.tier, usage: r.usage } : { err: "empty", status: 502 };
+    return ideas.length ? { ideas, newWords, tier: cx.tier, usage: r.usage, nongeneric: !!NG.dirs.length, directions: NG.dirs } : { err: "empty", status: 502 };
   },
   // Main AI Remixer page "Remix" button (v20261110c). It used to call a dead "remix-prompt" function and always fell back to the
   // on-device generator built from Vocab Bank words. Now: its own Grok engine (xAI grok-4.20 non-reasoning, free fallback chain).
@@ -321,7 +346,8 @@ const TEXT = {
       (exclude.length ? "Do not reuse these titles: " + exclude.join(", ") + ".\n" : "") +
       "Lean into the spark angles (one per variation) so this press feels new.\n" +
       "Reply JSON {\"variations\":[{\"title\":\"...\",\"prompt\":\"...\",\"tags\":[\"...\"]}]}.\n" + rules(adult && b.adultMode === true, isDance(seed) && (adult ? true : "safe"));
-    const r = await llm(env, sys, { seed, typed, vocab_words: vocab, adult_themes: themes, adult_phrase: adult ? scrub(b.adultPhrase, adult, 300) : "", director, cast: scrub(b.cast, adult, 30), spark: sparks(Math.min(n, 5)) },
+    const NG = ng(b, "photo", n);
+    const r = await llm(env, sys + NG.sys, { art_directions: NG.dirs, seed, typed, vocab_words: vocab, adult_themes: themes, adult_phrase: adult ? scrub(b.adultPhrase, adult, 300) : "", director, cast: scrub(b.cast, adult, 30), spark: sparks(Math.min(n, 5)) },
       { pick: pickOf(b) || "grok", json: true, maxTokens: Math.min(2400, 260 * n + 200), temperature: 1.05, freeMax: 2, timeout: 30000 });
     if (r.err) return r;
     const raw = Array.isArray(r.obj.variations) ? r.obj.variations : [];
@@ -329,7 +355,7 @@ const TEXT = {
       const prompt = frame21(scrub(v && (v.prompt || v.text), adult, 900));
       return prompt ? { title: scrub(v.title, adult, 60) || "Remix", prompt, tags: strList(v.tags, 6, 30, adult).map((t) => t.toLowerCase()) } : null;
     }).filter(Boolean);
-    return variations.length ? { variations, provider: r.usage && r.usage.model, bank, usage: r.usage } : { err: "empty", status: 502 };
+    return variations.length ? { variations, provider: r.usage && r.usage.model, bank, usage: r.usage, nongeneric: !!NG.dirs.length, directions: NG.dirs } : { err: "empty", status: 502 };
   },
   async classify(b, env, adult) {
     // one-time labelling of Vocab Bank categories; the page caches the result, so remixes never spend calls on it
@@ -400,12 +426,16 @@ const TEXT = {
     const style = scrub(b.style, adult, 80), method = scrub(b.method, adult, 60), subject = scrub(b.subject, adult, 300), lettering = scrub(b.text, adult, 80);
     const shirt = scrub(b.shirt, false, 30) || "black", bg = /black/i.test(b.bg) ? "pure flat black (#000000)" : /green/i.test(b.bg) ? "pure flat chroma green (#00FF00)" : "pure flat white (#FFFFFF)";
     const n = Math.max(1, Math.min(4, parseInt(b.count || 3, 10)));
-    if (!idea && !words.length && !subject && !lettering && bank) return { err: "empty idea", status: 400 };
-    const sys = "You are a streetwear / merch art director. Write " + n + " distinct prompts (45-95 words each) for an AI image generator (Grok Imagine) that will create T-SHIRT ARTWORK to be printed by " + (method || "DTF transfer") + ". Each prompt describes ONLY the isolated graphic: no T-shirt, no mockup, no hanger, no person wearing it, no room. Centered composition, bold clean shapes, crisp hard edges, strong silhouette, limited cohesive color palette that pops on a " + shirt + " shirt, high contrast, fills most of the frame, isolated on a " + bg + " background with nothing else (no shadow, no gradient, no texture, no frame) so the background can be cut away. No watermark, no signature, no mockup. If lettering is given, quote the exact words once and ask for bold, legible, correctly spelled lettering; otherwise ask for no text. Use the user's idea and subject; follow vocab_bank: when ON, their Vocabulary Bank words are inspiration seeds (locked words MUST appear) and you still add fresh ideas of your own; when OFF, ignore any word list and invent freely. The user's own typed words always win over your taste. Use the spark angles so every press feels new. Vary composition and art style between prompts unless a style is given. Original characters only. Reply JSON {\"title\":\"2-4 word design name\",\"prompts\":[\"...\"]}.\n" + rules(adult, false).split("\n").filter((l) => !/Zig's taste/.test(l)).join("\n") + "\n- Merch art: graphic illustration / print art styles are welcome here (not only photos). Any person drawn is an original adult (21+) character.";
-    const r = await llmPick(env, sys, { idea: idea || (bank ? "" : "surprise me: an original, bold streetwear graphic concept"), subject, lettering, style, print_method: method || "DTF", shirt_color: shirt, words, locked, remix: !!b.remix, vocab_bank: bank ? "ON: use words / locked as inspiration seeds, add your own fresh ideas" : "OFF: " + BANK_OFF, spark: sparks(n) }, { json: true, maxTokens: 1100, temperature: b.remix ? 1.1 : 0.9 }, b);
+    // T-Shirt Topic (v20261110d): topic = the shirt's theme; new_topic = also invent a fresh related / adjacent topic and write for it.
+    const topic = scrub(b.topic, adult, 160), newTopic = b.new_topic === true, placement = scrub(b.placement, false, 60), avoid = strList(b.avoid_topics, 12, 160, adult), avoidP = strList(b.avoid_prompts, 4, 200, adult);
+    if (!idea && !words.length && !subject && !lettering && !topic && !newTopic && bank) return { err: "empty idea", status: 400 };
+    const sys = "You are a streetwear / merch art director. Write " + n + " distinct prompts (45-95 words each) for an AI image generator (Grok Imagine) that will create T-SHIRT ARTWORK to be printed by " + (method || "DTF transfer") + ". Each prompt describes ONLY the isolated graphic: no T-shirt, no mockup, no hanger, no person wearing it, no room. Centered composition, bold clean shapes, crisp hard edges, strong silhouette, limited cohesive color palette that pops on a " + shirt + " shirt, high contrast, fills most of the frame, isolated on a " + bg + " background with nothing else (no shadow, no gradient, no texture, no frame) so the background can be cut away. No watermark, no signature, no mockup. If lettering is given, quote the exact words once and ask for bold, legible, correctly spelled lettering; otherwise ask for no text. Use the user's idea and subject; follow vocab_bank: when ON, their Vocabulary Bank words are inspiration seeds (locked words MUST appear) and you still add fresh ideas of your own; when OFF, ignore any word list and invent freely. The user's own typed words always win over your taste. Use the spark angles so every press feels new. Vary composition and art style between prompts unless a style is given. Original characters only. " + (topic || newTopic ? "T-SHIRT TOPIC: " + (newTopic ? "first invent ONE fresh shirt topic (2-7 words) that is related or adjacent to the given topic (or a bold original one if none is given) and clearly different from it and from avoid_topics (a new angle, setting or idea in the same world, NOT a reworded version of the same words); put it in \"topic\"; then every prompt is a graphic about that new topic. " : "every prompt must be a printable graphic about the given topic (the shirt's theme); the topic is the user's own words and wins. ") + "Make it a print-ready tee graphic: one clear focal motif, clean composition that reads from across a room, works on a garment" + (placement ? " (placement: " + placement + ")" : "") + ", plain or cut-out friendly background. avoid_prompts are earlier prompts for this topic: use a completely different main motif, concept and composition (not the same subject restyled). Never depict real people, celebrities, musicians or public figures or their likeness; any people are original adult (21+) characters. The user's own brand ZigFlames and his album \"Corporate Affairs\" are allowed, but only use them (as theme or lettering) when the topic, idea or lettering mentions them — never add brand text the user didn't ask for.\n" : "") + "Reply JSON {\"title\":\"2-4 word design name\"," + (newTopic ? "\"topic\":\"...\"," : "") + "\"prompts\":[\"...\"]}.\n" + rules(adult, false).split("\n").filter((l) => !/Zig's taste/.test(l)).join("\n") + "\n- Merch art: graphic illustration / print art styles are welcome here (not only photos). Any person drawn is an original adult (21+) character.";
+    const NG = ng(b, "tee", n);
+    const r = await llmPick(env, sys + NG.sys, { art_directions: NG.dirs, topic, avoid_topics: avoid, avoid_prompts: avoidP, placement, idea: idea || (bank || topic || newTopic ? "" : "surprise me: an original, bold streetwear graphic concept"), subject, lettering, style, print_method: method || "DTF", shirt_color: shirt, words, locked, remix: !!b.remix, vocab_bank: bank ? "ON: use words / locked as inspiration seeds, add your own fresh ideas" : "OFF: " + BANK_OFF, spark: sparks(n) }, { json: true, maxTokens: NG.dirs.length ? 1500 : 1100, temperature: b.remix || newTopic ? 1.1 : 0.9 }, b);
     if (r.err) return r;
-    const prompts = strList(r.obj.prompts, n, 900, adult).map((x) => (/\b(?:wom[ae]n|m[ae]n|person|people|lady|ladies|guy|girl|model|dancer|rapper|singer|character|couple)\b/i.test(x) ? frame21(x) : x)); // image path re-frames people as adults 21+ anyway
-    return prompts.length ? { title: scrub(r.obj.title, adult, 60), prompts, usage: r.usage } : { err: "empty", status: 502 };
+    const prompts = strList(r.obj.prompts, n, NG.dirs.length ? 1300 : 900, adult).map((x) => (/\b(?:wom[ae]n|m[ae]n|person|people|lady|ladies|guy|girl|model|dancer|rapper|singer|character|couple)\b/i.test(x) ? frame21(x) : x)); // image path re-frames people as adults 21+ anyway
+    const nt = newTopic ? scrub(r.obj.topic, adult, 120) : "";
+    return prompts.length ? Object.assign({ title: scrub(r.obj.title, adult, 60), prompts, usage: r.usage, nongeneric: !!NG.dirs.length, directions: NG.dirs }, nt ? { topic: nt } : {}) : { err: "empty", status: 502 };
   },
 };
 
@@ -479,7 +509,7 @@ async function genImage(b, env, adult, ip) {
   if (!P) return { err: "unknown provider", status: 400 };
   if (P.adult && !adult) return { err: "This provider is only available in 18+ mode.", status: 403, locked: true };
   if (P.key && !env[P.key]) return { err: "needs key", needs_key: P.key, status: 503, provider: id };
-  const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return g;
+  const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return g; g.prompt = ngImg(b, g.prompt);
   const capErr = await capCheck(env, ip, "image", P.usd); if (capErr) return { err: capErr, status: 429, capped: true };
   const ar = AR[b.aspect] ? b.aspect : "9:16", [w, h] = AR[ar];
   let url = "", r, d;
@@ -656,6 +686,7 @@ async function grokStudio(b, env, ip, key) {
   if (ref && !(REF_DATA_RE.test(ref) && ref.length <= REF_MAX) && !/^https:\/\/[^\s"']{8,2000}$/.test(ref)) return { ok: false, code: "bad_ref", error: "Reference image must be a JPG/PNG under ~2 MB (the page shrinks it to 1024 px automatically) — re-upload it." };
   if (key === "grok-imagine-video-ref" && !ref) return { ok: false, code: "needs_ref", error: "Grok Imagine Video (from reference) needs a reference image — upload one first." };
   const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return { ok: false, code: g.refused || "error", error: g.err, filter: !!g.refused };
+  if (!video) g.prompt = ngImg(b, g.prompt);
   if (ref) { const sc = await refScreen(env, ref); if (sc.err) return { ok: false, code: sc.refused, error: sc.err, filter: true }; }
   const [w, h] = STUDIO_AR[b.aspectRatio] || STUDIO_AR["9:16"];
   const hdr = { Authorization: "Bearer " + env.XAI_API_KEY, "Content-Type": "application/json" };

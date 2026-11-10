@@ -32,14 +32,17 @@
     var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
     var tm = setTimeout(function () { try { ctl && ctl.abort(); } catch (e) {} }, opts.timeout || 25000);
     var payload = Object.assign({ action: action }, body || {});
+    // 🔥 Non-Generic · 2027 switch (shared, default ON): sent with every Grok prompt / Remix / image call unless the caller set it.
+    if (NG_ACTIONS[action] && payload.nongeneric === undefined && window.PMNonGeneric) { payload.nongeneric = window.PMNonGeneric.on(); payload.ng_last = window.PMNonGeneric.last(); }
     return fetch(endpoint(), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: ctl ? ctl.signal : undefined })
       .then(function (r) {
         clearTimeout(tm);
         var ct = r.headers.get("content-type") || "";
         if (ct.indexOf("video/") === 0) return r.blob().then(function (b) { return { status: "done", url: URL.createObjectURL(b), _status: 200 }; });
-        return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j._status = r.status; return j; });
+        return r.json().catch(function () { return {}; }).then(function (j) { j = j || {}; j._status = r.status; if (j.directions && j.directions.length && window.PMNonGeneric) window.PMNonGeneric.note(j.directions); return j; });
       }, function (e) { clearTimeout(tm); return { _status: 0, _offline: true, error: "AI unreachable" }; });
   }
+  var NG_ACTIONS = { remix: 1, remix_prompt: 1, chat: 1, image: 1, studio_render: 1 };
   function aiFailed(j) { return !j || j._offline || j._status === 0 || j._status >= 500 && !j.needs_key || j._status === 429 && !j.capped || j._status === 404; }
   window.PMAI = { call: call, endpoint: endpoint, safe: safe };
 
@@ -246,6 +249,21 @@
   function setBank(on) { try { localStorage.setItem(BANK_KEY, on ? "on" : "off"); } catch (e) {} try { window.dispatchEvent(new CustomEvent("pm-remix-bank", { detail: { on: on } })); } catch (e) {} }
   window.PMRemixBank = { on: bankOn, set: setBank, key: BANK_KEY };
   window.addEventListener("pm-remix-bank", function () { var on = bankOn(); document.querySelectorAll("[data-pm=remix-bank-main]").forEach(function (b) { var t = b.firstChild; if (t && t.nodeType === 3) t.nodeValue = "📚 Vocab Bank: " + (on ? "ON" : "OFF"); b.setAttribute("data-on", on ? "1" : "0"); }); });
+  // 🔥 Non-Generic · 2027 (v20261110d): one shared switch (localStorage pm_nongeneric, default ON) for T-Shirt Studio, main Remix,
+  // the AI Remix panel and AI Studio. ON = Grok must avoid generic / stock output and rotate modern 2026-27 art directions; OFF = old behavior.
+  var NG_KEY = "pm_nongeneric", NG_LAST = "pm_ng_last";
+  function ngOn() { try { return localStorage.getItem(NG_KEY) !== "off"; } catch (e) { return true; } }
+  function ngSet(on) { try { localStorage.setItem(NG_KEY, on ? "on" : "off"); } catch (e) {} try { window.dispatchEvent(new CustomEvent("pm-nongeneric", { detail: { on: on } })); } catch (e) {} }
+  window.PMNonGeneric = { on: ngOn, set: ngSet, key: NG_KEY,
+    last: function () { try { return localStorage.getItem(NG_LAST) || ""; } catch (e) { return ""; } },
+    note: function (d) { try { localStorage.setItem(NG_LAST, [].concat(d || []).join(" | ").slice(0, 400)); } catch (e) {} } };
+  window.addEventListener("pm-nongeneric", function () { var on = ngOn(); document.querySelectorAll("[data-pm=ng-main]").forEach(function (b) { b.textContent = "🔥 Non-Generic · 2027: " + (on ? "ON" : "OFF"); b.setAttribute("data-on", on ? "1" : "0"); }); });
+  function ngToggle() {
+    var b = h("button", { cls: "tab", "data-pm": "ng-toggle" });
+    function paint() { var on = ngOn(); b.className = "tab" + (on ? " on" : ""); b.textContent = "🔥 Non-Generic · 2027: " + (on ? "ON" : "OFF"); b.title = on ? "ON: Grok avoids generic / stock looks and rotates a modern 2026-27 art direction every press. Click for OFF." : "OFF: the old, plain prompt style. Click for ON."; b.setAttribute("data-on", on ? "1" : "0"); }
+    b.addEventListener("click", function () { ngSet(!ngOn()); paint(); });
+    window.addEventListener("pm-nongeneric", paint); paint(); return b;
+  }
   function bankToggle(onChange) {
     var b = h("button", { cls: "tab", "data-pm": "remix-bank-toggle" });
     function paint() { var on = bankOn(); b.className = "tab" + (on ? " on" : ""); b.textContent = "📚 Vocab Bank: " + (on ? "ON" : "OFF"); b.title = on ? "ON: the AI uses your Vocab Bank words as inspiration / seed words. Click for OFF." : "OFF: the AI writes freely and does not use the Vocab Bank at all. Click for ON."; b.setAttribute("data-on", on ? "1" : "0"); }
@@ -289,7 +307,7 @@
     } } });
     root.append(h("h4", {}, ["✨ AI Remix (own AI engine · Vocab Bank optional)", st]),
       h("p", { cls: "sub", text: "Writes fresh, creative variations from your idea, your selections (heat tier, style, platform, realism, mood, people) and your own typed words — every press is different. Vocab Bank ON: your bank words are inspiration seeds and it can invent new words to save. OFF: it writes freely without the bank. Your typed words always win. Real cameras, varied lighting, raw skin, adults 21+, no real people." }),
-      h("div", { cls: "row" }, [bVar, cnt, bankToggle(), remixModelSelect()]), h("div", { cls: "row" }, [bClean, modelSelect()]), using, out);
+      h("div", { cls: "row" }, [bVar, cnt, ngToggle(), bankToggle(), remixModelSelect()]), h("div", { cls: "row" }, [bClean, modelSelect()]), using, out);
     showUsing(); var iv = setInterval(function () { if (!root.isConnected) return clearInterval(iv); showUsing(); }, 2000);
   };
 
@@ -438,7 +456,7 @@
     var panes = { chat: chatPane(api, st), image: mediaPane(api, "image", st), video: mediaPane(api, "video", st) };
     function show(k) { cur = k; for (var t in tabs) tabs[t].className = "tab" + (t === k ? " on" : ""); body.replaceChildren(panes[k].el); panes[k].show && panes[k].show(); }
     root.append(h("h4", {}, ["🤖 Grok AI Studio", st]), h("p", { cls: "sub", text: "Chat with Grok (xAI direct) to build prompts, then generate images or video with Grok Imagine. Free models stay one click away, and if xAI fails the free model / a free Pollinations preview takes over (labelled). Costs are shown before you click; a $3/day site-wide cap is enforced on the server." }),
-      h("div", { cls: "row" }, [tab("chat", "💬 Chat"), tab("image", "🖼 Image"), tab("video", "🎬 Video")]), body);
+      h("div", { cls: "row" }, [tab("chat", "💬 Chat"), tab("image", "🖼 Image"), tab("video", "🎬 Video"), ngToggle()]), body);
     show("chat");
     root._pmShow = show;
   };
