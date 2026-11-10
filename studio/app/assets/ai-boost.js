@@ -238,6 +238,25 @@
     return h("div", { cls: "item" }, [h("b", { text: "🧠 New words the AI invented for these selections:" }), h("div", { cls: "row" }, chips), h("div", { cls: "row" }, [sel, save])]);
   }
 
+  // ---------- Remix: own AI engine + Vocab Bank ON/OFF (v20261110c) ----------
+  // One shared switch (localStorage pm_remix_bank) for every Remix: AI Remix here, the main Remix button, T-Shirt Studio Remix.
+  // ON = the AI gets bank words as inspiration seeds; OFF = no bank words at all, the AI writes freely. Zig's typed words always win.
+  var BANK_KEY = "pm_remix_bank", RMODEL_KEY = "pm_ai_remix_model";
+  function bankOn() { try { return localStorage.getItem(BANK_KEY) !== "off"; } catch (e) { return true; } }
+  function setBank(on) { try { localStorage.setItem(BANK_KEY, on ? "on" : "off"); } catch (e) {} try { window.dispatchEvent(new CustomEvent("pm-remix-bank", { detail: { on: on } })); } catch (e) {} }
+  window.PMRemixBank = { on: bankOn, set: setBank, key: BANK_KEY };
+  window.addEventListener("pm-remix-bank", function () { var on = bankOn(); document.querySelectorAll("[data-pm=remix-bank-main]").forEach(function (b) { var t = b.firstChild; if (t && t.nodeType === 3) t.nodeValue = "📚 Vocab Bank: " + (on ? "ON" : "OFF"); b.setAttribute("data-on", on ? "1" : "0"); }); });
+  function bankToggle(onChange) {
+    var b = h("button", { cls: "tab", "data-pm": "remix-bank-toggle" });
+    function paint() { var on = bankOn(); b.className = "tab" + (on ? " on" : ""); b.textContent = "📚 Vocab Bank: " + (on ? "ON" : "OFF"); b.title = on ? "ON: the AI uses your Vocab Bank words as inspiration / seed words. Click for OFF." : "OFF: the AI writes freely and does not use the Vocab Bank at all. Click for ON."; b.setAttribute("data-on", on ? "1" : "0"); }
+    b.addEventListener("click", function () { setBank(!bankOn()); paint(); onChange && onChange(); });
+    window.addEventListener("pm-remix-bank", paint); paint(); return b;
+  }
+  var RMODELS = [["grok", "Grok 4.20 (xAI · ~$0.002/press · free fallback)"], ["free", "Free model only ($0)"]];
+  function remixModel() { try { var m = localStorage.getItem(RMODEL_KEY); return m === "free" ? "free" : "grok"; } catch (e) { return "grok"; } }
+  function remixModelSelect() { var s = h("select", { title: "Remix's own AI engine. Grok = xAI grok-4.20 non-reasoning (cheap, counted in the site's daily cap); if xAI fails it falls back to the free model chain." }, RMODELS.map(function (m) { return h("option", { value: m[0], text: "Remix engine: " + m[1] }); })); s.value = remixModel(); s.addEventListener("change", function () { try { localStorage.setItem(RMODEL_KEY, s.value); } catch (e) {} }); return s; }
+  window.PMRemixEngine = { model: remixModel };
+
   P.remix = function (root, api) {
     var out = h("div"), st = h("span"), using = h("div", { cls: "muted" });
     var cnt = h("select", {}, [3, 5, 8].map(function (n) { return h("option", { value: n, text: n + " variations" }); }));
@@ -250,15 +269,17 @@
         api.current.setIdea && api.current.setIdea(t); st.replaceChildren(badge(j, loc)); toast(api, e.built ? "Seed built from your settings + cleaned" : "Idea cleaned", t.slice(0, 90));
       });
     } } });
-    var bVar = h("button", { cls: "go", text: "🎲 AI Remix (uses your settings + Vocab Bank)", title: "Writes fresh variations at your heat tier, style, platform, realism, mood and people, using the Vocab Bank words linked to those selections. Empty box is fine.", on: { click: function () {
-      var ctx = showUsing(), e = ensureIdea(api, ctx); if (!e.idea) return toast(api, "Type an idea first");
+    var bVar = h("button", { cls: "go", "data-pm": "ai-remix-go", text: "🎲 AI Remix", title: "Writes fresh variations at your heat tier, style, platform, realism, mood and people with its own AI engine. Vocab Bank ON: your bank words are inspiration seeds. OFF: the AI writes freely. The Vocab Bank words linked to those selections. Empty box is fine.", on: { click: function () {
+      var ctx = showUsing(), on = bankOn(), typed = ((api.current.getIdea && api.current.getIdea()) || "").trim(), e = on ? ensureIdea(api, ctx) : { idea: typed || (ctx && window.PMCtx ? window.PMCtx.seed(ctx, { words: 0 }) : ""), built: !typed };
+      if (!e.idea) e.idea = "a fresh concept that fits my selections";
       var n = +cnt.value, pack = ctx && window.PMCtx ? window.PMCtx.forAI(ctx, 14) : {};
-      busy(bVar, true);
-      call("remix", { idea: e.idea, count: n, mode: tierMode(ctx, api), tier: pack.tier, context: pack.context, words: pack.words, avoid: pack.avoid, invent: true, model: textModel() }, { timeout: 30000 }).then(function (j) {
+      busy(bVar, true, "AI is writing…");
+      call("remix", { idea: e.idea, must_keep: typed ? [typed] : [], count: n, mode: tierMode(ctx, api), tier: pack.tier, context: pack.context, words: on ? pack.words : [], bank: on, avoid: pack.avoid, invent: on, model: remixModel() }, { timeout: 40000 }).then(function (j) {
         busy(bVar, false); var loc = aiFailed(j) || !(j.ideas && j.ideas.length);
-        var list = loc ? Array.apply(null, Array(n)).map(function () { return ctxVariant(e.idea, ctx); }) : j.ideas.map(frame21);
+        var list = loc ? Array.apply(null, Array(n)).map(function () { return on ? ctxVariant(e.idea, ctx) : localVariant(e.idea); }) : j.ideas.map(frame21);
         var notes = [];
-        if (e.built) notes.push(h("div", { cls: "note", text: "Empty box → seed built from your settings + Vocab Bank: " + e.idea }));
+        notes.push(h("div", { cls: "note", "data-pm": "ai-remix-mode", text: on ? "📚 Vocab Bank ON — your bank words were used as inspiration; the AI wrote the rest." : "📚 Vocab Bank OFF — no bank words; the AI wrote freely from your idea + selections." }));
+        if (e.built) notes.push(h("div", { cls: "note", text: "Empty box → seed built from your settings" + (on ? " + Vocab Bank" : " (no bank words)") + ": " + e.idea }));
         if (j && j.usage && j.usage.credit_note) notes.push(h("div", { cls: "note", text: j.usage.credit_note }));
         if (j && j._status === 402) notes.push(h("div", { cls: "note", text: "That paid model needs OpenRouter credit — switch the model back to Free (used the free fallback)." }));
         st.replaceChildren(badge(j, loc), ctx ? h("span", { cls: "badge", text: ctx.tierLabel }) : "");
@@ -266,9 +287,9 @@
         out.replaceChildren.apply(out, notes.concat(list.map(function (t) { return itemRow(t, api, [h("button", { cls: "sm", text: "Use as idea", on: { click: function () { api.current.setIdea && api.current.setIdea(t); toast(api, "Loaded as idea"); } } })]); })).concat(sw ? [sw] : []));
       });
     } } });
-    root.append(h("h4", {}, ["✨ AI Remix (uses your settings + Vocab Bank)", st]),
-      h("p", { cls: "sub", text: "No typing needed: leave the seed box empty and it builds a seed from your top selections (heat tier, style, platform, realism, mood, people) plus the Vocab Bank words linked to them. The AI only composes; the app picks which bank words fit. It can also invent new fitting words you can save with one click. Real cameras, varied lighting, raw skin, adults 21+." }),
-      h("div", { cls: "row" }, [bVar, cnt, bClean, modelSelect()]), using, out);
+    root.append(h("h4", {}, ["✨ AI Remix (own AI engine · Vocab Bank optional)", st]),
+      h("p", { cls: "sub", text: "Writes fresh, creative variations from your idea, your selections (heat tier, style, platform, realism, mood, people) and your own typed words — every press is different. Vocab Bank ON: your bank words are inspiration seeds and it can invent new words to save. OFF: it writes freely without the bank. Your typed words always win. Real cameras, varied lighting, raw skin, adults 21+, no real people." }),
+      h("div", { cls: "row" }, [bVar, cnt, bankToggle(), remixModelSelect()]), h("div", { cls: "row" }, [bClean, modelSelect()]), using, out);
     showUsing(); var iv = setInterval(function () { if (!root.isConnected) return clearInterval(iv); showUsing(); }, 2000);
   };
 

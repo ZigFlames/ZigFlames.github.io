@@ -12,7 +12,7 @@
    Adults 21+ only in any AI prompt; no real-person likeness (enforced again by the worker). */
 (function () {
   "use strict";
-  var V = "20261110b";
+  var V = "20261110c";
   var DEF_EP = "https://zigflames-ai.zigflames.workers.dev";
   function endpoint() { try { var o = localStorage.getItem("pm_ai_endpoint"); if (o) return o; } catch (e) {} return window.PM_AI_ENDPOINT || DEF_EP; }
   function call(action, body, timeout) {
@@ -849,27 +849,32 @@
   var G = J("pm_tee_grok_v1", { idea: "", subject: "", text: "", style: "", method: "DTF transfer (direct-to-film)", bg: "white", prompts: [], cur: 0, title: "" });
   function saveG() { SJ("pm_tee_grok_v1", G); }
   function adultMode() { return !!(api.current && api.current.adult); }
+  // Vocab Bank ON/OFF (v20261110c) — the same switch as every other Remix (localStorage pm_remix_bank). OFF = Grok writes freely, no bank words.
+  function bankOn() { if (window.PMRemixBank) return window.PMRemixBank.on(); try { return localStorage.getItem("pm_remix_bank") !== "off"; } catch (e) { return true; } }
+  function setBank(on) { if (window.PMRemixBank) return window.PMRemixBank.set(on); try { localStorage.setItem("pm_remix_bank", on ? "on" : "off"); } catch (e) {} }
+  var FREE_IDEAS = ["a flaming skull wearing a gold crown", "a neon tiger leaping through city lights", "a retro sunset over palm trees", "a chrome dragon coiled around a microphone", "a cosmic koi fish swimming through stars", "a vintage muscle car with wings", "a graffiti-style lion with headphones", "a desert cactus at midnight under a giant moon", "a samurai mask made of cracked marble", "a bold old-school tattoo rose and dagger", "a pixel-art arcade cabinet exploding with color", "an octopus playing four turntables"];
   function localPrompts(n, remix) {
-    var p = picks().map(function (x) { return x.w; }), out = [];
+    var on = bankOn(), p = on ? picks().map(function (x) { return x.w; }) : [], out = [];
     var styles = STARTER[2].words;
     for (var i = 0; i < n; i++) {
-      var ws = p.filter(function (x, k) { return picks()[k] && picks()[k].lock; }).concat(shuffle(p.filter(function (x, k) { return !(picks()[k] && picks()[k].lock); })).slice(0, 4));
-      out.push(safe([G.subject || "", G.idea || "", ws.join(", "), (G.style || pick(styles)), G.text ? "bold legible lettering that reads \"" + G.text + "\"" : "no text",
+      var ws = on ? p.filter(function (x, k) { return picks()[k] && picks()[k].lock; }).concat(shuffle(p.filter(function (x, k) { return !(picks()[k] && picks()[k].lock); })).slice(0, 4)) : [];
+      out.push(safe([G.subject || "", G.idea || (on ? "" : pick(FREE_IDEAS)), ws.join(", "), (G.style || pick(styles)), G.text ? "bold legible lettering that reads \"" + G.text + "\"" : "no text",
         "T-shirt graphic for " + (G.method || "DTF transfer") + ", isolated on a " + (G.bg === "black" ? "pure flat black" : G.bg === "green" ? "pure flat chroma green" : "pure flat white") + " background, centered, bold clean edges, high contrast, limited color palette that pops on a " + shirtName() + " shirt, no shirt, no mockup, no watermark"].filter(Boolean).join(", ")));
     }
     return out;
   }
   function shirtName() { return D.shirt === "custom" ? "custom-color" : (SHIRTS.filter(function (x) { return x[0] === D.shirt; })[0] || [0, 0, "black"])[2].toLowerCase(); }
   function writePrompts(remix, b) {
-    if (remix) remixPicks();
-    var ps = picks(), body = { idea: G.idea, subject: G.subject, text: G.text, style: G.style, method: G.method, shirt: shirtName(), bg: G.bg, words: ps.map(function (x) { return x.w; }), locked: ps.filter(function (x) { return x.lock; }).map(function (x) { return x.w; }), count: 3, remix: !!remix, mode: adultMode() ? "18+" : "sfw", model: "grok" };
-    if (!body.idea && !body.words.length && !body.subject && !body.text) { msg("Type an idea or pick some Vocabulary Bank words first"); return Promise.resolve(); }
+    var on = bankOn();
+    if (remix && on) remixPicks();
+    var ps = on ? picks() : [], body = { idea: G.idea, subject: G.subject, text: G.text, style: G.style, method: G.method, shirt: shirtName(), bg: G.bg, words: ps.map(function (x) { return x.w; }), locked: ps.filter(function (x) { return x.lock; }).map(function (x) { return x.w; }), count: 3, remix: !!remix, bank: on, mode: adultMode() ? "18+" : "sfw", model: "grok" };
+    if (on && !body.idea && !body.words.length && !body.subject && !body.text) { msg("Type an idea or pick some Vocabulary Bank words first"); return Promise.resolve(); }
     if (b) { b.disabled = true; b._t = b.textContent; b.textContent = "Grok is writing…"; }
     return call("tee", body, 40000).then(function (j) {
       if (b) { b.disabled = false; b.textContent = b._t; }
       var ok = j && j._status === 200 && Array.isArray(j.prompts) && j.prompts.length;
-      G.prompts = ok ? j.prompts : localPrompts(3, remix); G.cur = 0; G.title = ok ? (j.title || "") : ""; G.src = ok ? ((j.usage && j.usage.model) || "Grok") + (j.usage && j.usage.est_usd ? " · ≈ $" + j.usage.est_usd.toFixed(4) : "") + (j.usage && j.usage.credit_note ? " · " + j.usage.credit_note : "") : "on-device (AI unreachable: " + (j && j.error || "no reply") + ") · free";
-      saveG(); renderTab(); msg(ok ? "Grok wrote " + G.prompts.length + " shirt-art prompts" : "AI didn't answer — built prompts on-device from your picks (free)");
+      G.prompts = ok ? j.prompts : localPrompts(3, remix); G.cur = 0; G.title = ok ? (j.title || "") : ""; G.src = (on ? "Vocab Bank ON · " : "Vocab Bank OFF · ") + (ok ? ((j.usage && j.usage.model) || "Grok") + (j.usage && j.usage.est_usd ? " · ≈ $" + j.usage.est_usd.toFixed(4) : "") + (j.usage && j.usage.credit_note ? " · " + j.usage.credit_note : "") : "on-device (AI unreachable: " + (j && j.error || "no reply") + ") · free");
+      saveG(); renderTab(); msg(ok ? "Grok wrote " + G.prompts.length + " shirt-art prompts" + (on ? " (bank words as inspiration)" : " (Vocab Bank OFF — written freely)") : "AI didn't answer — built prompts on-device " + (on ? "from your picks" : "without the bank") + " (free)");
     });
   }
   function refDataUrl(l) { // selected art -> white-backed JPEG <= 1024 px for Grok edit
@@ -1065,7 +1070,9 @@
       h("div", { cls: "row" }, [select(styleOpts, G.style || "", function (v) { G.style = v; saveG(); }, "Graphic style"), select(methOpts, G.method || methOpts[0][0], function (v) { G.method = v; saveG(); }, "Print method"),
         select([["white", "Generate on white"], ["black", "Generate on black"], ["green", "Generate on green screen"]], G.bg || "white", function (v) { G.bg = v; saveG(); }, "Flat background Grok draws behind the art (removed afterwards)")]),
       lastP ? h("div", { cls: "row" }, [btn("⤓ Use my last Prompt Machine prompt as the idea", function () { G.idea = safe(String(window.__pmLastPrompt || "").slice(0, 400)); saveG(); renderTab(); }, "sm")]) : null,
-      h("div", { cls: "row" }, [btn("✍️ Grok: write prompts (≈ $0.001)", function (e) { writePrompts(false, e.currentTarget); }, "go"), btn("🔁 Remix (new picks + new prompts)", function (e) { writePrompts(true, e.currentTarget); })]));
+      h("div", { cls: "row" }, [btn("✍️ Grok: write prompts (≈ $0.001)", function (e) { writePrompts(false, e.currentTarget); }, "go"), btn(bankOn() ? "🔁 Remix (new picks + new prompts)" : "🔁 Remix (fresh AI prompts, no bank)", function (e) { writePrompts(true, e.currentTarget); }, "", "Grok writes brand-new prompts every press (≈ $0.001)"),
+        (function () { var on = bankOn(), b = btn("📚 Vocab Bank: " + (on ? "ON" : "OFF"), function () { setBank(!bankOn()); renderTab(); msg(bankOn() ? "Vocab Bank ON — Remix uses your picks as inspiration" : "Vocab Bank OFF — Remix writes freely, no bank words"); }, on ? "sm on" : "sm", on ? "ON: your bank picks are inspiration / seed words. Click for OFF." : "OFF: Grok writes freely without the Vocab Bank. Click for ON."); b.setAttribute("data-pm", "tee-bank-toggle"); b.setAttribute("data-on", on ? "1" : "0"); return b; })()]),
+      h("div", { cls: "muted", "data-pm": "tee-bank-mode", text: bankOn() ? "Vocab Bank ON: Grok uses your picks above as inspiration and still writes fresh, new details each press. Your typed idea / lettering win." : "Vocab Bank OFF: Grok ignores the bank and writes original shirt-art ideas from your idea, subject, style and print settings (or surprises you if they're empty). Your typed words win." }));
     if (G.prompts && G.prompts.length) {
       var ta = h("textarea", { value: G.prompts[G.cur] || "", style: "min-height:110px", on: { input: function () { G.prompts[G.cur] = ta.value; saveG(); } } });
       ap(el, h("div", { cls: "row" }, G.prompts.map(function (p, i) { return btn("Prompt " + (i + 1), function () { G.cur = i; saveG(); renderTab(); }, "sm" + (i === G.cur ? " on" : "")); }).concat([h("span", { cls: "muted", text: G.title ? "“" + G.title + "” · " + (G.src || "") : (G.src || "") })])), ta);

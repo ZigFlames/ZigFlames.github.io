@@ -172,6 +172,12 @@ function tagOkW(c, plat, sfw) {
   return true;
 }
 
+// Remix variety (v20261110c): every press gets random creative angles + a nonce, so ON and OFF bank modes never repeat.
+const SPARKS = ["an unexpected location", "a tiny story moment", "a bold color story", "a weather or season twist", "a different decade's vibe", "an unusual camera angle", "a surprising prop", "a new time of day",
+  "a texture-first detail", "a candid in-between moment", "a cinematic reflection", "a street-level documentary feel", "a luxury editorial twist", "a gritty nightlife edge", "a dreamy soft-focus mood", "a high-contrast graphic look",
+  "a travel postcard feel", "a behind-the-scenes angle", "a music-video energy", "a minimal negative-space frame"];
+function sparks(n) { const a = SPARKS.slice().sort(() => Math.random() - 0.5).slice(0, n); return { angles: a, nonce: Math.random().toString(36).slice(2, 8) }; }
+const BANK_OFF = "Vocab Bank is OFF: write freely — invent every detail yourself from the seed, the selections and your own imagination; do not rely on any word list.";
 const TEXT = {
   async chat(b, env, adult) {
     const hist = (Array.isArray(b.messages) ? b.messages : []).slice(-8).map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: scrub(m && m.content, adult, 1500) })).filter((m) => m.content);
@@ -275,25 +281,55 @@ const TEXT = {
     return { pick, name: name && !bad(name) ? name : "", fresh, provider: r.usage.engine, model: r.usage.model, est_usd: r.usage.est_usd, usage: r.usage };
   },
   async remix(b, env, adult) {
-    const idea = scrub(b.idea || b.text, adult, 1200); if (!idea) return { err: "empty idea", status: 400 };
+    const bank = b.bank !== false;
+    const idea = scrub(b.idea || b.text, adult, 1200) || (bank ? "" : "a fresh concept that fits these selections"); if (!idea) return { err: "empty idea", status: 400 };
     const n = Math.max(1, Math.min(8, parseInt(b.count || 5, 10)));
     const cx = ctxLines(b, adult);
     // the page already picked which Vocab Bank words fit these selections (deterministic, on-device); the model only composes
-    const words = (Array.isArray(b.words) ? b.words : []).slice(0, 24).map((x) => typeof x === "string" ? { w: x } : x || {}).map((x) => ({ w: scrub(x.w, adult, 60), use: scrub(x.use, adult, 60) })).filter((x) => x.w);
+    const words = (bank && Array.isArray(b.words) ? b.words : []).slice(0, 24).map((x) => typeof x === "string" ? { w: x } : x || {}).map((x) => ({ w: scrub(x.w, adult, 60), use: scrub(x.use, adult, 60) })).filter((x) => x.w);
     const avoid = strList(b.avoid, 12, 60, adult);
     const invent = b.invent !== false;
     const sys = "You remix a seed idea into " + n + " FRESH, clearly different variations for photoreal image/video prompts. Each: one sentence of 18-45 words with who (adult 21+), outfit, place, time, action, a specific real camera and a DIFFERENT lighting setup; vary location, light, camera and mood across the set. Keep the user's key words.\n" +
       "Follow these selections exactly:\n- " + cx.lines.join("\n- ") + "\n" +
-      (words.length ? "Use the provided word list (already chosen to fit the selections; 'use' says why): weave 2-4 of them into EACH variation and use every word at least once across the set, verbatim.\n" : "") +
+      (words.length ? "Vocab Bank is ON: use the provided word list as inspiration / seed words (already chosen to fit the selections; 'use' says why): weave 1-3 of them into EACH variation, but write fresh, creative details of your own around them — never just a word shuffle.\n" : bank ? "" : BANK_OFF + "\n") +
+      "Make this set feel new: lean into these creative angles (one per variation, mixed): given in 'spark'.\n" + "The user's own typed words (must_keep) win over everything else.\n" +
       (avoid.length ? "Never include: " + avoid.join(", ") + ".\n" : "") +
       (invent ? "Also invent exactly 8 NEW vocabulary words or phrases (1-4 words each) for newWords that fit these exact selections: specific outfits, places, props, poses, camera or lighting terms. They must NOT repeat any word from the word list or the seed.\n" : "") +
       "Reply JSON {\"ideas\":[\"...\"]" + (invent ? ",\"newWords\":[\"...\"]" : "") + "}.\n" + rules(adult && cx.tier !== "sfw", isDance(idea, b.style, b.context && b.context.genres, b.context && b.context.platform) && (cx.tier === "nsfw" || cx.tier === "xxx" ? true : "safe"));
-    const r = await llmPick(env, sys, { seed: idea, style: scrub(b.style, adult, 120), count: n, words }, { json: true, maxTokens: 1300, temperature: 1.0 }, b);
+    const r = await llmPick(env, sys, { seed: idea, must_keep: strList(b.must_keep, 12, 80, adult), style: scrub(b.style, adult, 120), count: n, words, spark: sparks(Math.min(n, 4)) }, { json: true, maxTokens: 1300, temperature: 1.05 }, b);
     if (r.err) return r;
     const ideas = strList(r.obj.ideas, n, 600, adult).map(frame21);
     const have = new Set(words.map((x) => x.w.toLowerCase())), seedL = idea.toLowerCase();
     const newWords = invent ? strList(r.obj.newWords || r.obj.new_words, 12, 50, adult).filter((w) => w.split(/\s+/).length <= 5 && !have.has(w.toLowerCase()) && seedL.indexOf(w.toLowerCase()) < 0) : [];
     return ideas.length ? { ideas, newWords, tier: cx.tier, usage: r.usage } : { err: "empty", status: 502 };
+  },
+  // Main AI Remixer page "Remix" button (v20261110c). It used to call a dead "remix-prompt" function and always fell back to the
+  // on-device generator built from Vocab Bank words. Now: its own Grok engine (xAI grok-4.20 non-reasoning, free fallback chain).
+  async remix_prompt(b, env, adult) {
+    const bank = b.bank !== false, n = Math.max(1, Math.min(8, parseInt(b.count || 4, 10)));
+    const seed = scrub(b.idea, adult, 1500) || "a fresh concept that fits these selections";
+    const typed = scrub(b.typed, adult, 400);
+    const vocab = bank ? strList(b.vocabChips, 14, 60, adult) : [];
+    const themes = adult ? strList(b.adultThemes, 8, 40, adult) : [];
+    const dir = b.director && typeof b.director === "object" ? b.director : {};
+    const director = {}; ["intent", "band", "intentPhrase", "style", "platform", "mood", "realism"].forEach((k) => { if (typeof dir[k] === "string" && dir[k]) director[k] = scrub(dir[k], adult, 120); });
+    const exclude = strList(b.excludeTitles, 20, 60, adult);
+    const people = Math.max(1, Math.min(6, parseInt(b.characterCount || 1, 10) || 1));
+    const sys = "You are the AI Prompt Remixer. Write " + n + " FRESH, clearly different variations of the seed for photoreal image/video generators. Each variation: a punchy 2-5 word title and a prompt of 45-95 words: who (" + people + " original adult" + (people > 1 ? "s" : "") + ", 21+), outfit, place, time, action/pose, a specific real camera + lens and a DIFFERENT lighting setup and mood each time; vary location, light, camera and mood across the set. Plus 3-6 short lowercase tags.\n" +
+      "The user's own typed words (typed) are fixed: keep them verbatim and build around them; they win over everything.\n" +
+      (vocab.length ? "Vocab Bank is ON: vocab_words are inspiration / seed words picked from the user's bank for these selections — weave 1-3 into each variation, and still invent fresh details of your own (never a plain word shuffle).\n" : BANK_OFF + "\n") +
+      (exclude.length ? "Do not reuse these titles: " + exclude.join(", ") + ".\n" : "") +
+      "Lean into the spark angles (one per variation) so this press feels new.\n" +
+      "Reply JSON {\"variations\":[{\"title\":\"...\",\"prompt\":\"...\",\"tags\":[\"...\"]}]}.\n" + rules(adult && b.adultMode === true, isDance(seed) && (adult ? true : "safe"));
+    const r = await llm(env, sys, { seed, typed, vocab_words: vocab, adult_themes: themes, adult_phrase: adult ? scrub(b.adultPhrase, adult, 300) : "", director, cast: scrub(b.cast, adult, 30), spark: sparks(Math.min(n, 5)) },
+      { pick: pickOf(b) || "grok", json: true, maxTokens: Math.min(2400, 260 * n + 200), temperature: 1.05, freeMax: 2, timeout: 30000 });
+    if (r.err) return r;
+    const raw = Array.isArray(r.obj.variations) ? r.obj.variations : [];
+    const variations = raw.slice(0, n).map((v) => {
+      const prompt = frame21(scrub(v && (v.prompt || v.text), adult, 900));
+      return prompt ? { title: scrub(v.title, adult, 60) || "Remix", prompt, tags: strList(v.tags, 6, 30, adult).map((t) => t.toLowerCase()) } : null;
+    }).filter(Boolean);
+    return variations.length ? { variations, provider: r.usage && r.usage.model, bank, usage: r.usage } : { err: "empty", status: 502 };
   },
   async classify(b, env, adult) {
     // one-time labelling of Vocab Bank categories; the page caches the result, so remixes never spend calls on it
@@ -359,13 +395,14 @@ const TEXT = {
   // T-Shirt Studio (v20261110a): shirt-artwork prompts for Grok Imagine from the user's idea + Vocabulary Bank picks.
   // Output = the isolated graphic only (no shirt / mockup / wearer) on a flat removable background, ready for DTF prep.
   async tee(b, env, adult) {
-    const idea = scrub(b.idea, adult, 400), words = strList(b.words, 30, 80, adult), locked = strList(b.locked, 12, 80, adult);
+    const bank = b.bank !== false;
+    const idea = scrub(b.idea, adult, 400), words = bank ? strList(b.words, 30, 80, adult) : [], locked = bank ? strList(b.locked, 12, 80, adult) : [];
     const style = scrub(b.style, adult, 80), method = scrub(b.method, adult, 60), subject = scrub(b.subject, adult, 300), lettering = scrub(b.text, adult, 80);
     const shirt = scrub(b.shirt, false, 30) || "black", bg = /black/i.test(b.bg) ? "pure flat black (#000000)" : /green/i.test(b.bg) ? "pure flat chroma green (#00FF00)" : "pure flat white (#FFFFFF)";
     const n = Math.max(1, Math.min(4, parseInt(b.count || 3, 10)));
-    if (!idea && !words.length && !subject && !lettering) return { err: "empty idea", status: 400 };
-    const sys = "You are a streetwear / merch art director. Write " + n + " distinct prompts (45-95 words each) for an AI image generator (Grok Imagine) that will create T-SHIRT ARTWORK to be printed by " + (method || "DTF transfer") + ". Each prompt describes ONLY the isolated graphic: no T-shirt, no mockup, no hanger, no person wearing it, no room. Centered composition, bold clean shapes, crisp hard edges, strong silhouette, limited cohesive color palette that pops on a " + shirt + " shirt, high contrast, fills most of the frame, isolated on a " + bg + " background with nothing else (no shadow, no gradient, no texture, no frame) so the background can be cut away. No watermark, no signature, no mockup. If lettering is given, quote the exact words once and ask for bold, legible, correctly spelled lettering; otherwise ask for no text. Use the user's idea, subject and their Vocabulary Bank words (locked words MUST appear); the user's own words always win over your taste. Vary composition and art style between prompts unless a style is given. Original characters only. Reply JSON {\"title\":\"2-4 word design name\",\"prompts\":[\"...\"]}.\n" + rules(adult, false).split("\n").filter((l) => !/Zig's taste/.test(l)).join("\n") + "\n- Merch art: graphic illustration / print art styles are welcome here (not only photos). Any person drawn is an original adult (21+) character.";
-    const r = await llmPick(env, sys, { idea, subject, lettering, style, print_method: method || "DTF", shirt_color: shirt, words, locked, remix: !!b.remix }, { json: true, maxTokens: 1100, temperature: b.remix ? 1.05 : 0.85 }, b);
+    if (!idea && !words.length && !subject && !lettering && bank) return { err: "empty idea", status: 400 };
+    const sys = "You are a streetwear / merch art director. Write " + n + " distinct prompts (45-95 words each) for an AI image generator (Grok Imagine) that will create T-SHIRT ARTWORK to be printed by " + (method || "DTF transfer") + ". Each prompt describes ONLY the isolated graphic: no T-shirt, no mockup, no hanger, no person wearing it, no room. Centered composition, bold clean shapes, crisp hard edges, strong silhouette, limited cohesive color palette that pops on a " + shirt + " shirt, high contrast, fills most of the frame, isolated on a " + bg + " background with nothing else (no shadow, no gradient, no texture, no frame) so the background can be cut away. No watermark, no signature, no mockup. If lettering is given, quote the exact words once and ask for bold, legible, correctly spelled lettering; otherwise ask for no text. Use the user's idea and subject; follow vocab_bank: when ON, their Vocabulary Bank words are inspiration seeds (locked words MUST appear) and you still add fresh ideas of your own; when OFF, ignore any word list and invent freely. The user's own typed words always win over your taste. Use the spark angles so every press feels new. Vary composition and art style between prompts unless a style is given. Original characters only. Reply JSON {\"title\":\"2-4 word design name\",\"prompts\":[\"...\"]}.\n" + rules(adult, false).split("\n").filter((l) => !/Zig's taste/.test(l)).join("\n") + "\n- Merch art: graphic illustration / print art styles are welcome here (not only photos). Any person drawn is an original adult (21+) character.";
+    const r = await llmPick(env, sys, { idea: idea || (bank ? "" : "surprise me: an original, bold streetwear graphic concept"), subject, lettering, style, print_method: method || "DTF", shirt_color: shirt, words, locked, remix: !!b.remix, vocab_bank: bank ? "ON: use words / locked as inspiration seeds, add your own fresh ideas" : "OFF: " + BANK_OFF, spark: sparks(n) }, { json: true, maxTokens: 1100, temperature: b.remix ? 1.1 : 0.9 }, b);
     if (r.err) return r;
     const prompts = strList(r.obj.prompts, n, 900, adult).map((x) => (/\b(?:wom[ae]n|m[ae]n|person|people|lady|ladies|guy|girl|model|dancer|rapper|singer|character|couple)\b/i.test(x) ? frame21(x) : x)); // image path re-frames people as adults 21+ anyway
     return prompts.length ? { title: scrub(r.obj.title, adult, 60), prompts, usage: r.usage } : { err: "empty", status: 502 };
@@ -738,7 +775,7 @@ async function imgFetch(b, ch) {
     return new Response(buf, { status: 200, headers: Object.assign({ "Content-Type": ct, "Cache-Control": "no-store" }, ch) });
   } catch (e) { return J({ error: "image host unreachable" }, 502, ch); }
 }
-export const BOOST_ACTIONS = new Set(["chat", "randomize", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "tee", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch", "tee_extend"]);
+export const BOOST_ACTIONS = new Set(["chat", "randomize", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "tee", "remix_prompt", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch", "tee_extend"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";

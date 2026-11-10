@@ -261,7 +261,8 @@
     var heat = ctx.tier, st = ctx.style && WHERE[ctx.style] ? ctx.style : "any";
     var where = heat === "nsfw" || heat === "xxx" ? (Math.random() < 0.5 ? pick(HEAT_WHERE[heat]) : pick(WHERE[st])) : pick(WHERE[st]);
     var parts = [subject(ctx, heat) + " " + where, pick(TWIST[heat])];
-    var ws = words(ctx, opt.words || 4).slice(0, opt.words || 4).map(function (x) { return x.w; });
+    var nw = opt.words == null ? 4 : opt.words; // 0 = no Vocab Bank words (Remix with the bank OFF)
+    var ws = nw > 0 ? words(ctx, nw).slice(0, nw).map(function (x) { return x.w; }) : [];
     if (ws.length) parts.push(ws.join(", "));
     var s = parts.join(", ");
     if (heat === "nsfw" && !/nsfw/i.test(s)) s += ", NSFW";
