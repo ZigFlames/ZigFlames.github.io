@@ -12,7 +12,7 @@
    Adults 21+ only in any AI prompt; no real-person likeness (enforced again by the worker). */
 (function () {
   "use strict";
-  var V = "20261110c";
+  var V = "20261110c2";
   var DEF_EP = "https://zigflames-ai.zigflames.workers.dev";
   function endpoint() { try { var o = localStorage.getItem("pm_ai_endpoint"); if (o) return o; } catch (e) {} return window.PM_AI_ENDPOINT || DEF_EP; }
   function call(action, body, timeout) {
@@ -415,7 +415,11 @@
   // if the model can't load it falls back to a "Smooth enlarge (not AI)" and the DTF checks keep judging the REAL detail.
   // Asset metadata: detailW = width in px of real detail (AI upscales count, plain resampling never does); edgeW = detail width of
   // AI-extended bands; up = "ai" | "smooth"; fit = "extend" | "regrok" | "freefill".
-  var FIT = { note: "", banner: "", busy: "", cancel: null };
+  var FIT = { note: "", banner: "", busy: "", job: null, offer: null, prog: null, backend: null };
+  // Hotfix v20261110c2: the AI upscale runs in a Web Worker (tee-upscale-worker.js: WebGL via OffscreenCanvas → WASM → CPU), tile by
+  // tile with progress + Cancel + a stall watchdog, so the page never freezes. Weak devices / huge images get the honest smooth enlarge offer.
+  var UPW = (function () { try { var sc = document.currentScript && document.currentScript.src; return sc ? sc.replace(/[^\/]*$/, "") : ""; } catch (e) { return ""; } })() || "assets/";
+  var UP_MAX_SEC = 180;
   var UPS = { tf: "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js", up: "https://cdn.jsdelivr.net/npm/upscaler@1.0.0/dist/browser/umd/upscaler.min.js",
     x2: "https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0/dist/umd/models/esrgan-slim/src/x2/index.min.js", x4: "https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0/dist/umd/models/esrgan-slim/src/x4/index.min.js" };
   var jsP = {};
@@ -599,49 +603,88 @@
     return pre.then(function (baked) {
       var q = upscaleNeed(l); if (!q) return { err: "Image still loading" };
       if (q.need <= 1.02) { FIT.note = "AI Upscale: not needed — already " + Math.round(q.px) + " PPI at " + q.inW.toFixed(1) + " in wide (needs " + q.min + ")."; if (baked) afterChange(); else renderTab(); return { skipped: true, ppi: Math.round(q.px) }; }
-      var a = q.a, M = meta(a), alpha = hasAlpha(a.img, a.w, a.h), factor = q.need <= 2 ? 2 : 4, mp = a.w * a.h / 1e6, note2 = "", noAI = "";
-      if (factor === 4 && mp > 1.0) { factor = 2; note2 = " (4× is too heavy for a " + mp.toFixed(1) + " MP photo on a phone, so 2×)"; }
-      if (mp * 4 > 24) noAI = "the photo is too large (" + mp.toFixed(1) + " MP) for the on-device AI model";
+      var a = q.a, M = meta(a), alpha = hasAlpha(a.img, a.w, a.h), factor = q.need <= 2 ? 2 : 4, mp = a.w * a.h / 1e6, note2 = "";
+      if (factor === 4 && mp > 1.0) { factor = 2; note2 = " (4× is too heavy for a " + mp.toFixed(1) + " MP photo in a browser, so 2×)"; }
       var src = canvas(a.w, a.h); src.getContext("2d").drawImage(a.img, 0, 0);
       var tw = Math.round(a.w * Math.min(q.need, factor)), th = Math.round(tw * a.h / a.w);
       if (tw * th > 16e6) { var sc = Math.sqrt(16e6 / (tw * th)); tw = Math.round(tw * sc); th = Math.round(th * sc); }
-      var ctl = window.AbortController ? new AbortController() : null; FIT.cancel = ctl;
-      busy("AI Upscale: loading the free on-device AI model (first time ≈ 2 MB)…"); FIT.banner = "";
-      var t0 = Date.now();
-      return (noAI ? Promise.reject(new Error(noAI)) : loadJs(UPS.tf)).then(function () { return loadJs(UPS.up); }).then(function () { return loadJs(factor === 4 ? UPS.x4 : UPS.x2); }).then(function () {
-        var model = factor === 4 ? window.ESRGANSlim4x : window.ESRGANSlim2x; if (!window.Upscaler || !model) throw new Error("AI upscaler didn't start");
-        var up = new window.Upscaler({ model: model });
-        busy("AI Upscale " + factor + "×: working on your device… 0%");
-        return up.upscale(src, { patchSize: 128, padding: 8, output: "base64", signal: ctl ? ctl.signal : undefined, progress: function (p) { busy("AI Upscale " + factor + "× (ESRGAN, on your device): " + Math.round(p * 100) + "% · don't close the tab"); } })
-          .then(function (b64) { try { up.dispose && up.dispose(); } catch (e) {} return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error("upscaled image couldn't be opened")); }; im.src = /^data:/.test(b64) ? b64 : "data:image/png;base64," + b64; }); });
-      }).then(function (im) {
+      FIT.banner = ""; FIT.offer = null;
+      var dc = deviceCheck(mp * factor * factor), t0 = Date.now();
+      if (opt.smooth) dc = { ok: false, chosen: true, why: "you picked Smooth enlarge" };
+      if (!dc.ok && !opt.force && !opt.smooth) { // don't even start: offer the honest choice instead of a frozen tab
+        FIT.offer = { kind: dc.size ? "size" : "weak", why: dc.why }; FIT.note = "AI Upscale not started: " + dc.why + ". " + (dc.size ? "" : "It could take many minutes here. ") + "Pick ↗ Smooth enlarge (NOT AI, instant — adds no real detail)" + (dc.size ? "" : " or run the AI anyway (the page stays usable, you can Cancel)") + ".";
+        if (baked) afterChange(); else renderTab(); return { err: "not started", offered: FIT.offer.kind };
+      }
+      FIT.note = "";
+      busy("AI Upscale: starting the free on-device AI model (first time ≈ 2 MB)…"); prog(0, 1, "AI Upscale " + factor + "×: starting…");
+      return (opt.smooth ? Promise.reject(Object.assign(new Error("smooth chosen"), { chosen: true })) : runUpscaleWorker(src, factor, !!opt.force).then(function (r) { r.canvas.secs = r.secs; r.canvas.backend = r.backend; return r.canvas; }))      .then(function (im) {
         var c = canvas(tw, th), x = c.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(im, 0, 0, tw, th);
         if (alpha) { var al = smoothEnlarge(src, tw, th).getContext("2d").getImageData(0, 0, tw, th).data, dd = x.getImageData(0, 0, tw, th); for (var i = 3; i < dd.data.length; i += 4) dd.data[i] = al[i]; x.putImageData(dd, 0, 0); }
         var ux = tw / a.w;
-        return saveFit(c, l, "AI upscaled " + factor + "×", { up: "ai", upX: Math.round(((M.upX || 1) * ux) * 100) / 100, detailW: Math.min(tw, Math.round(M.detailW * ux)), edgeW: M.edgeW ? Math.round(M.edgeW * ux) : M.edgeW, fit: M.fit, upModel: "ESRGAN-slim " + factor + "× (UpscalerJS · TensorFlow.js)", upSecs: Math.round((Date.now() - t0) / 1000) }, !alpha).then(function (rec) { return { rec: rec, ai: true, factor: factor, ux: ux }; });
+        return saveFit(c, l, "AI upscaled " + factor + "×", { up: "ai", upX: Math.round(((M.upX || 1) * ux) * 100) / 100, detailW: Math.min(tw, Math.round(M.detailW * ux)), edgeW: M.edgeW ? Math.round(M.edgeW * ux) : M.edgeW, fit: M.fit, upModel: "ESRGAN-slim " + factor + "× (TensorFlow.js " + (im.backend || "") + ", background worker)", upSecs: Math.round((Date.now() - t0) / 1000) }, !alpha).then(function (rec) { return { rec: rec, ai: true, factor: factor, ux: ux }; });
       }, function (e) {
-        if (e && (e.name === "AbortError" || /abort/i.test(e.message || ""))) throw new Error("cancelled");
+        if (e && /cancelled/.test(e.message || "")) throw new Error("cancelled — nothing changed");
+        if (e && e.slow) { FIT.offer = { kind: "slow", sec: e.slow.sec, backend: e.slow.backend }; FIT.note = "AI Upscale paused before it got long: this device would need about " + fmtS(e.slow.sec) + " (" + (e.slow.gpu ? "on its GPU" : e.slow.backend === "webgl" ? "software WebGL, no real GPU" : "no GPU — " + e.slow.backend) + "). Pick ↗ Smooth enlarge (NOT AI, instant) or run the AI anyway — the page stays usable and you can Cancel."; throw Object.assign(new Error("offered"), { quiet: true }); }
+        if (e && e.stalled) { FIT.offer = { kind: "stalled" }; FIT.note = "AI Upscale stopped: " + e.message + ". Nothing was changed. Try ↗ Smooth enlarge (NOT AI, instant) instead."; throw Object.assign(new Error("offered"), { quiet: true }); }
         // honest fallback: plain resample, never counted as real detail
         busy("AI model unavailable — smooth enlarge (not AI)…");
         var c = smoothEnlarge(src, tw, th), ux = tw / a.w;
         return saveFit(c, l, "smooth enlarged (not AI)", { up: "smooth", upX: Math.round(((M.upX || 1) * ux) * 100) / 100, detailW: M.detailW, edgeW: M.edgeW, fit: M.fit }, !alpha).then(function (rec) {
-          FIT.banner = "🛡 The AI upscaler couldn't run here (" + String(e && e.message || e).slice(0, 120) + "). Did a Smooth enlarge instead — NOT AI: it only makes the file bigger, it adds no real detail, so the print checks still judge the original sharpness.";
+          FIT.banner = e && e.chosen ? "↗ Smooth enlarge — NOT AI (you chose it): it only makes the file bigger and adds no real detail, so the print checks still judge the original sharpness." : "🛡 The AI upscaler couldn't run here (" + String(e && e.message || e).slice(0, 120) + "). Did a Smooth enlarge instead — NOT AI: it only makes the file bigger, it adds no real detail, so the print checks still judge the original sharpness.";
           return { rec: rec, ai: false, factor: ux, ux: ux };
         });
       }).then(function (r) {
-        busy(""); FIT.cancel = null; if (!baked) commit(); l.asset = r.rec.id; var q2 = upscaleNeed(l), dppi = Math.round(r.rec.detailW / q2.inW);
+        busy(""); FIT.prog = null; if (!baked) commit(); l.asset = r.rec.id; var q2 = upscaleNeed(l), dppi = Math.round(r.rec.detailW / q2.inW);
         FIT.note = (r.ai ? "AI Upscale (ESRGAN " + r.factor + "×, free, on your device" + (r.rec.upSecs ? ", " + r.rec.upSecs + " s" : "") + ")" + note2 + ": " + a.w + " × " + a.h + " → " + r.rec.w + " × " + r.rec.h + " px = " + Math.round(q2.px) + " PPI at " + q2.inW.toFixed(1) + " in wide."
           : "Smooth enlarge (NOT AI): " + a.w + " × " + a.h + " → " + r.rec.w + " × " + r.rec.h + " px, but real detail stays ≈ " + dppi + " PPI.") +
           (r.ai && q2.px < q.min - 0.5 ? " Still under " + q.min + " PPI — the most AI can honestly do here; print smaller (≤ " + (r.rec.w / q.min).toFixed(1) + " in wide) for full sharpness." : "") + (r.ai ? " AI-made detail: zoom in and check faces and text." : "") + (baked ? " (Crop locked in first so only the printed part was upscaled — Undo to reposition.)" : "");
         afterChange(); msg(r.ai ? "AI Upscale done" : "Smooth enlarge (not AI)", "free · $0"); return r;
       });
-    }).catch(function (e) { busy(""); FIT.cancel = null; FIT.banner = "Upscale stopped: " + (e && e.message || e); renderTab(); return { err: String(e && e.message || e) }; });
+    }).catch(function (e) { busy(""); FIT.prog = null; FIT.job = null; if (!(e && e.quiet)) FIT.banner = "Upscale stopped: " + (e && e.message || e); renderTab(); return { err: String(e && e.message || e), offered: FIT.offer && FIT.offer.kind }; });
+  }
+  function fmtS(sec) { return sec >= 90 ? Math.round(sec / 60) + " min" : Math.max(1, Math.round(sec)) + " s"; }
+  function deviceCheck(mpOut) {
+    var why = [], size = false, gl = false, cores = navigator.hardwareConcurrency || 2, mem = navigator.deviceMemory || 4;
+    try { var c = document.createElement("canvas"); gl = !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) {}
+    if (!window.Worker) why.push("this browser can't run the AI in the background");
+    if (!gl && cores < 4) why.push("no graphics acceleration and only " + cores + " CPU cores");
+    if (mem < 2) why.push("only " + mem + " GB of memory");
+    if (mpOut > 16.5) { size = true; why.push("the result would be " + Math.round(mpOut) + " MP — over the safe size for in-browser AI (16 MP)"); }
+    return { ok: !why.length, why: why.join(", "), size: size, gl: gl };
+  }
+  function prog(done, total, label) {
+    FIT.prog = { done: done, total: total, label: label }; FIT.busy = label;
+    if (els.fitProg) { els.fitProg.max = total; els.fitProg.value = done; els.fitProg.style.display = ""; }
+    if (els.fitBusy) els.fitBusy.textContent = label;
+  }
+  function runUpscaleWorker(src, factor, force) {
+    var id = src.getContext("2d").getImageData(0, 0, src.width, src.height), wk;
+    try { wk = new Worker(UPW + "tee-upscale-worker.js?v=" + V); } catch (e) { return Promise.reject(new Error("couldn't start the background AI worker")); }
+    return new Promise(function (res, rej) {
+      var last = Date.now(), msTile = 0, phase = "load", finished = false, dog;
+      function fin(err, val) { if (finished) return; finished = true; clearInterval(dog); try { wk.terminate(); } catch (e) {} FIT.job = null; if (err) rej(err); else res(val); }
+      FIT.job = { cancel: function () { try { wk.postMessage({ cmd: "cancel" }); } catch (e) {} prog(FIT.prog ? FIT.prog.done : 0, FIT.prog ? FIT.prog.total : 1, "Cancelling…"); setTimeout(function () { fin(new Error("cancelled")); }, 1200); } };
+      // watchdog: a tile (or the model download) that stops reporting gets the worker terminated cleanly
+      dog = setInterval(function () { var lim = phase === "load" ? 120000 : Math.max(45000, msTile * 8); if (Date.now() - last > lim) fin(Object.assign(new Error("the AI upscaler stalled (" + Math.round((Date.now() - last) / 1000) + " s without progress), so it was stopped"), { stalled: true })); }, 1000);
+      wk.onmessage = function (ev) {
+        var m = ev.data || {}; last = Date.now();
+        if (m.type === "backend") { FIT.backend = m.backend; prog(0, 1, "AI Upscale " + factor + "×: loading the model on " + (m.backend.name === "webgl" ? (m.backend.gpu ? "your GPU (WebGL)" : "WebGL (software)") : m.backend.name.toUpperCase() + " (no GPU)") + "…"); }
+        else if (m.type === "model") { phase = "run"; prog(0, 1, "AI Upscale " + factor + "×: first tile…"); }
+        else if (m.type === "est") { msTile = m.msPerTile; if (!force && (m.sec > UP_MAX_SEC || (FIT.backend && !FIT.backend.gpu && m.sec > 90))) { try { wk.postMessage({ cmd: "cancel" }); } catch (e) {} fin(Object.assign(new Error("slow"), { slow: { sec: m.sec, backend: FIT.backend && FIT.backend.name, gpu: !!(FIT.backend && FIT.backend.gpu) } })); } }
+        else if (m.type === "progress") prog(m.done, m.total, "AI Upscale " + factor + "× (ESRGAN on your device · " + (FIT.backend ? FIT.backend.name : "") + "): tile " + m.done + " / " + m.total + (m.done < m.total && m.left ? " · ≈ " + fmtS(m.left) + " left" : "") + " — the page stays usable");
+        else if (m.type === "done") { var c = canvas(m.w, m.h); c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(m.buf), m.w, m.h), 0, 0); fin(null, { canvas: c, secs: m.secs, backend: m.backend }); }
+        else if (m.type === "error") fin(new Error(m.cancelled ? "cancelled" : m.error));
+      };
+      wk.onerror = function (e) { fin(new Error("the background AI worker failed (" + (e && e.message || "error") + ")")); };
+      setTimeout(function () { if (!finished) renderTab(); }, 0); // show the progress bar + Cancel
+      wk.postMessage({ cmd: "run", w: id.width, h: id.height, buf: id.data.buffer, factor: factor, patch: 128, pad: 8 }, [id.data.buffer]);
+    });
   }
   function smartFit(l) {
     var a = A(l.asset); if (!a) return Promise.resolve(msg("Image still loading"));
     var R = areaR(), ia = a.w / a.h, mis = Math.abs(Math.log(ia / R)), plan = cropPlan(a, l.flip), steps = [], why = [];
     var shapeTxt = "Your photo is " + ratioTxt(a.w, a.h) + (ia > R ? " (wider)" : ia < R ? " (taller)" : "") + "; the print area is " + D.printW + " × " + D.printH + " in (" + ratioTxt(D.printW, D.printH) + ").";
-    var p, cut = edgeOpaque(l) < 0.6 && hasAlpha(a.img, a.w, a.h);
+    var p, cut = edgeOpaque(l) < 0.6 && hasAlpha(a.img, a.w, a.h); FIT.offer = null;
     if (cut) { why.push("This is cut-out art with a transparent background, so there are no photo strips to fill — it only checked sharpness."); steps.push("✓ Kept your layout"); p = Promise.resolve(); }
     else if (mis < 0.035 || (plan.keeps && plan.lost < 0.5) || (plan.keeps && !navigator.onLine)) {
       cropToFill(l, plan); steps.push("✂ Cropped to fill");
@@ -655,14 +698,11 @@
       var l2 = L(), q = upscaleNeed(l2); if (!q) return;
       var P = preset();
       if (q.px >= P.min - 0.5) { why.push("Sharpness: " + Math.round(q.px) + " PPI at " + D.printW + " × " + D.printH + " in — already sharp, no upscale."); return; }
-      var lowMsg = "Sharpness: only " + Math.round(q.px) + " PPI at this size (needs " + P.min + ")";
-      return aiUpscale(l2).then(function (r) {
-        if (r && r.err) { why.push(lowMsg + " — upscale didn't finish (" + r.err + ")."); return; }
-        steps.push(r && r.ai ? "🔍 AI Upscale " + r.factor + "×" : "↗ Smooth enlarge (not AI)");
-        var q2 = upscaleNeed(L()), dppi = Math.round(meta(A(L().asset)).detailW / q2.inW);
-        why.push(lowMsg + ", so it " + (r && r.ai ? "AI-upscaled it " + r.factor + "× on your device (free) → " + Math.round(q2.px) + " PPI." : "smooth-enlarged it (not AI) — real detail is still ≈ " + dppi + " PPI."));
-        if (q.need > 4.05) why.push("⚠ This photo is soft for " + D.printW + " × " + D.printH + " in: it needed " + q.need.toFixed(1) + "× and AI can only honestly add 4×. It will print soft — use a bigger original or a smaller print size.");
-      });
+      var lowMsg = "⚠ Sharpness: only " + Math.round(q.px) + " PPI at this size (needs " + P.min + ")";
+      // Hotfix: Smart Fit never starts the upscale by itself — it offers it (the upscale can take a minute on some devices).
+      FIT.offer = { kind: "upscale", need: q.need };
+      why.push(lowMsg + ". Tap “🔍 Upscale now (free, may take a minute)” below to AI-upscale it on your device — the page stays usable and you can Cancel.");
+      if (q.need > 4.05) why.push("⚠ This photo is soft for " + D.printW + " × " + D.printH + " in: it needs " + q.need.toFixed(1) + "× and AI can only honestly add 4×. It will print soft — use a bigger original or a smaller print size.");
     }).then(function () {
       FIT.note = "🪄 Smart Fit: " + steps.join(" → ") + ". " + shapeTxt + " " + why.join(" ");
       renderTab(); window.__pmTeeLastFit = { steps: steps, note: FIT.note }; return { steps: steps, note: FIT.note };
@@ -686,6 +726,17 @@
     return { cls: q.g[0], t: t };
   }
   function updatePpi() { if (!els.ppi) return; var r = ppiText(); els.ppi.className = "ppi " + r.cls; els.ppi.textContent = r.t; }
+  function upRow() { // progress bar + Cancel while the worker runs; the honest choices when the upscale was offered / paused
+    els.fitProg = null;
+    if (FIT.job) { els.fitProg = h("progress", { "data-pm": "tee-up-progress", max: String(FIT.prog ? FIT.prog.total : 1), value: String(FIT.prog ? FIT.prog.done : 0), style: "width:100%;height:14px" });
+      var cb = btn("✕ Cancel upscale", function () { if (FIT.job) FIT.job.cancel(); }, "sm"); cb.setAttribute("data-pm", "tee-up-cancel"); cb.disabled = false;
+      return h("div", { "data-pm": "tee-up-job" }, [els.fitProg, h("div", { cls: "row" }, [cb])]); }
+    var o = FIT.offer; if (!o) return null;
+    var smooth = btn("↗ Smooth enlarge instead · NOT AI, instant", function () { aiUpscale(L(), { smooth: true }); }, "sm", "Plain resize: makes the file bigger, adds no real detail (the print checks still judge the original sharpness)"); smooth.setAttribute("data-pm", "tee-up-smooth");
+    if (o.kind === "upscale") { var go = btn("🔍 Upscale now (free, may take a minute)", function () { aiUpscale(L()); }, "go"); go.setAttribute("data-pm", "tee-up-now"); return h("div", { cls: "row", "data-pm": "tee-up-offer" }, [go, smooth]); }
+    var any = o.kind === "size" ? null : btn("Run AI anyway" + (o.sec ? " (≈ " + fmtS(o.sec) + ", page stays usable)" : " (page stays usable)"), function () { aiUpscale(L(), { force: true }); }, "sm"); if (any) any.setAttribute("data-pm", "tee-up-force");
+    return h("div", { cls: "row", "data-pm": "tee-up-offer" }, [smooth, any]);
+  }
   function fitPanel(l) {
     var sizes = [[12, 14, "12 × 14 (full front)"], [15, 15, "15 × 15 (max)"], [11, 14, "11 × 14"], [10, 12, "10 × 12"], [10, 10, "10 × 10"], [4, 4, "4 × 4 (chest)"]], cur = D.printW + "x" + D.printH;
     if (!sizes.some(function (s) { return s[0] + "x" + s[1] === cur; })) sizes.unshift([D.printW, D.printH, D.printW + " × " + D.printH + " (current)"]);
@@ -693,14 +744,14 @@
     var b1 = btn("🪄 Smart Fit", function () { smartFit(l); }, "go", "Checks your photo against the print size and picks: Crop to Fill (free) if the subject survives the crop, otherwise AI Extend (≈ $0.02), then AI Upscale (free) if it's under the PPI your printer needs.");
     var b2 = btn("✂ Crop to Fill · free", function () { cropToFill(l); }, "", "Zooms the photo to cover the whole print area, centered on the subject. Drag to reposition.");
     var b3 = btn("🧩 AI Extend · ≈ $0.02", function () { aiExtend(l); }, "", "Grok Imagine paints new scene into the empty strips so nothing is cut off. Your original pixels stay in the middle; new layer with Undo.");
-    var b4 = btn("🔍 AI Upscale · free", function () { aiUpscale(l); }, "", "ESRGAN AI upscaler running on your device (free). Enlarges to the PPI your printer needs (max 4×).");
+    var b4 = btn("🔍 AI Upscale · free", function () { aiUpscale(L() || l); }, "", "ESRGAN AI upscaler running on your device in the background (free). Enlarges to the PPI your printer needs (max 4×). The page stays usable; you can Cancel.");
     els.fitBtns = [b1, b2, b3, b4]; els.fitBusy = h("div", { cls: "status", "data-pm": "tee-fit-busy", text: FIT.busy });
     var q = quality(l);
     ap(els.fitBox = h("div", { cls: "fitbox", "data-pm": "tee-fit" }), h("h4", { text: "Fit & print quality" }),
       h("div", { cls: "row" }, [h("span", { cls: "muted", text: "Print size:" }), sz, q ? h("span", { cls: "muted", text: "photo " + ratioTxt(A(l.asset).w, A(l.asset).h) + " · area " + ratioTxt(D.printW, D.printH) }) : null]),
-      h("div", { cls: "row" }, [b1, b2, b3, b4, FIT.cancel ? btn("Stop", function () { try { FIT.cancel.abort(); } catch (e) {} }, "sm") : null]),
+      h("div", { cls: "row" }, [b1, b2, b3, b4]),
       h("div", { cls: "muted", text: "Smart Fit is free unless it needs AI Extend (≈ $0.02, Grok — the cost is shown after). Crop to Fill and AI Upscale run on your device for $0. Your original is never changed." }),
-      els.fitBusy, FIT.banner ? h("div", { cls: "banner", "data-pm": "tee-fit-banner", text: FIT.banner }) : null, FIT.note ? h("div", { cls: "fitnote", "data-pm": "tee-fit-note", text: FIT.note }) : null);
+      els.fitBusy, upRow(), FIT.banner ? h("div", { cls: "banner", "data-pm": "tee-fit-banner", text: FIT.banner }) : null, FIT.note ? h("div", { cls: "fitnote", "data-pm": "tee-fit-note", text: FIT.note }) : null);
     if (FIT.busy) busy(FIT.busy);
     return els.fitBox;
   }
