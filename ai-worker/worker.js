@@ -391,14 +391,14 @@ export default {
       if (arr.length > lim) return json({ error: "slow down — try again in a minute" }, 429, ch);
     }
 
-    // 16 KB for everything except the 22-model panel (studio_render), which may carry a reference photo (page shrinks it to ~1024 px JPEG).
+    // 16 KB for everything except the 22-model panel (studio_render) and T-Shirt Studio AI Extend (tee_extend), which may carry a reference photo (page shrinks it to ~1024 px JPEG).
     const len = parseInt(req.headers.get("Content-Length") || "0", 10);
     if (len > STUDIO_MAX_BODY) return json({ error: "request too large" }, 413, ch);
     const raw = await req.text();
     if (raw.length > STUDIO_MAX_BODY) return json({ error: "request too large" }, 413, ch);
     let body; try { body = JSON.parse(raw); } catch (e) { return json({ error: "bad JSON" }, 400, ch); }
     if (!body || typeof body !== "object") return json({ error: "bad JSON" }, 400, ch);
-    if (raw.length > MAX_BODY && body.action !== "studio_render") return json({ error: "request too large" }, 413, ch);
+    if (raw.length > MAX_BODY && body.action !== "studio_render" && body.action !== "tee_extend") return json({ error: "request too large" }, 413, ch);
     let path = "/"; try { path = new URL(req.url).pathname.replace(/\/+$/, "") || "/"; } catch (e) {}
     if (body.action === "tighten" || path === "/tighten") return tighten(body, env, ch);
     if (BOOST_ACTIONS.has(body.action)) return boost(body, env, ch, req);

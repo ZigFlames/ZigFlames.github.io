@@ -1,4 +1,4 @@
-/* Zig's Prompt Machine — Fashion Editorial · T-Shirt Studio (v20261110a)
+/* Zig's Prompt Machine — Fashion Editorial · T-Shirt Studio (v20261110b)
    Universal clothing-artwork workstation. Works for every Prompt Machine user (nothing is tied to one account).
    Flow: Create / Import artwork -> Send to T-Shirt Studio -> Customize -> Preview on a shirt -> Prepare DTF -> Export.
    - Artwork arrives from anywhere (window.PMTee.send in pm-tee-bridge.js), file upload / drag-drop / paste, the on-device
@@ -7,10 +7,12 @@
    - Vocabulary: reads and writes the ONE existing Vocabulary Bank (React context passed in api.current.vocab) — no copy.
    - Two separate outputs: T-Shirt Mockup PNG (art on a garment) and DTF Artwork PNG (isolated art only, transparent,
      exact inches x PPI pixels, 300 PPI pHYs metadata). "Print-ready" only when every check of the chosen preset passes.
+   - Fit & print quality (v20261110b): Crop to Fill (free), AI Extend (Grok outpaint, ~$0.02), AI Upscale (ESRGAN on the device, free;
+     honest "Smooth enlarge (not AI)" fallback that never counts as real detail), Smart Fit, and a live PPI readout.
    Adults 21+ only in any AI prompt; no real-person likeness (enforced again by the worker). */
 (function () {
   "use strict";
-  var V = "20261110a";
+  var V = "20261110b";
   var DEF_EP = "https://zigflames-ai.zigflames.workers.dev";
   function endpoint() { try { var o = localStorage.getItem("pm_ai_endpoint"); if (o) return o; } catch (e) {} return window.PM_AI_ENDPOINT || DEF_EP; }
   function call(action, body, timeout) {
@@ -225,7 +227,7 @@
     ctx.save(); ctx.scale(scale, scale); ctx.font = "600 18px 'IBM Plex Sans',sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.fillText((PLACE[D.placement] || PLACE.front).label.toUpperCase() + " · " + (D.shirt === "custom" ? "custom" : (SHIRTS.filter(function (x) { return x[0] === D.shirt; })[0] || [0, 0, ""])[2]) + " tee", 24, 1080); ctx.restore();
   }
   var rq = 0;
-  function draw() { if (rq) return; rq = requestAnimationFrame(function () { rq = 0; if (!els.stage) return; var c = els.stage, x = c.getContext("2d"); x.clearRect(0, 0, c.width, c.height); renderMockup(x, c.width / 1000, guides); }); }
+  function draw() { if (rq) return; rq = requestAnimationFrame(function () { rq = 0; if (!els.stage) return; var c = els.stage, x = c.getContext("2d"); x.clearRect(0, 0, c.width, c.height); renderMockup(x, c.width / 1000, guides); updatePpi(); }); }
 
   // ---------- background removal (on-device, free) ----------
   function pixels(src) { var c = canvas(src.width || src.w, src.height || src.h), x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(src.img || src, 0, 0); return { c: c, x: x, id: x.getImageData(0, 0, c.width, c.height) }; }
@@ -285,7 +287,7 @@
   // ---------- DTF checks ----------
   function preset() { var p = PRESETS[D.preset] || PRESETS.dtf; return { id: D.preset, label: p.label, min: D.preset === "custom" ? clamp(+D.customMin || 300, 72, 1200) : p.min, semi: p.semi, ppi: 300 }; }
   function exportPx() { return { w: Math.round(D.printW * 300), h: Math.round(D.printH * 300) }; }
-  function lname(l, i) { return l.t === "txt" ? "Text \"" + String(l.text || "").slice(0, 18) + "\"" : "Image " + (i + 1) + (A(l.asset) ? " (" + A(l.asset).rec.name.slice(0, 28) + ")" : ""); }
+  function lname(l, i) { return l.t === "txt" ? "Text \"" + String(l.text || "").slice(0, 18) + "\"" : "Image " + (i + 1) + (A(l.asset) ? " (" + (function (n) { return n.length > 44 ? n.slice(0, 43) + "…" : n; })(A(l.asset).rec.name) + ")" : ""); }
   function corners(b) { var r = b.rot * Math.PI / 180, c = Math.cos(r), s = Math.sin(r); return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(function (k) { var x = k[0] * b.hw, y = k[1] * b.hh; return [b.cx + x * c - y * s, b.cy + x * s + y * c]; }); }
   var bcache = {};
   function cutOff(l) { // pixel test: draw the layer alone on a canvas with a 30% margin; any ink in the margin = clipped in the DTF file
@@ -307,9 +309,12 @@
       var i = D.layers.indexOf(l), nm = lname(l, i), b = layerBox(l, W, H, mc, true);
       if (l.t === "img") {
         var a = A(l.asset); if (!a) return add("fail", nm + ": image still loading");
-        var inW = l.s * D.printW, inH = inW * a.h / a.w, eff = Math.round(a.w / inW);
-        if (eff >= P.min) add("ok", nm + ": " + eff + " PPI at " + inW.toFixed(1) + " × " + inH.toFixed(1) + " in (needs " + P.min + "+)");
-        else add("fail", nm + ": only " + eff + " PPI at " + inW.toFixed(1) + " in wide — below " + P.min + " PPI. The export upscales it (soft / pixelated), so it is NOT print-ready. Sharp at " + P.min + " PPI up to " + (a.w / P.min).toFixed(1) + " × " + (a.h / P.min).toFixed(1) + " in — shrink it, use a bigger original, or upscale it with a real AI upscaler first.");
+        var inW = l.s * D.printW, inH = inW * a.h / a.w, M = meta(a), eff = Math.round(a.w / inW), real = Math.round(M.detailW / inW), rw = M.detailW, rh = M.detailW * a.h / a.w;
+        if (M.up === "smooth" && real < eff) add("info", nm + ": file is " + eff + " PPI, but it was smooth-enlarged (NOT AI) — only " + real + " PPI of real detail, and that is what counts here");
+        if (real >= P.min) add("ok", nm + ": " + real + " PPI at " + inW.toFixed(1) + " × " + inH.toFixed(1) + " in (needs " + P.min + "+)" + (M.up === "ai" ? " · AI-upscaled ×" + M.upX + " on the device (AI-made detail — zoom in and check faces / text)" : ""));
+        else add("fail", nm + ": only " + real + " PPI" + (real < eff ? " of real detail" : "") + " at " + inW.toFixed(1) + " in wide — below " + P.min + " PPI. The export upscales it (soft / pixelated), so it is NOT print-ready. Sharp at " + P.min + " PPI up to " + (rw / P.min).toFixed(1) + " × " + (rh / P.min).toFixed(1) + " in — " + (M.up === "ai" && M.upX >= 3.9 ? "it is already AI-upscaled ×" + M.upX + " (the honest limit), so print it smaller or use a bigger original." : "shrink it, use a bigger original, or run 🔍 AI Upscale in ② Customize."));
+        if (M.fit === "freefill") add("info", nm + ": the side bands are a free blurred mirror fill (not AI) — soft on purpose");
+        else if (M.edgeW) { var ep = Math.round(M.edgeW / inW); add(ep >= P.min * 0.5 ? "info" : "warn", nm + ": AI-extended bands carry ≈ " + ep + " PPI of real detail (Grok paints at ~1K) — softer than the middle" + (M.fit === "regrok" ? "; Grok re-drew the whole frame, so details may differ from your original" : "")); }
         var bk = l.asset + styleKey(l), bi = bcache[bk]; if (!bi) { var bm = layerBitmap(l, false); bi = bm ? borderInfo(pixels(bm).id.data, bm.width, bm.height) : { opaque: 0 }; bcache[bk] = bi; }
         if (l.fill) add("info", nm + ": background shape (" + l.fill + ") is ON by your choice — it prints as a solid " + (l.fillShape || "box"));
         else if (bi.opaque > 0.6 && !l.keepBox) add("fail", nm + ": still has a solid background (" + Math.round(bi.opaque * 100) + "% of its edge is opaque) — a box will print around it. Use Remove background, or tick \"Keep this box on purpose\".");
@@ -319,13 +324,17 @@
         var fs = fontStr(l, 40); var fok = !document.fonts || document.fonts.check(fs);
         add(fok ? "ok" : "warn", nm + ": text renders sharp at 300 PPI" + (fok ? "" : " (font still loading — wait a second)"));
       }
-      if (b && cutOff(l)) add("fail", nm + ": part of it is outside the print area and will be cut off in the print file — move or shrink it");
+      if (l.t === "img" && l.cover && covers(l, A(l.asset))) { var cg = A(l.asset), vis2 = 1 / (l.s * (l.s * areaR() / (cg.w / cg.h))); var trim = Math.round((1 - vis2) * 100); add("info", nm + ": fills the print area edge to edge" + (trim > 0 ? " — " + trim + "% of the photo is trimmed at the edges on purpose (drag it on the shirt to reposition)" : " (cropped / extended to the exact shape)")); }
+      else if (b && cutOff(l)) add("fail", nm + ": part of it is outside the print area and will be cut off in the print file — move or shrink it");
     });
     if (vis.length) {
       var c = canvas(1000, 1000 * D.printH / D.printW), x = c.getContext("2d", { willReadFrequently: true }); drawArtboard(x, c.width, c.height, false);
       var d = x.getImageData(0, 0, c.width, c.height).data, z = 0, o = 0, s = 0; for (var k = 3; k < d.length; k += 4) { if (d[k] === 0) z++; else if (d[k] === 255) o++; else s++; }
       var tot = d.length / 4;
-      add(z / tot > 0.02 ? "ok" : "fail", "Transparency: " + Math.round(z / tot * 100) + "% of the print area is transparent (nothing prints there)");
+      var boxed = vis.some(function (l) { return l.t === "img" && (l.keepBox || l.fill); });
+      if (z / tot > 0.02) add("ok", "Transparency: " + Math.round(z / tot * 100) + "% of the print area is transparent (nothing prints there)");
+      else if (boxed) add("info", "Transparency: " + Math.round(z / tot * 100) + "% — the photo fills the whole print area edge to edge, by your choice (a full " + D.printW + " × " + D.printH + " in film patch; heavier feel than cut-out art)");
+      else add("fail", "Transparency: " + Math.round(z / tot * 100) + "% of the print area is transparent (nothing prints there)");
       var semi = s / Math.max(1, s + o);
       if (!P.semi) add(semi > 0.01 ? "warn" : "ok", "≈" + Math.round(semi * 1000) / 10 + "% semi-transparent pixels (screen estimate, edges count extra) — this preset needs solid pixels only; the exact count is measured on export and decides PRINT-READY. Glows / soft shadows: use a stencil or posterize style.");
       else add(semi > 0.08 ? "warn" : "ok", "≈" + Math.round(semi * 1000) / 10 + "% semi-transparent pixels" + (semi > 0.08 ? " — soft glows / shadows can print faded or with a white-ink halo; most DTF shops accept it" : ""));
@@ -400,6 +409,302 @@
     });
   }
 
+  // ---------- Fit & print quality: Crop to Fill · AI Extend · AI Upscale · Smart Fit (v20261110b) ----------
+  // Crop to Fill + saliency + free edge fill run on the device ($0). AI Extend = Grok Imagine edit (outpaint) through the worker,
+  // ~$0.02 (xAI's own usage figure is shown). AI Upscale = ESRGAN (UpscalerJS esrgan-slim, TensorFlow.js) on the device ($0);
+  // if the model can't load it falls back to a "Smooth enlarge (not AI)" and the DTF checks keep judging the REAL detail.
+  // Asset metadata: detailW = width in px of real detail (AI upscales count, plain resampling never does); edgeW = detail width of
+  // AI-extended bands; up = "ai" | "smooth"; fit = "extend" | "regrok" | "freefill".
+  var FIT = { note: "", banner: "", busy: "", cancel: null };
+  var UPS = { tf: "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js", up: "https://cdn.jsdelivr.net/npm/upscaler@1.0.0/dist/browser/umd/upscaler.min.js",
+    x2: "https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0/dist/umd/models/esrgan-slim/src/x2/index.min.js", x4: "https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0/dist/umd/models/esrgan-slim/src/x4/index.min.js" };
+  var jsP = {};
+  function loadJs(u) { if (!jsP[u]) jsP[u] = new Promise(function (res, rej) { var s = document.createElement("script"); s.src = u; s.async = true; s.crossOrigin = "anonymous"; s.onload = function () { res(); }; s.onerror = function () { delete jsP[u]; rej(new Error("couldn't download the AI upscaler (" + u.split("/npm/")[1].split("/")[0] + ")")); }; document.head.appendChild(s); }); return jsP[u]; }
+  function ratioTxt(w, h) { var r = w / h, best = "", be = 9; [[1, 1], [4, 5], [5, 4], [6, 7], [7, 6], [3, 4], [4, 3], [2, 3], [3, 2], [9, 16], [16, 9], [1, 2], [2, 1], [5, 7], [7, 5]].forEach(function (p) { var e = Math.abs(Math.log(r / (p[0] / p[1]))); if (e < be) { be = e; best = p[0] + ":" + p[1]; } }); return be < 0.03 ? best : r.toFixed(2) + ":1"; }
+  function areaR() { return D.printW / D.printH; }
+  function meta(a) { var r = (a && a.rec) || {}; return { detailW: r.detailW || (a ? a.w : 0), edgeW: r.edgeW, up: r.up, upX: r.upX, fit: r.fit }; }
+  function coverGeom(a) { var ia = a.w / a.h, R = areaR(), s = Math.max(1, ia / R); return { s: s, hf: s * R / ia }; }
+  function covers(l, a) { if (!a || (l.rot || 0) % 360) return false; var hf = l.s * areaR() / (a.w / a.h), e = 0.002; return l.x - l.s / 2 <= e && l.x + l.s / 2 >= 1 - e && l.y - hf / 2 <= e && l.y + hf / 2 >= 1 - e; }
+  function clampCover(l) { var a = A(l.asset); if (!l.cover || !a || (l.rot || 0) % 360) return; var hf = l.s * areaR() / (a.w / a.h); if (l.s >= 1) l.x = clamp(l.x, 1 - l.s / 2, l.s / 2); if (hf >= 1) l.y = clamp(l.y, 1 - hf / 2, hf / 2); }
+  function edgeOpaque(l) { var bk = l.asset + styleKey(l), bi = bcache[bk]; if (!bi) { var bm = layerBitmap(l, false); bi = bm ? borderInfo(pixels(bm).id.data, bm.width, bm.height) : { opaque: 0 }; bcache[bk] = bi; } return bi.opaque; }
+  // simple saliency: edges + color contrast + skin tone, center-weighted -> subject center and box (image fractions)
+  function saliency(img, w0, h0) {
+    var S = 80, sc = S / Math.max(w0, h0), w = Math.max(8, Math.round(w0 * sc)), hh = Math.max(8, Math.round(h0 * sc));
+    var c = canvas(w, hh), x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, w, hh);
+    var d = x.getImageData(0, 0, w, hh).data, n = w * hh, L = new Float32Array(n), mr = 0, mg = 0, mb = 0, na = 0, i, xx, y;
+    for (i = 0; i < n; i++) { L[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; if (d[i * 4 + 3] > 40) { mr += d[i * 4]; mg += d[i * 4 + 1]; mb += d[i * 4 + 2]; na++; } }
+    na = Math.max(1, na); mr /= na; mg /= na; mb /= na;
+    var G = new Float32Array(n), C = new Float32Array(n), gmax = 1e-6, cmax = 1e-6;
+    for (y = 0; y < hh; y++) for (xx = 0; xx < w; xx++) { i = y * w + xx; var l0 = L[y * w + Math.max(0, xx - 1)], l1 = L[y * w + Math.min(w - 1, xx + 1)], u0 = L[Math.max(0, y - 1) * w + xx], u1 = L[Math.min(hh - 1, y + 1) * w + xx];
+      G[i] = Math.hypot(l1 - l0, u1 - u0); var r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2]; C[i] = Math.sqrt((r - mr) * (r - mr) + (g - mg) * (g - mg) + (b - mb) * (b - mb)); if (G[i] > gmax) gmax = G[i]; if (C[i] > cmax) cmax = C[i]; }
+    var Sal = new Float32Array(n), vals = [];
+    for (y = 0; y < hh; y++) for (xx = 0; xx < w; xx++) { i = y * w + xx; var r2 = d[i * 4], g2 = d[i * 4 + 1], b2 = d[i * 4 + 2], skin = r2 > 95 && g2 > 40 && b2 > 20 && r2 > g2 && r2 > b2 && r2 - Math.min(g2, b2) > 15 && Math.abs(r2 - g2) > 15 ? 1 : 0;
+      var dx = xx / w - 0.5, dy = y / hh - 0.5, cb = Math.exp(-(dx * dx + dy * dy) / (2 * 0.3 * 0.3));
+      Sal[i] = d[i * 4 + 3] < 40 ? 0 : (0.35 * G[i] / gmax + 0.65 * C[i] / cmax) * (1 + 0.8 * skin) * (0.3 + 0.7 * cb); vals.push(Sal[i]); }
+    vals.sort(function (p, q) { return p - q; }); var thr = vals[Math.floor(vals.length * 0.75)] || 0;
+    var px = new Float32Array(w), py = new Float32Array(hh), tot = 0, sx = 0, sy = 0;
+    for (y = 0; y < hh; y++) for (xx = 0; xx < w; xx++) { var v = Sal[y * w + xx] - thr; if (v <= 0) continue; px[xx] += v; py[y] += v; tot += v; sx += v * (xx + 0.5); sy += v * (y + 0.5); }
+    if (!tot) return { cx: 0.5, cy: 0.5, x0: 0.3, x1: 0.7, y0: 0.3, y1: 0.7 };
+    function pct(arr, q) { var acc = 0; for (var k = 0; k < arr.length; k++) { acc += arr[k]; if (acc >= q * tot) return (k + 0.5) / arr.length; } return 1; }
+    return { cx: sx / tot / w, cy: sy / tot / hh, x0: pct(px, 0.04), x1: pct(px, 0.96), y0: pct(py, 0.04), y1: pct(py, 0.96) };
+  }
+  function cropPlan(a, flip) {
+    var g = coverGeom(a), sal = saliency(a.img, a.w, a.h), vw = 1 / g.s, vh = 1 / g.hf; // visible fraction of the photo
+    var cx = flip ? 1 - sal.cx : sal.cx, x0 = flip ? 1 - sal.x1 : sal.x0, x1 = flip ? 1 - sal.x0 : sal.x1;
+    var wx0 = clamp(cx - vw / 2, 0, 1 - vw), wy0 = clamp(sal.cy - vh / 2, 0, 1 - vh);
+    // never trim the top of the subject first (heads / faces sit at the top): pull the window up to the subject's top edge
+    if (vh < 0.999 && sal.y0 - 0.03 < wy0) wy0 = clamp(sal.y0 - 0.03, 0, 1 - vh);
+    if (vw < 0.999 && x0 - 0.02 < wx0 && x1 + 0.02 <= wx0 + vw) wx0 = clamp(x0 - 0.02, 0, 1 - vw);
+    if (vw < 0.999 && x1 + 0.02 > wx0 + vw && x0 - 0.02 >= wx0) wx0 = clamp(x1 + 0.02 - vw, 0, 1 - vw);
+    var keeps = x0 >= wx0 && x1 <= wx0 + vw && sal.y0 >= wy0 && sal.y1 <= wy0 + vh;
+    return { g: g, sal: sal, cx: cx, wx0: wx0, wy0: wy0, vw: vw, vh: vh, lost: 1 - vw * vh, keeps: keeps, sides: vw < 0.999 ? "left & right" : "top & bottom" };
+  }
+  function cropToFill(l, plan) {
+    var a = A(l.asset); if (!a) return msg("Image still loading");
+    plan = plan || cropPlan(a, l.flip);
+    commit(); var g = plan.g; l.rot = 0; l.s = g.s;
+    var wcx = plan.wx0 + plan.vw / 2, wcy = plan.wy0 + plan.vh / 2;
+    l.x = clamp(0.5 - (wcx - 0.5) * g.s, 1 - g.s / 2, g.s / 2); l.y = clamp(0.5 - (wcy - 0.5) * g.hf, 1 - g.hf / 2, g.hf / 2);
+    l.cover = true; l.keepBox = true;
+    var t = plan.lost < 0.005 ? "Crop to Fill: the photo already matches the " + D.printW + " × " + D.printH + " in shape — now edge to edge." :
+      "Crop to Fill: the photo now covers the whole " + D.printW + " × " + D.printH + " in area. " + Math.round(plan.lost * 100) + "% trimmed off the " + plan.sides + ", centered on the subject" + (plan.keeps ? "" : " (part of the subject is trimmed — try AI Extend)") + ". Drag it on the shirt to reposition; it stays filled.";
+    FIT.note = t; FIT.banner = ""; afterChange(); msg("Cropped to fill", "free · on your device"); return t;
+  }
+  // free on-device fill for the bands: blurred cover + soft mirrored copies (NOT AI)
+  function blurDraw(x, src, dx, dy, dw, dh, k) { var t = canvas(Math.max(2, dw / k), Math.max(2, dh / k)), tx = t.getContext("2d"); tx.imageSmoothingQuality = "high"; tx.drawImage(src, 0, 0, t.width, t.height); var t2 = canvas(Math.max(2, t.width / 2), Math.max(2, t.height / 2)); t2.getContext("2d").drawImage(t, 0, 0, t2.width, t2.height); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high"; x.drawImage(t2, dx, dy, dw, dh); }
+  function freeFill(img, W, H, FW, FH, ox, oy, noCenter) {
+    var c = canvas(FW, FH), x = c.getContext("2d"), cs = Math.max(FW / W, FH / H);
+    blurDraw(x, img, (FW - W * cs) / 2, (FH - H * cs) / 2, W * cs, H * cs, Math.max(8, Math.max(FW, FH) / 40));
+    x.save(); x.globalAlpha = 0.8;
+    var m = function (tx, ty, sx, sy) { x.save(); x.translate(tx, ty); x.scale(sx, sy); blurDraw(x, img, 0, 0, W, H, Math.max(3, Math.max(FW, FH) / 300)); x.restore(); };
+    if (ox > 0.5) { m(ox, oy, -1, 1); m(ox + 2 * W, oy, -1, 1); }
+    if (oy > 0.5) { m(ox, oy, 1, -1); m(ox, oy + 2 * H, 1, -1); }
+    x.restore(); if (!noCenter) x.drawImage(img, ox, oy, W, H); return c;
+  }
+  function grayOf(src, w, h) { var c = canvas(w, h), x = c.getContext("2d", { willReadFrequently: true }); x.imageSmoothingQuality = "high"; x.drawImage(src, 0, 0, w, h); var d = x.getImageData(0, 0, w, h).data, g = new Float32Array(w * h); for (var i = 0; i < g.length; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; return g; }
+  // find where the original photo sits inside Grok's result (Grok sometimes zooms out): mean-normalized SAD, coarse-to-fine
+  function register(G, gw, gh, img, W, H, FW, FH) {
+    function search(S, s0, s1, ss, win, step) {
+      var k = S / Math.max(gw, gh), sw = Math.round(gw * k), sh = Math.round(gh * k), gd = grayOf(G, sw, sh), I = new Float64Array((sw + 1) * (sh + 1)), best = { e: 1e9 };
+      for (var y = 0; y < sh; y++) { var row = 0; for (var x = 0; x < sw; x++) { row += gd[y * sw + x]; I[(y + 1) * (sw + 1) + x + 1] = I[y * (sw + 1) + x + 1] + row; } }
+      for (var s = s0; s <= s1 + 1e-9; s += ss) {
+        var tw = Math.round(W / FW * sw * s), th = Math.round(H / FH * sh * s); if (tw < 10 || th < 10 || tw > sw || th > sh) continue;
+        var td = grayOf(img, tw, th), tm = 0, idx = [], tv = []; for (var ty = 1; ty < th - 1; ty += step) for (var tx = 1; tx < tw - 1; tx += step) { idx.push(ty * sw + tx); tv.push(td[ty * tw + tx]); tm += td[ty * tw + tx]; }
+        tm /= tv.length; for (var q = 0; q < tv.length; q++) tv[q] -= tm;
+        var xa = 0, xb = sw - tw, ya = 0, yb = sh - th;
+        if (win) { var ex = win.x * k, ey = win.y * k; xa = Math.max(0, Math.round(ex - win.r)); xb = Math.min(sw - tw, Math.round(ex + win.r)); ya = Math.max(0, Math.round(ey - win.r)); yb = Math.min(sh - th, Math.round(ey + win.r)); }
+        for (var py = ya; py <= yb; py++) for (var px = xa; px <= xb; px++) {
+          var sum = I[(py + th) * (sw + 1) + px + tw] - I[py * (sw + 1) + px + tw] - I[(py + th) * (sw + 1) + px] + I[py * (sw + 1) + px], gm = sum / (tw * th), e = 0, base = py * sw + px, lim = best.e * tv.length;
+          for (var j = 0; j < tv.length; j++) { var dd = gd[base + idx[j]] - gm - tv[j]; e += dd < 0 ? -dd : dd; if (e > lim) break; }
+          e /= tv.length; if (e < best.e) best = { e: e, x: px / k, y: py / k, w: tw / k, h: th / k, s: s };
+        }
+      }
+      return best;
+    }
+    var c1 = search(112, 0.5, 1.1, 0.02, null, 2); if (!c1.w) return null;
+    var c2 = search(448, Math.max(0.45, c1.s - 0.024), c1.s + 0.024, 0.004, { x: c1.x, y: c1.y, r: 10 }, 3);
+    var b = c2.w && c2.e <= c1.e * 1.6 ? c2 : c1; return b.e <= 22 ? b : (b.fail = true, b);
+  }
+  function featherCanvas(img, W, H, sides, fp) {
+    var c = canvas(W, H), x = c.getContext("2d"); x.drawImage(img, 0, 0, W, H); if (fp < 1) return c;
+    x.globalCompositeOperation = "destination-out";
+    function g(x0, y0, x1, y1, rx, ry, rw, rh) { var gr = x.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = gr; x.fillRect(rx, ry, rw, rh); }
+    if (sides.l) g(0, 0, fp, 0, 0, 0, fp, H); if (sides.r) g(W, 0, W - fp, 0, W - fp, 0, fp, H); if (sides.t) g(0, 0, 0, fp, 0, 0, W, fp); if (sides.b) g(0, H, 0, H - fp, 0, H - fp, W, fp);
+    return c;
+  }
+  function saveFit(c, l, note, extra, jpeg) {
+    return toBlob(c, jpeg ? "image/jpeg" : "image/png", jpeg ? 0.95 : undefined).then(function (b) {
+      if (!b) throw new Error("this device couldn't save a " + c.width + " × " + c.height + " px image");
+      var orig = A(l.orig) || A(l.asset), rec = Object.assign({ id: T().uid("art"), kind: "work", parent: l.orig, blob: b, type: b.type, w: c.width, h: c.height, name: (orig && orig.rec.name || "Artwork") + " · " + note, source: "T-Shirt Studio " + note, createdAt: Date.now() }, extra || {});
+      return T().db.put("assets", rec).then(function () { return loadAsset(rec.id); }).then(function () { return rec; });
+    });
+  }
+  function hasAlpha(img, w, h) { var s = Math.min(1, 256 / Math.max(w, h)), c = canvas(w * s, h * s), x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, c.width, c.height); var d = x.getImageData(0, 0, c.width, c.height).data; for (var i = 3; i < d.length; i += 4) if (d[i] < 250) return true; return false; }
+  function busy(t) { FIT.busy = t || ""; if (els.fitBusy) els.fitBusy.textContent = FIT.busy; if (els.fitBtns) els.fitBtns.forEach(function (b) { b.disabled = !!FIT.busy; }); }
+  // AI Extend: pad to the print-area shape, Grok paints the bands, original pixels kept in the middle. New layer on top; old one hidden (Undo restores).
+  function aiExtend(l) {
+    var a = A(l.asset); if (!a) return Promise.resolve(msg("Image still loading"));
+    var R = areaR(), ia = a.w / a.h; if (Math.abs(Math.log(ia / R)) < 0.012) { FIT.note = "AI Extend: the photo already has the " + D.printW + " × " + D.printH + " shape — nothing to extend."; renderTab(); return Promise.resolve({ skipped: true }); }
+    var k0 = 1, W = a.w, H = a.h, FW, FH; if (ia > R) { FW = W; FH = Math.round(W / R); } else { FH = H; FW = Math.round(H * R); }
+    var cap = Math.min(1, 4500 / Math.max(FW, FH)); if (cap < 1) { k0 = cap; W = Math.round(W * cap); H = Math.round(H * cap); FW = Math.round(FW * cap); FH = Math.round(FH * cap); }
+    var ox = Math.round((FW - W) / 2), oy = Math.round((FH - H) / 2), sides = ia > R ? "top and bottom" : "left and right", M = meta(a);
+    var src = canvas(W, H); src.getContext("2d").drawImage(a.img, 0, 0, W, H);
+    var k = 1024 / Math.max(FW, FH), pw = Math.round(FW * k), ph = Math.round(FH * k), pc = canvas(pw, ph), px = pc.getContext("2d");
+    px.fillStyle = "#808080"; px.fillRect(0, 0, pw, ph); px.globalAlpha = 0.35; blurDraw(px, src, 0, 0, pw, ph, 24); px.globalAlpha = 1; px.drawImage(src, ox * k, oy * k, W * k, H * k);
+    busy("AI Extend: Grok is painting the " + sides + " bands… (10-30 s, ≈ $0.02)"); FIT.banner = "";
+    return call("tee_extend", { imageUrl: pc.toDataURL("image/jpeg", 0.88), sides: sides, contentMode: adultMode() ? "18+" : "sfw" }, 120000).then(function (j) {
+      if (!j || j._status !== 200 || !j.ok || !j.url) {
+        var why = j && (j.error || j.code) || "no reply";
+        busy("Grok didn't extend it — making a free edge fill…");
+        var c = freeFill(src, W, H, FW, FH, ox, oy);
+        return saveFit(c, l, "free edge fill", { fit: "freefill", detailW: Math.round(FW * Math.min(1, M.detailW / (a.w * k0))), edgeW: 0 }, !hasAlpha(src, W, H)).then(function (rec) {
+          FIT.banner = "🛡 Grok did NOT extend this (" + String(why).slice(0, 140) + "). Used a FREE blurred mirror fill for the " + sides + " bands instead — NOT AI, $0. The middle is your untouched photo.";
+          return { rec: rec, how: "freefill", cost: 0 };
+        });
+      }
+      busy("Lining Grok's result up with your original…");
+      return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error("Grok's image couldn't be opened")); }; im.src = j.url; }).then(function (G) {
+        var gw = G.naturalWidth, gh = G.naturalHeight, m = register(G, gw, gh, src, W, H, FW, FH), c = canvas(FW, FH), x = c.getContext("2d"), how, edgeW;
+        window.__pmTeeLastReg = m && { e: +m.e.toFixed(2), s: m.s, x: m.x, y: m.y, w: m.w, h: m.h, fail: !!m.fail, gw: gw, gh: gh, G: j.url.length < 3e6 ? j.url : "" };
+        if (m && !m.fail) {
+          var f = W / m.w, cw = FW / f, ch = FH / f, cx = m.x + m.w / 2 - cw / 2, cy = m.y + m.h / 2 - ch / 2;
+          cx = cw <= gw ? clamp(cx, 0, gw - cw) : (gw - cw) / 2; cy = ch <= gh ? clamp(cy, 0, gh - ch) : (gh - ch) / 2;
+          // tone-match Grok's paint to the original inside the footprint
+          var gs = canvas(gw, gh), gx = gs.getContext("2d", { willReadFrequently: true }); gx.drawImage(G, 0, 0);
+          var t1 = canvas(32, 32).getContext("2d", { willReadFrequently: true }), t2 = canvas(32, 32).getContext("2d", { willReadFrequently: true }); t1.drawImage(src, 0, 0, 32, 32); t2.drawImage(G, m.x, m.y, m.w, m.h, 0, 0, 32, 32);
+          var d1 = t1.getImageData(0, 0, 32, 32).data, d2 = t2.getImageData(0, 0, 32, 32).data, s1 = [0, 0, 0], s2 = [0, 0, 0]; for (var i = 0; i < d1.length; i += 4) for (var ch3 = 0; ch3 < 3; ch3++) { s1[ch3] += d1[i + ch3]; s2[ch3] += d2[i + ch3]; }
+          var gain = s1.map(function (v, q) { return clamp((v + 1) / (s2[q] + 1), 0.85, 1.18); });
+          if (gain.some(function (v) { return Math.abs(v - 1) > 0.01; })) { var gd = gx.getImageData(0, 0, gw, gh); for (var p = 0; p < gd.data.length; p += 4) { gd.data[p] = gd.data[p] * gain[0]; gd.data[p + 1] = gd.data[p + 1] * gain[1]; gd.data[p + 2] = gd.data[p + 2] * gain[2]; } gx.putImageData(gd, 0, 0); }
+          if (cw > gw + 1 || ch > gh + 1) x.drawImage(freeFill(src, W, H, FW, FH, ox, oy, true), 0, 0);
+          x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high"; x.drawImage(gs, -cx * f, -cy * f, gw * f, gh * f);
+          var px0 = (m.x - cx) * f, py0 = (m.y - cy) * f, fp = Math.round(Math.min(W, H) * 0.03);
+          x.drawImage(featherCanvas(src, W, H, { l: px0 > 1, r: px0 + W < FW - 1, t: py0 > 1, b: py0 + H < FH - 1 }, fp), px0, py0, W, H);
+          how = m.s < 0.97 ? "regrok-aligned" : "extend"; edgeW = Math.round(Math.min(cw, gw)) ;
+        } else {
+          x.imageSmoothingQuality = "high"; x.drawImage(G, 0, 0, FW, FH); how = "regrok"; edgeW = gw;
+        }
+        var dW = how === "regrok" ? Math.min(FW, gw) : Math.round(FW * Math.min(1, M.detailW / (a.w * k0)));
+        return saveFit(c, l, how === "regrok" ? "Grok redraw" : "AI extended", { fit: how === "regrok" ? "regrok" : "extend", detailW: dW, edgeW: edgeW, upX: M.upX, up: M.up }, !hasAlpha(src, W, H)).then(function (rec) {
+          var cst = j.cost && j.cost.est_usd ? Number(j.cost.est_usd) : 0.02;
+          if (how === "regrok") FIT.banner = "⚠ Grok re-drew the whole frame instead of keeping your photo in place, so details may differ from your original. It's a new layer — Undo (or delete it) to go back. Cost ≈ $" + cst.toFixed(3) + ".";
+          return { rec: rec, how: how, cost: cst, engine: j.engine };
+        });
+      });
+    }).then(function (r) {
+      busy("");
+      commit(); var n = JSON.parse(JSON.stringify(l)); n.asset = r.rec.id; n.s = 1; n.x = 0.5; n.y = 0.5; n.rot = 0; n.cover = true; n.keepBox = true; l.hidden = true;
+      var i = D.layers.indexOf(l); D.layers.splice(i + 1, 0, n); sel = i + 1;
+      var eppi = r.rec.edgeW ? Math.round(r.rec.edgeW / D.printW) : 0;
+      FIT.note = r.how === "freefill" ? "Free edge fill: the photo now fills " + D.printW + " × " + D.printH + " in; the " + sides + " bands are a blurred mirror of your photo (not AI)." :
+        "AI Extend (" + (r.engine || "Grok Imagine") + ", ≈ $" + r.cost.toFixed(3) + "): Grok painted the " + sides + " bands so the photo fills " + D.printW + " × " + D.printH + " in" + (r.how === "regrok" ? "." : " — your original pixels are kept in the middle.") + (eppi ? " The new bands carry about " + eppi + " PPI of real detail (softer than the middle)." : "");
+      FIT.note += " New layer on top · your original layer is hidden (Undo brings it back).";
+      afterChange(); msg(r.how === "freefill" ? "Free edge fill (not AI)" : "AI Extend done", r.how === "freefill" ? "$0" : "≈ $" + r.cost.toFixed(3)); return r;
+    }).catch(function (e) { busy(""); FIT.banner = "AI Extend failed: " + (e && e.message || e); renderTab(); return { err: String(e && e.message || e) }; });
+  }
+  // bake a Crop-to-Fill layer down to its visible pixels (used before upscaling so only what prints is upscaled)
+  function bakeCover(l) {
+    var a = A(l.asset); if (!a || !l.cover || !covers(l, a)) return Promise.resolve(null);
+    var hf = l.s * areaR() / (a.w / a.h), left = l.x - l.s / 2, top = l.y - hf / 2, u0 = clamp(-left / l.s, 0, 1), u1 = clamp((1 - left) / l.s, 0, 1), v0 = clamp(-top / hf, 0, 1), v1 = clamp((1 - top) / hf, 0, 1);
+    if (l.flip) { var t = u0; u0 = 1 - u1; u1 = 1 - t; }
+    if (u0 < 0.002 && u1 > 0.998 && v0 < 0.002 && v1 > 0.998) return Promise.resolve(null);
+    var sx = Math.round(u0 * a.w), sy = Math.round(v0 * a.h), sw = Math.max(1, Math.round((u1 - u0) * a.w)), sh = Math.max(1, Math.round((v1 - v0) * a.h)), c = canvas(sw, sh), M = meta(a);
+    c.getContext("2d").drawImage(a.img, sx, sy, sw, sh, 0, 0, sw, sh);
+    return saveFit(c, l, "cropped", { detailW: M.detailW * sw / a.w, edgeW: M.edgeW ? M.edgeW * (u1 - u0) : M.edgeW, up: M.up, upX: M.upX, fit: M.fit }, !hasAlpha(c, sw, sh)).then(function (rec) { l.asset = rec.id; l.s = 1; l.x = 0.5; l.y = 0.5; l.cover = true; return rec; });
+  }
+  function upscaleNeed(l) { var a = A(l.asset), P = preset(); if (!a) return null; var inW = l.s * D.printW, px = a.w / inW; return { a: a, inW: inW, px: px, min: P.min, need: P.min / px }; }
+  function smoothEnlarge(src, tw, th) { var cur = src, cw = src.width, chh = src.height; while (cw * 2 < tw) { var t = canvas(cw * 2, chh * 2), x = t.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(cur, 0, 0, t.width, t.height); cur = t; cw = t.width; chh = t.height; } var o = canvas(tw, th), ox = o.getContext("2d"); ox.imageSmoothingQuality = "high"; ox.drawImage(cur, 0, 0, tw, th); return o; }
+  function aiUpscale(l, opt) {
+    opt = opt || {};
+    var pre = l.cover && covers(l, A(l.asset)) ? (commit(), bakeCover(l)) : Promise.resolve(null);
+    return pre.then(function (baked) {
+      var q = upscaleNeed(l); if (!q) return { err: "Image still loading" };
+      if (q.need <= 1.02) { FIT.note = "AI Upscale: not needed — already " + Math.round(q.px) + " PPI at " + q.inW.toFixed(1) + " in wide (needs " + q.min + ")."; if (baked) afterChange(); else renderTab(); return { skipped: true, ppi: Math.round(q.px) }; }
+      var a = q.a, M = meta(a), alpha = hasAlpha(a.img, a.w, a.h), factor = q.need <= 2 ? 2 : 4, mp = a.w * a.h / 1e6, note2 = "", noAI = "";
+      if (factor === 4 && mp > 1.0) { factor = 2; note2 = " (4× is too heavy for a " + mp.toFixed(1) + " MP photo on a phone, so 2×)"; }
+      if (mp * 4 > 24) noAI = "the photo is too large (" + mp.toFixed(1) + " MP) for the on-device AI model";
+      var src = canvas(a.w, a.h); src.getContext("2d").drawImage(a.img, 0, 0);
+      var tw = Math.round(a.w * Math.min(q.need, factor)), th = Math.round(tw * a.h / a.w);
+      if (tw * th > 16e6) { var sc = Math.sqrt(16e6 / (tw * th)); tw = Math.round(tw * sc); th = Math.round(th * sc); }
+      var ctl = window.AbortController ? new AbortController() : null; FIT.cancel = ctl;
+      busy("AI Upscale: loading the free on-device AI model (first time ≈ 2 MB)…"); FIT.banner = "";
+      var t0 = Date.now();
+      return (noAI ? Promise.reject(new Error(noAI)) : loadJs(UPS.tf)).then(function () { return loadJs(UPS.up); }).then(function () { return loadJs(factor === 4 ? UPS.x4 : UPS.x2); }).then(function () {
+        var model = factor === 4 ? window.ESRGANSlim4x : window.ESRGANSlim2x; if (!window.Upscaler || !model) throw new Error("AI upscaler didn't start");
+        var up = new window.Upscaler({ model: model });
+        busy("AI Upscale " + factor + "×: working on your device… 0%");
+        return up.upscale(src, { patchSize: 128, padding: 8, output: "base64", signal: ctl ? ctl.signal : undefined, progress: function (p) { busy("AI Upscale " + factor + "× (ESRGAN, on your device): " + Math.round(p * 100) + "% · don't close the tab"); } })
+          .then(function (b64) { try { up.dispose && up.dispose(); } catch (e) {} return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error("upscaled image couldn't be opened")); }; im.src = /^data:/.test(b64) ? b64 : "data:image/png;base64," + b64; }); });
+      }).then(function (im) {
+        var c = canvas(tw, th), x = c.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(im, 0, 0, tw, th);
+        if (alpha) { var al = smoothEnlarge(src, tw, th).getContext("2d").getImageData(0, 0, tw, th).data, dd = x.getImageData(0, 0, tw, th); for (var i = 3; i < dd.data.length; i += 4) dd.data[i] = al[i]; x.putImageData(dd, 0, 0); }
+        var ux = tw / a.w;
+        return saveFit(c, l, "AI upscaled " + factor + "×", { up: "ai", upX: Math.round(((M.upX || 1) * ux) * 100) / 100, detailW: Math.min(tw, Math.round(M.detailW * ux)), edgeW: M.edgeW ? Math.round(M.edgeW * ux) : M.edgeW, fit: M.fit, upModel: "ESRGAN-slim " + factor + "× (UpscalerJS · TensorFlow.js)", upSecs: Math.round((Date.now() - t0) / 1000) }, !alpha).then(function (rec) { return { rec: rec, ai: true, factor: factor, ux: ux }; });
+      }, function (e) {
+        if (e && (e.name === "AbortError" || /abort/i.test(e.message || ""))) throw new Error("cancelled");
+        // honest fallback: plain resample, never counted as real detail
+        busy("AI model unavailable — smooth enlarge (not AI)…");
+        var c = smoothEnlarge(src, tw, th), ux = tw / a.w;
+        return saveFit(c, l, "smooth enlarged (not AI)", { up: "smooth", upX: Math.round(((M.upX || 1) * ux) * 100) / 100, detailW: M.detailW, edgeW: M.edgeW, fit: M.fit }, !alpha).then(function (rec) {
+          FIT.banner = "🛡 The AI upscaler couldn't run here (" + String(e && e.message || e).slice(0, 120) + "). Did a Smooth enlarge instead — NOT AI: it only makes the file bigger, it adds no real detail, so the print checks still judge the original sharpness.";
+          return { rec: rec, ai: false, factor: ux, ux: ux };
+        });
+      }).then(function (r) {
+        busy(""); FIT.cancel = null; if (!baked) commit(); l.asset = r.rec.id; var q2 = upscaleNeed(l), dppi = Math.round(r.rec.detailW / q2.inW);
+        FIT.note = (r.ai ? "AI Upscale (ESRGAN " + r.factor + "×, free, on your device" + (r.rec.upSecs ? ", " + r.rec.upSecs + " s" : "") + ")" + note2 + ": " + a.w + " × " + a.h + " → " + r.rec.w + " × " + r.rec.h + " px = " + Math.round(q2.px) + " PPI at " + q2.inW.toFixed(1) + " in wide."
+          : "Smooth enlarge (NOT AI): " + a.w + " × " + a.h + " → " + r.rec.w + " × " + r.rec.h + " px, but real detail stays ≈ " + dppi + " PPI.") +
+          (r.ai && q2.px < q.min - 0.5 ? " Still under " + q.min + " PPI — the most AI can honestly do here; print smaller (≤ " + (r.rec.w / q.min).toFixed(1) + " in wide) for full sharpness." : "") + (r.ai ? " AI-made detail: zoom in and check faces and text." : "") + (baked ? " (Crop locked in first so only the printed part was upscaled — Undo to reposition.)" : "");
+        afterChange(); msg(r.ai ? "AI Upscale done" : "Smooth enlarge (not AI)", "free · $0"); return r;
+      });
+    }).catch(function (e) { busy(""); FIT.cancel = null; FIT.banner = "Upscale stopped: " + (e && e.message || e); renderTab(); return { err: String(e && e.message || e) }; });
+  }
+  function smartFit(l) {
+    var a = A(l.asset); if (!a) return Promise.resolve(msg("Image still loading"));
+    var R = areaR(), ia = a.w / a.h, mis = Math.abs(Math.log(ia / R)), plan = cropPlan(a, l.flip), steps = [], why = [];
+    var shapeTxt = "Your photo is " + ratioTxt(a.w, a.h) + (ia > R ? " (wider)" : ia < R ? " (taller)" : "") + "; the print area is " + D.printW + " × " + D.printH + " in (" + ratioTxt(D.printW, D.printH) + ").";
+    var p, cut = edgeOpaque(l) < 0.6 && hasAlpha(a.img, a.w, a.h);
+    if (cut) { why.push("This is cut-out art with a transparent background, so there are no photo strips to fill — it only checked sharpness."); steps.push("✓ Kept your layout"); p = Promise.resolve(); }
+    else if (mis < 0.035 || (plan.keeps && plan.lost < 0.5) || (plan.keeps && !navigator.onLine)) {
+      cropToFill(l, plan); steps.push("✂ Cropped to fill");
+      why.push(mis < 0.035 ? "The shapes almost match, so a tiny trim (" + Math.round(plan.lost * 100) + "%) fills it — free." : "Cropping keeps the whole subject (only background trimmed off the " + plan.sides + ", " + Math.round(plan.lost * 100) + "%) — free, no AI needed.");
+      p = Promise.resolve();
+    } else {
+      why.push(plan.keeps ? "Cropping would throw away " + Math.round(plan.lost * 100) + "% of the photo, so it extended the scene instead." : "Cropping would cut off part of the subject on the " + plan.sides + ", so it extended the scene instead.");
+      p = aiExtend(l).then(function (r) { if (r && r.err) throw new Error(r.err); steps.push(r && r.how === "freefill" ? "🪞 Free edge fill (Grok refused)" : "🧩 AI Extend (≈ $" + (r && r.cost ? r.cost.toFixed(3) : "0.02") + ")"); });
+    }
+    return p.then(function () {
+      var l2 = L(), q = upscaleNeed(l2); if (!q) return;
+      var P = preset();
+      if (q.px >= P.min - 0.5) { why.push("Sharpness: " + Math.round(q.px) + " PPI at " + D.printW + " × " + D.printH + " in — already sharp, no upscale."); return; }
+      var lowMsg = "Sharpness: only " + Math.round(q.px) + " PPI at this size (needs " + P.min + ")";
+      return aiUpscale(l2).then(function (r) {
+        if (r && r.err) { why.push(lowMsg + " — upscale didn't finish (" + r.err + ")."); return; }
+        steps.push(r && r.ai ? "🔍 AI Upscale " + r.factor + "×" : "↗ Smooth enlarge (not AI)");
+        var q2 = upscaleNeed(L()), dppi = Math.round(meta(A(L().asset)).detailW / q2.inW);
+        why.push(lowMsg + ", so it " + (r && r.ai ? "AI-upscaled it " + r.factor + "× on your device (free) → " + Math.round(q2.px) + " PPI." : "smooth-enlarged it (not AI) — real detail is still ≈ " + dppi + " PPI."));
+        if (q.need > 4.05) why.push("⚠ This photo is soft for " + D.printW + " × " + D.printH + " in: it needed " + q.need.toFixed(1) + "× and AI can only honestly add 4×. It will print soft — use a bigger original or a smaller print size.");
+      });
+    }).then(function () {
+      FIT.note = "🪄 Smart Fit: " + steps.join(" → ") + ". " + shapeTxt + " " + why.join(" ");
+      renderTab(); window.__pmTeeLastFit = { steps: steps, note: FIT.note }; return { steps: steps, note: FIT.note };
+    }).catch(function (e) { busy(""); FIT.banner = "Smart Fit stopped: " + (e && e.message || e); renderTab(); return { err: String(e && e.message || e) }; });
+  }
+  // always-visible print quality readout (stage column), updates on every redraw
+  function quality(l) {
+    var a = A(l.asset); if (!a) return null; var P = preset(), M = meta(a), inW = l.s * D.printW, inH = inW * a.h / a.w, px = a.w / inW, dt = M.detailW / inW, hf = l.s * areaR() / (a.w / a.h);
+    var g = dt >= P.min - 0.5 ? ["ok", "✅ Sharp"] : dt >= P.min * 0.66 ? ["warn", "Good from arm's length, soft up close"] : dt >= P.min * 0.45 ? ["warn", "⚠ Soft"] : ["fail", "✗ Blurry / pixelated"];
+    var strips = !l.cover && !covers(l, a) && (l.s < 0.985 || hf < 0.985) && edgeOpaque(l) > 0.6 && Math.abs(Math.log((a.w / a.h) / areaR())) > 0.03;
+    return { px: Math.round(px), dt: Math.round(dt), min: P.min, g: g, inW: inW, inH: inH, M: M, strips: strips };
+  }
+  function ppiText() {
+    var l = L(); if (!l || l.t !== "img") { l = D.layers.filter(function (x) { return x.t === "img" && !x.hidden; }).slice(-1)[0]; }
+    if (!l) return { cls: "", t: "📏 Print quality: add a photo to see its PPI at " + D.printW + " × " + D.printH + " in" };
+    var q = quality(l); if (!q) return { cls: "", t: "📏 Print quality: loading…" };
+    var t = "📏 Print quality @ " + D.printW + " × " + D.printH + " in area: " + q.dt + " PPI" + (q.dt !== q.px ? " real detail (file " + q.px + " PPI" + (q.M.up === "smooth" ? ", smooth-enlarged, not AI" : "") + ")" : "") + " · needs " + q.min + " · " + q.g[1];
+    if (q.M.up === "ai") t += " · AI-upscaled ×" + q.M.upX;
+    if (q.M.edgeW) t += " · AI-extended edges ≈ " + Math.round(q.M.edgeW / q.inW) + " PPI";
+    if (q.strips) { var aa = A(l.asset); t += " · empty strips " + (aa.w / aa.h > areaR() ? "top & bottom" : "left & right") + " — try Smart Fit"; }
+    return { cls: q.g[0], t: t };
+  }
+  function updatePpi() { if (!els.ppi) return; var r = ppiText(); els.ppi.className = "ppi " + r.cls; els.ppi.textContent = r.t; }
+  function fitPanel(l) {
+    var sizes = [[12, 14, "12 × 14 (full front)"], [15, 15, "15 × 15 (max)"], [11, 14, "11 × 14"], [10, 12, "10 × 12"], [10, 10, "10 × 10"], [4, 4, "4 × 4 (chest)"]], cur = D.printW + "x" + D.printH;
+    if (!sizes.some(function (s) { return s[0] + "x" + s[1] === cur; })) sizes.unshift([D.printW, D.printH, D.printW + " × " + D.printH + " (current)"]);
+    var sz = select(sizes.map(function (s) { return [s[0] + "x" + s[1], s[2] + " in"]; }), cur, function (v) { var p = v.split("x"); commit(); D.printW = +p[0]; D.printH = +p[1]; FIT.note = ""; var l2 = L(); if (l2 && l2.cover) { var a2 = A(l2.asset), g = a2 && coverGeom(a2); if (g) { l2.s = g.s; clampCover(l2); } } afterChange(); }, "Print size the fit tools aim at");
+    var b1 = btn("🪄 Smart Fit", function () { smartFit(l); }, "go", "Checks your photo against the print size and picks: Crop to Fill (free) if the subject survives the crop, otherwise AI Extend (≈ $0.02), then AI Upscale (free) if it's under the PPI your printer needs.");
+    var b2 = btn("✂ Crop to Fill · free", function () { cropToFill(l); }, "", "Zooms the photo to cover the whole print area, centered on the subject. Drag to reposition.");
+    var b3 = btn("🧩 AI Extend · ≈ $0.02", function () { aiExtend(l); }, "", "Grok Imagine paints new scene into the empty strips so nothing is cut off. Your original pixels stay in the middle; new layer with Undo.");
+    var b4 = btn("🔍 AI Upscale · free", function () { aiUpscale(l); }, "", "ESRGAN AI upscaler running on your device (free). Enlarges to the PPI your printer needs (max 4×).");
+    els.fitBtns = [b1, b2, b3, b4]; els.fitBusy = h("div", { cls: "status", "data-pm": "tee-fit-busy", text: FIT.busy });
+    var q = quality(l);
+    ap(els.fitBox = h("div", { cls: "fitbox", "data-pm": "tee-fit" }), h("h4", { text: "Fit & print quality" }),
+      h("div", { cls: "row" }, [h("span", { cls: "muted", text: "Print size:" }), sz, q ? h("span", { cls: "muted", text: "photo " + ratioTxt(A(l.asset).w, A(l.asset).h) + " · area " + ratioTxt(D.printW, D.printH) }) : null]),
+      h("div", { cls: "row" }, [b1, b2, b3, b4, FIT.cancel ? btn("Stop", function () { try { FIT.cancel.abort(); } catch (e) {} }, "sm") : null]),
+      h("div", { cls: "muted", text: "Smart Fit is free unless it needs AI Extend (≈ $0.02, Grok — the cost is shown after). Crop to Fill and AI Upscale run on your device for $0. Your original is never changed." }),
+      els.fitBusy, FIT.banner ? h("div", { cls: "banner", "data-pm": "tee-fit-banner", text: FIT.banner }) : null, FIT.note ? h("div", { cls: "fitnote", "data-pm": "tee-fit-note", text: FIT.note }) : null);
+    if (FIT.busy) busy(FIT.busy);
+    return els.fitBox;
+  }
+
   // ---------- DOM helpers ----------
   function h(tag, at, kids) {
     var e = document.createElement(tag); at = at || {};
@@ -423,7 +728,7 @@
   function colorIn(label, val, fn) { var c = h("input", { type: "color", value: val || "#ffffff", on: { input: function () { begin(); fn(c.value); draw(); }, change: function () { end(); refreshChecksSoon(); } } }); return h("label", { cls: "ci" }, [h("span", { text: label }), c]); }
   function select(opts, val, fn, title) { var s = h("select", { title: title || null, on: { change: function () { fn(s.value); } } }, opts.map(function (o) { return h("option", { value: o[0], text: o[1] }); })); s.value = val; return s; }
 
-  var CSS = ".pmtee{font-family:'IBM Plex Sans',system-ui,sans-serif;color:#f5f0e8;font-size:13px}.pmtee *{box-sizing:border-box}.pmtee h4{font:600 15px 'IBM Plex Sans',sans-serif;margin:10px 0 6px;color:#fde68a}.pmtee .flow{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 10px}.pmtee .flow button{font-size:11px;padding:5px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:#cbd5e1;cursor:pointer}.pmtee .flow button.on{background:linear-gradient(90deg,#7c3aed,#db2777);color:#fff;border-color:transparent}.pmtee .flow i{opacity:.5;font-style:normal;align-self:center}.pmtee .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}@media(max-width:900px){.pmtee .wrap{grid-template-columns:1fr}}.pmtee .stagecol{position:sticky;top:8px}@media(max-width:900px){.pmtee .stagecol{position:static}}@media(min-width:901px){.pmtee .tbody{max-height:calc(100vh - 150px);overflow:auto;padding-right:4px}}.pmtee canvas.stage{width:100%;height:auto;border-radius:14px;border:1px solid rgba(255,255,255,.1);touch-action:none;background:#1b1b20;display:block}.pmtee canvas.stage.tool{cursor:crosshair}.pmtee .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}.pmtee button{font:600 12px 'IBM Plex Sans',sans-serif;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#f1f5f9;cursor:pointer}.pmtee button:hover{border-color:#c084fc}.pmtee button:disabled{opacity:.45;cursor:default}.pmtee button.go{background:linear-gradient(90deg,#7c3aed,#db2777);border-color:transparent;color:#fff}.pmtee button.gold{background:linear-gradient(90deg,#f59e0b,#ef4444);border-color:transparent;color:#fff}.pmtee button.on{background:#7c3aed;border-color:#c084fc}.pmtee button.sm{padding:3px 7px;font-size:11px}.pmtee .tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.pmtee .tabs button{flex:1 1 auto;font-size:11.5px;padding:6px 7px}.pmtee .panel{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;min-height:300px}.pmtee .muted{color:#94a3b8;font-size:12px;line-height:1.45}.pmtee .sl{display:grid;grid-template-columns:96px 1fr 52px;gap:8px;align-items:center;margin:4px 0;font-size:12px}.pmtee .sl input{width:100%}.pmtee .val{text-align:right;color:#cbd5e1;font-variant-numeric:tabular-nums}.pmtee .ci{display:inline-flex;gap:6px;align-items:center;font-size:12px;margin-right:10px}.pmtee .ci input{width:34px;height:26px;border:none;background:none;padding:0}.pmtee select,.pmtee input[type=text],.pmtee input[type=number],.pmtee textarea{background:#0b0b10;color:#f5f0e8;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 8px;font:13px 'IBM Plex Sans',sans-serif;max-width:100%}.pmtee textarea{width:100%;min-height:70px;resize:vertical}.pmtee input[type=number]{width:76px}.pmtee .sw{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;padding:0}.pmtee .sw.on{border-color:#facc15;box-shadow:0 0 0 2px #facc15}.pmtee .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}.pmtee .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px;font-size:11px;overflow:hidden}.pmtee .card img{width:100%;aspect-ratio:1;object-fit:contain;background:repeating-conic-gradient(#2a2a30 0 25%,#1d1d22 0 50%) 0 0/16px 16px;border-radius:6px;display:block}.pmtee .card .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:4px 0 2px;color:#e2e8f0}.pmtee .drop{border:2px dashed rgba(192,132,252,.5);border-radius:12px;padding:14px;text-align:center;color:#cbd5e1;margin:8px 0}.pmtee .drop.over{background:rgba(124,58,237,.18)}.pmtee .chip{display:inline-flex;align-items:center;gap:4px;margin:2px;padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);font-size:11.5px;cursor:pointer;color:#e2e8f0}.pmtee .chip.on{background:rgba(124,58,237,.45);border-color:#c084fc}.pmtee .chip.lock{background:rgba(245,158,11,.35);border-color:#f59e0b}.pmtee .chip b{font-weight:400;opacity:.7;cursor:pointer}.pmtee .cat{margin:8px 0;padding:6px 8px;border-left:3px solid #7c3aed;background:rgba(255,255,255,.02);border-radius:6px}.pmtee .cat .hd{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:12px;margin-bottom:3px}.pmtee .chk{list-style:none;padding:0;margin:6px 0}.pmtee .chk li{padding:5px 8px;margin:3px 0;border-radius:8px;font-size:12px;line-height:1.4}.pmtee .chk li.ok{background:rgba(34,197,94,.1);border-left:3px solid #22c55e}.pmtee .chk li.fail{background:rgba(239,68,68,.12);border-left:3px solid #ef4444}.pmtee .chk li.warn{background:rgba(245,158,11,.12);border-left:3px solid #f59e0b}.pmtee .chk li.info{background:rgba(56,189,248,.08);border-left:3px solid #38bdf8}.pmtee .ready{font:700 15px 'IBM Plex Sans',sans-serif;color:#86efac;background:rgba(34,197,94,.12);border:1px solid #22c55e;border-radius:10px;padding:8px 10px;margin:6px 0}.pmtee .prep{font:700 14px 'IBM Plex Sans',sans-serif;color:#fcd34d;background:rgba(245,158,11,.12);border:1px solid #f59e0b;border-radius:10px;padding:8px 10px;margin:6px 0}.pmtee .banner{background:rgba(239,68,68,.15);border:1px solid #ef4444;color:#fecaca;border-radius:10px;padding:8px 10px;margin:6px 0;font-weight:600}.pmtee .layer{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.08);margin:3px 0;cursor:pointer}.pmtee .layer.on{border-color:#38bdf8;background:rgba(56,189,248,.08)}.pmtee .layer span{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.pmtee .status{min-height:18px;color:#fde68a;font-size:12px;margin:6px 2px}.pmtee .res img{max-width:100%;border-radius:10px;display:block;margin:6px 0;background:repeating-conic-gradient(#2a2a30 0 25%,#1d1d22 0 50%) 0 0/16px 16px}.pmtee .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,197,94,.15);border:1px solid #22c55e;color:#bbf7d0}.pmtee .badge.free{background:rgba(239,68,68,.15);border-color:#ef4444;color:#fecaca}.pmtee .strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}.pmtee .strip canvas{width:100%;border-radius:8px;cursor:pointer;border:2px solid transparent}.pmtee .strip canvas.on{border-color:#facc15}.pmtee .cue{background:linear-gradient(90deg,rgba(244,114,182,.14),rgba(124,58,237,.14));border:1px solid rgba(244,114,182,.35);border-radius:12px;padding:8px 10px;margin:4px 0 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}";
+  var CSS = ".pmtee{font-family:'IBM Plex Sans',system-ui,sans-serif;color:#f5f0e8;font-size:13px}.pmtee *{box-sizing:border-box}.pmtee h4{font:600 15px 'IBM Plex Sans',sans-serif;margin:10px 0 6px;color:#fde68a}.pmtee .flow{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 10px}.pmtee .flow button{font-size:11px;padding:5px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);color:#cbd5e1;cursor:pointer}.pmtee .flow button.on{background:linear-gradient(90deg,#7c3aed,#db2777);color:#fff;border-color:transparent}.pmtee .flow i{opacity:.5;font-style:normal;align-self:center}.pmtee .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}@media(max-width:900px){.pmtee .wrap{grid-template-columns:1fr}}.pmtee .stagecol{position:sticky;top:8px}@media(max-width:900px){.pmtee .stagecol{position:static}}@media(min-width:901px){.pmtee .tbody{max-height:calc(100vh - 150px);overflow:auto;padding-right:4px}}.pmtee canvas.stage{width:100%;height:auto;border-radius:14px;border:1px solid rgba(255,255,255,.1);touch-action:none;background:#1b1b20;display:block}.pmtee canvas.stage.tool{cursor:crosshair}.pmtee .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}.pmtee button{font:600 12px 'IBM Plex Sans',sans-serif;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#f1f5f9;cursor:pointer}.pmtee button:hover{border-color:#c084fc}.pmtee button:disabled{opacity:.45;cursor:default}.pmtee button.go{background:linear-gradient(90deg,#7c3aed,#db2777);border-color:transparent;color:#fff}.pmtee button.gold{background:linear-gradient(90deg,#f59e0b,#ef4444);border-color:transparent;color:#fff}.pmtee button.on{background:#7c3aed;border-color:#c084fc}.pmtee button.sm{padding:3px 7px;font-size:11px}.pmtee .tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.pmtee .tabs button{flex:1 1 auto;font-size:11.5px;padding:6px 7px}.pmtee .panel{background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;min-height:300px}.pmtee .muted{color:#94a3b8;font-size:12px;line-height:1.45}.pmtee .sl{display:grid;grid-template-columns:96px 1fr 52px;gap:8px;align-items:center;margin:4px 0;font-size:12px}.pmtee .sl input{width:100%}.pmtee .val{text-align:right;color:#cbd5e1;font-variant-numeric:tabular-nums}.pmtee .ci{display:inline-flex;gap:6px;align-items:center;font-size:12px;margin-right:10px}.pmtee .ci input{width:34px;height:26px;border:none;background:none;padding:0}.pmtee select,.pmtee input[type=text],.pmtee input[type=number],.pmtee textarea{background:#0b0b10;color:#f5f0e8;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 8px;font:13px 'IBM Plex Sans',sans-serif;max-width:100%}.pmtee textarea{width:100%;min-height:70px;resize:vertical}.pmtee input[type=number]{width:76px}.pmtee .sw{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;padding:0}.pmtee .sw.on{border-color:#facc15;box-shadow:0 0 0 2px #facc15}.pmtee .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}.pmtee .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px;font-size:11px;overflow:hidden}.pmtee .card img{width:100%;aspect-ratio:1;object-fit:contain;background:repeating-conic-gradient(#2a2a30 0 25%,#1d1d22 0 50%) 0 0/16px 16px;border-radius:6px;display:block}.pmtee .card .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:4px 0 2px;color:#e2e8f0}.pmtee .drop{border:2px dashed rgba(192,132,252,.5);border-radius:12px;padding:14px;text-align:center;color:#cbd5e1;margin:8px 0}.pmtee .drop.over{background:rgba(124,58,237,.18)}.pmtee .chip{display:inline-flex;align-items:center;gap:4px;margin:2px;padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04);font-size:11.5px;cursor:pointer;color:#e2e8f0}.pmtee .chip.on{background:rgba(124,58,237,.45);border-color:#c084fc}.pmtee .chip.lock{background:rgba(245,158,11,.35);border-color:#f59e0b}.pmtee .chip b{font-weight:400;opacity:.7;cursor:pointer}.pmtee .cat{margin:8px 0;padding:6px 8px;border-left:3px solid #7c3aed;background:rgba(255,255,255,.02);border-radius:6px}.pmtee .cat .hd{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:12px;margin-bottom:3px}.pmtee .chk{list-style:none;padding:0;margin:6px 0}.pmtee .chk li{padding:5px 8px;margin:3px 0;border-radius:8px;font-size:12px;line-height:1.4}.pmtee .chk li.ok{background:rgba(34,197,94,.1);border-left:3px solid #22c55e}.pmtee .chk li.fail{background:rgba(239,68,68,.12);border-left:3px solid #ef4444}.pmtee .chk li.warn{background:rgba(245,158,11,.12);border-left:3px solid #f59e0b}.pmtee .chk li.info{background:rgba(56,189,248,.08);border-left:3px solid #38bdf8}.pmtee .ready{font:700 15px 'IBM Plex Sans',sans-serif;color:#86efac;background:rgba(34,197,94,.12);border:1px solid #22c55e;border-radius:10px;padding:8px 10px;margin:6px 0}.pmtee .prep{font:700 14px 'IBM Plex Sans',sans-serif;color:#fcd34d;background:rgba(245,158,11,.12);border:1px solid #f59e0b;border-radius:10px;padding:8px 10px;margin:6px 0}.pmtee .banner{background:rgba(239,68,68,.15);border:1px solid #ef4444;color:#fecaca;border-radius:10px;padding:8px 10px;margin:6px 0;font-weight:600}.pmtee .layer{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.08);margin:3px 0;cursor:pointer}.pmtee .layer.on{border-color:#38bdf8;background:rgba(56,189,248,.08)}.pmtee .layer span{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.pmtee .status{min-height:18px;color:#fde68a;font-size:12px;margin:6px 2px}.pmtee .res img{max-width:100%;border-radius:10px;display:block;margin:6px 0;background:repeating-conic-gradient(#2a2a30 0 25%,#1d1d22 0 50%) 0 0/16px 16px}.pmtee .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(34,197,94,.15);border:1px solid #22c55e;color:#bbf7d0}.pmtee .badge.free{background:rgba(239,68,68,.15);border-color:#ef4444;color:#fecaca}.pmtee .strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}.pmtee .strip canvas{width:100%;border-radius:8px;cursor:pointer;border:2px solid transparent}.pmtee .strip canvas.on{border-color:#facc15}.pmtee .ppi{font:600 12px 'IBM Plex Sans',sans-serif;padding:6px 9px;border-radius:9px;margin:4px 0;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#e2e8f0}.pmtee .ppi.ok{border-color:#22c55e;background:rgba(34,197,94,.1)}.pmtee .ppi.warn{border-color:#f59e0b;background:rgba(245,158,11,.1)}.pmtee .ppi.fail{border-color:#ef4444;background:rgba(239,68,68,.1)}.pmtee .fitbox{border:1px solid rgba(192,132,252,.35);border-radius:12px;padding:4px 10px 8px;margin:8px 0;background:rgba(124,58,237,.07)}.pmtee .fitnote{background:rgba(56,189,248,.08);border-left:3px solid #38bdf8;border-radius:8px;padding:7px 9px;margin:6px 0;font-size:12px;line-height:1.45}.pmtee .cue{background:linear-gradient(90deg,rgba(244,114,182,.14),rgba(124,58,237,.14));border:1px solid rgba(244,114,182,.35);border-radius:12px;padding:8px 10px;margin:4px 0 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}";
   var FONT_URL = "https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Black+Ops+One&family=Bungee&family=Monoton&family=Oswald:wght@600;700&family=Pacifico&family=Permanent+Marker&family=Playfair+Display:wght@700&family=Rubik+Mono+One&family=UnifrakturMaguntia&display=swap";
   function css() {
     if (!document.getElementById("pmtee-css")) { var s = document.createElement("style"); s.id = "pmtee-css"; s.textContent = CSS; document.head.appendChild(s); }
@@ -496,7 +801,7 @@
     c.addEventListener("pointermove", function (e) {
       if (!ptrs[e.pointerId]) return; var p = stagePt(e); ptrs[e.pointerId] = p; var l = L(); if (!drag || !l) return;
       if (drag.pinch) { var ids = Object.keys(ptrs); if (ids.length < 2) return; var a = ptrs[ids[0]], b = ptrs[ids[1]], f = Math.hypot(a.x - b.x, a.y - b.y) / (drag.d0 || 1); if (l.t === "img") l.s = clamp(drag.s0 * f, 0.03, 2); else l.size = clamp(drag.s0 * f, 0.02, 0.8); draw(); return; }
-      var r = printRect(); l.x = clamp(drag.x0 + (p.x - drag.p0.x) / r.w, -0.5, 1.5); l.y = clamp(drag.y0 + (p.y - drag.p0.y) / r.h, -0.5, 1.5); draw();
+      var r = printRect(); l.x = clamp(drag.x0 + (p.x - drag.p0.x) / r.w, -0.5, 1.5); l.y = clamp(drag.y0 + (p.y - drag.p0.y) / r.h, -0.5, 1.5); if (l.cover) clampCover(l); draw();
     });
     function up(e) { delete ptrs[e.pointerId]; if (drag) { drag = null; renderTab(); refreshChecksSoon(); } }
     c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up);
@@ -669,8 +974,9 @@
       slider("Up / down", Math.round(l.y * 100), -20, 120, 1, function (v) { l.y = v / 100; }, function (v) { return v + "%"; }),
       l.t === "img" ? slider("Size", Math.round(l.s * 100), 3, 150, 1, function (v) { l.s = v / 100; }, function (v) { return (v / 100 * D.printW).toFixed(1) + " in"; }) : slider("Text size", Math.round(l.size * 100), 2, 60, 1, function (v) { l.size = v / 100; }, function (v) { return (v / 100 * D.printH).toFixed(1) + " in"; }),
       slider("Rotate", l.rot || 0, -180, 180, 1, function (v) { l.rot = v; }, function (v) { return v + "°"; }),
-      h("div", { cls: "row" }, [btn("⊕ Center", function () { commit(); l.x = 0.5; afterChange(); }), l.t === "img" ? btn("↔ Fit print area", function () { commit(); fitLayer(l, A(l.asset)); afterChange(); }) : null, l.t === "img" ? btn("⇋ Flip", function () { commit(); l.flip = !l.flip; afterChange(); }) : null, btn("⟲ Straighten", function () { commit(); l.rot = 0; afterChange(); })]),
+      h("div", { cls: "row" }, [btn("⊕ Center", function () { commit(); l.x = 0.5; afterChange(); }), l.t === "img" ? btn("↔ Fit print area", function () { commit(); fitLayer(l, A(l.asset)); l.cover = false; afterChange(); }) : null, l.t === "img" ? btn("⇋ Flip", function () { commit(); l.flip = !l.flip; afterChange(); }) : null, btn("⟲ Straighten", function () { commit(); l.rot = 0; afterChange(); })]),
       h("div", { cls: "muted", text: "Tip: drag the art on the shirt to move it · mouse wheel or pinch to resize." }));
+    if (l.t === "img") ap(el, fitPanel(l));
     if (l.t === "img") {
       var a = A(l.asset), o = A(l.orig);
       ap(el, h("h4", { text: "Background" }));
@@ -856,7 +1162,7 @@
     els.stage = h("canvas", { cls: "stage", width: 1000, height: 1100, "data-pm": "tee-stage" }); bindStage(els.stage);
     els.status = h("div", { cls: "status", "data-pm": "tee-status" });
     els.gout = h("div", { "data-pm": "tee-grok-out" }); els.dtfOut = h("div", { "data-pm": "tee-dtf-out" });
-    var stagecol = h("div", { cls: "stagecol" }, [els.stage, h("div", { cls: "row" }, [btn("↶ Undo", undo, "sm"), btn("↷ Redo", redo, "sm"), btn("🔤 Text", addText, "sm"), btn("⬆ Import", function () { tab = "art"; renderTab(); var f = els.body.querySelector("input[type=file]"); if (f) f.click(); }, "sm"), btn("💾 Save", saveDesign, "sm go")]), shirtControls(), placeControls(), els.status]);
+    var stagecol = h("div", { cls: "stagecol" }, [els.stage, h("div", { cls: "row" }, [btn("↶ Undo", undo, "sm"), btn("↷ Redo", redo, "sm"), btn("🔤 Text", addText, "sm"), btn("⬆ Import", function () { tab = "art"; renderTab(); var f = els.body.querySelector("input[type=file]"); if (f) f.click(); }, "sm"), btn("💾 Save", saveDesign, "sm go")]), shirtControls(), placeControls(), els.status, els.ppi = h("div", { cls: "ppi", "data-pm": "tee-ppi" })]);
     els.tabs = {}; var tabs = h("div", { cls: "tabs" }, TABS.map(function (t) { var b = btn(t[1], function () { tab = t[0]; renderTab(); }); b.setAttribute("data-tab", t[0]); els.tabs[t[0]] = b; return b; }));
     els.body = h("div", { cls: "tbody" });
     root.append(cue, els.flow, h("div", { cls: "wrap" }, [stagecol, h("div", { cls: "panel" }, [tabs, els.body])]));
@@ -878,5 +1184,5 @@
     if (el) el.replaceChildren(); els = {}; root = null;
   }
   window.PMTeeStudio = { mount: mount, unmount: unmount, version: V, _analyze: function () { return analyze(); }, _exportDTF: function () { return exportDTF(); }, _exportMockup: function () { return exportMockup(); },
-    _runBg: function (o) { return runBg(o); }, _tab: function (t) { tab = t; renderTab(); }, _encode: encodePNG };
+    _runBg: function (o) { return runBg(o); }, _fit: { smart: function () { return smartFit(L()); }, crop: function () { return cropToFill(L()); }, extend: function () { return aiExtend(L()); }, upscale: function () { return aiUpscale(L()); }, ppi: function () { return ppiText(); }, plan: function () { var a = A(L().asset); return cropPlan(a, L().flip); } }, _tab: function (t) { tab = t; renderTab(); }, _encode: encodePNG };
 })();

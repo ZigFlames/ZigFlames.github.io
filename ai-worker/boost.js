@@ -694,6 +694,35 @@ async function studioRender(b, env, ip) {
   const url = pollinationsUrl(g.prompt, w, h);
   return { ok: true, kind: "image", url, imageUrl: url, model: "Free preview (Pollinations)", provider: "pollinations", fallback: true, requested: key, notice: key + ": " + (why || "not available") + " — showing a free preview instead.", prompt: g.prompt, cost: { est_usd: 0 } };
 }
+// T-Shirt Studio "AI Extend" (outpainting): the page pads the photo to the print-area shape (soft gray-blur bands) and sends a
+// <= 1024 px JPEG. Grok Imagine edit paints the bands; the page then lines the result up with the untouched original and keeps the
+// original pixels in the middle. Same guards as every image path: reference screen (minors / public figures), daily cap.
+// Fixed prompt (no user text). Cost = xAI's own usage ticks (1e-10 USD), ~$0.022 per edit. Never falls back to a different
+// generator: on refusal/failure the page does a FREE on-device edge fill and labels it as such.
+async function teeExtend(b, env, ip) {
+  if (!env.XAI_API_KEY) return { ok: false, code: "needs_key", error: "AI Extend needs the worker secret XAI_API_KEY." };
+  const ref = String(b.imageUrl || "");
+  if (!(REF_DATA_RE.test(ref) && ref.length <= REF_MAX)) return { ok: false, code: "bad_ref", error: "The padded photo must be a JPG/PNG under ~2 MB." };
+  const sides = /left|right/i.test(b.sides || "") && /top|bottom/i.test(b.sides || "") ? "around the edges" : /top|bottom/i.test(b.sides || "") ? "above and below it" : "on the left and right";
+  const sc = await refScreen(env, ref); if (sc.err) return { ok: false, code: sc.refused, error: sc.err, filter: true };
+  const est = 0.03, capErr = await capCheck(env, ip, "image", est); if (capErr) return { ok: false, code: "capped", error: capErr };
+  const prompt = "Outpaint this photo. The sharp photo in the middle is the original; the soft blurry gray bands " + sides + " are empty canvas. " +
+    "Extend the original scene seamlessly into those bands so the whole frame is one natural, sharp, continuous photograph: continue the same background, surfaces, lighting, colors, perspective and grain. " +
+    "Keep the original middle area in exactly the same position and size: do not zoom out, move, restyle, recolor or crop it, and do not change any person in it. No borders, no frames, no text, no watermark, no new people.";
+  let r, d;
+  try {
+    r = await fetch("https://api.x.ai/v1/images/edits", { method: "POST", headers: { Authorization: "Bearer " + env.XAI_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: IMAGE_PROVIDERS.xai.model, prompt, image: { url: ref, type: "image_url" }, n: 1, response_format: "b64_json" }) });
+    d = await r.json().catch(() => null);
+  } catch (e) { return { ok: false, code: "unreachable", error: "xAI unreachable" }; }
+  const b64 = d && d.data && d.data[0] && d.data[0].b64_json || "";
+  if (!b64) { const why = xaiErr(r, d); console.log(JSON.stringify({ action: "tee_extend", ok: false, why })); return { ok: false, code: XAI_MOD_RE.test(why) ? "moderated" : "error", error: why, filter: XAI_MOD_RE.test(why) }; }
+  const ticks = d.usage && Number(d.usage.cost_in_usd_ticks), usd = ticks > 0 ? Math.round(ticks / 1e10 * 1e4) / 1e4 : est;
+  const tot = await capAdd(env, ip, "image", usd);
+  const mime = b64.startsWith("iVBOR") ? "image/png" : b64.startsWith("UklGR") ? "image/webp" : "image/jpeg";
+  return { ok: true, url: "data:" + mime + ";base64," + b64, provider: "xai", engine: "Grok Imagine (xAI) · " + IMAGE_PROVIDERS.xai.model + " · edit (outpaint)",
+    cost: { est_usd: Math.round((usd + (sc.usd || 0)) * 1e4) / 1e4, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
+}
 // "Send to Grok app": fetch a result image server-side so the page can hand it to the iOS share sheet (xAI's image host sends no CORS headers).
 // Only our own result hosts, images only, <= 12 MB.
 const IMG_HOSTS = /^(?:imgen\.x\.ai|image\.pollinations\.ai|gen\.pollinations\.ai|(?:[a-z0-9-]+\.)?fal\.media)$/; // + fal.media (T-Shirt Studio import)
@@ -709,7 +738,7 @@ async function imgFetch(b, ch) {
     return new Response(buf, { status: 200, headers: Object.assign({ "Content-Type": ct, "Cache-Control": "no-store" }, ch) });
   } catch (e) { return J({ error: "image host unreachable" }, 502, ch); }
 }
-export const BOOST_ACTIONS = new Set(["chat", "randomize", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "tee", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch"]);
+export const BOOST_ACTIONS = new Set(["chat", "randomize", "cleanup", "remix", "classify", "expand", "vocab", "trending", "looplab", "seeds", "tee", "hashtags", "providers", "image", "video", "video_status", "studio_render", "img_fetch", "tee_extend"]);
 export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";
@@ -718,6 +747,7 @@ export async function boost(body, env, ch, req) {
   if (a === "img_fetch") return imgFetch(body, ch);
   let out;
   if (a === "studio_render") { const o = await studioRender(body, env, ip); delete o.status; return J(o, 200, ch); }
+  if (a === "tee_extend") return J(await teeExtend(body, env, ip), 200, ch);
   if (a === "image") out = await genImage(body, env, adult, ip);
   else if (a === "video") out = await genVideo(body, env, adult, ip);
   else out = await TEXT[a](body, env, adult);
