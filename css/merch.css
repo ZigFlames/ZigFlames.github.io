@@ -1,0 +1,413 @@
+/* ZigFlames — Merch + Concept Cars. Builds on styles.css and magazine subnav. */
+
+.merch-page {
+  overflow-x: hidden;
+}
+
+.merch-page main,
+.merch-page .site-footer {
+  overflow-x: clip;
+}
+
+.merch-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3rem var(--gutter) 2rem;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(181, 74, 44, 0.2), transparent 62%),
+    radial-gradient(ellipse 40% 30% at 80% 8%, rgba(201, 168, 76, 0.1), transparent 50%),
+    #070708;
+}
+
+.merch-title {
+  font-size: clamp(2.2rem, 9vw, 5.2rem);
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.merch-intro {
+  max-width: 36rem;
+  margin: 0.8rem auto 0;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: clamp(1.1rem, 3vw, 1.35rem);
+  line-height: 1.45;
+}
+
+.merch-section {
+  padding-top: clamp(2.6rem, 7vw, 5rem);
+  padding-bottom: clamp(2.6rem, 7vw, 5rem);
+}
+
+.merch-section h2 {
+  font-family: var(--display);
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.4rem;
+}
+
+@media (min-width: 720px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  background: #0a0a0c;
+  color: inherit;
+  min-width: 0;
+}
+
+.product-media {
+  position: relative;
+  overflow: hidden;
+  background: #14080a;
+}
+
+.product-media img,
+.product-placeholder {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.product-placeholder {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 1rem;
+  color: rgba(255, 244, 230, 0.8);
+  font-family: var(--display);
+  font-size: 1.1rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.product-thumbs {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 0.8rem 0;
+  overflow-x: auto;
+}
+
+.product-thumbs button {
+  flex: none;
+  width: 3.2rem;
+  height: 3.2rem;
+  padding: 0;
+  border: 2px solid var(--line);
+  background: #111;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.product-thumbs button[aria-current="true"] {
+  border-color: var(--gold-bright);
+}
+
+.product-thumbs img,
+.product-thumbs .thumb-swatch {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.product-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1rem 1rem 1.15rem;
+  flex: 1;
+}
+
+.product-body h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.product-price {
+  margin: 0;
+  color: var(--gold-bright);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.product-desc {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+
+.option-label {
+  margin: 0.2rem 0 0;
+  color: var(--ink-dim);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.swatch-row,
+.size-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.color-swatch,
+.size-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--line-strong);
+  background: #0f0f14;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.color-swatch[aria-pressed="true"],
+.size-chip[aria-pressed="true"] {
+  border-color: var(--gold-bright);
+  background: rgba(255, 138, 31, 0.16);
+  color: var(--gold-bright);
+}
+
+.buy-btn {
+  width: 100%;
+  min-height: 3.4rem;
+  margin-top: auto;
+  cursor: pointer;
+}
+
+.buy-note,
+.buy-error {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.buy-error {
+  color: #ffc2b2;
+}
+
+.buy-note {
+  color: var(--ink-dim);
+}
+
+/* Concept cars */
+.merch-cars {
+  border-top: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, #050506, #0b0709 70%, #050506);
+}
+
+.cars-intro {
+  margin: -0.4rem 0 1.6rem;
+  text-align: left;
+}
+
+.car-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+}
+
+@media (min-width: 700px) {
+  .car-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.car-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: #0a0a0c;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  font: inherit;
+}
+
+.car-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
+.car-card-media,
+.car-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: block;
+  object-fit: cover;
+}
+
+.car-placeholder {
+  display: flex;
+  align-items: flex-end;
+  padding: 0.9rem 1rem;
+  color: rgba(255, 244, 230, 0.85);
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.car-card-body {
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.car-card-body strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.car-card-body span {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.car-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) var(--gutter) max(1rem, env(safe-area-inset-bottom));
+}
+
+.car-modal[hidden] {
+  display: none !important;
+}
+
+.car-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.94);
+}
+
+.car-modal-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 32rem);
+  max-height: 100%;
+  overflow: auto;
+  padding: 1rem 1rem 1.3rem;
+  border: 1px solid var(--line-strong);
+  background: #0a0a0c;
+}
+
+.car-modal-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  min-width: 3.2rem;
+  min-height: 3.2rem;
+  cursor: pointer;
+}
+
+.car-modal-media,
+.car-modal-media .car-placeholder,
+.car-modal-media img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.car-modal-title {
+  margin: 0.9rem 3.6rem 0.3rem 0;
+  font-family: var(--display);
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.car-modal-tag {
+  margin: 0 0 1rem;
+  color: var(--gold-bright);
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.car-specs {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.45rem 1rem;
+  margin: 0;
+}
+
+.car-specs dt {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.car-specs dd {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 1.08rem;
+}
+
+#shop,
+#cars {
+  scroll-margin-top: calc(var(--header-h) + 3.2rem);
+}
