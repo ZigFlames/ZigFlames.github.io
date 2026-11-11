@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Zig Flames Magazine | The Indulgence Issue | ZigFlames</title>
+  <meta name="description" content="Zig Flames Magazine, Issue 01: The Indulgence Issue. Photos and short films from Zig Flame Studio. Adults 21+ only.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://zigflames.com/magazine/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ZigFlames">
+  <meta property="og:url" content="https://zigflames.com/magazine/">
+  <meta property="og:title" content="Zig Flames Magazine | The Indulgence Issue">
+  <meta property="og:description" content="Issue 01 of Zig Flames Magazine. Adults 21+ only.">
+  <meta property="og:image" content="https://zigflames.com/assets/magazine/issue-01-indulgence.jpg">
+  <meta property="og:image:width" content="900">
+  <meta property="og:image:height" content="1200">
+  <meta property="og:image:alt" content="Zig Flames Magazine Issue 01: The Indulgence Issue">
+  <meta name="author" content="ZigFlames">
+  <meta name="theme-color" content="#08080a">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@500;600;700&amp;family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/magazine.css?v=20261110a">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("zf_magazine_21") === "1") {
+          document.documentElement.classList.add("magazine-unlocked");
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body class="magazine-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="age-gate" id="age-gate" role="dialog" aria-modal="true" aria-labelledby="age-gate-title" aria-describedby="age-gate-copy">
+    <div class="age-gate-card">
+      <p class="eyebrow">21+ only</p>
+      <h1 id="age-gate-title">Zig Flames Magazine</h1>
+      <p id="age-gate-copy" class="age-gate-copy">Zig Flames Magazine is for adults 21+. Are you 21 or older?</p>
+      <div class="age-gate-actions">
+        <button class="btn btn-primary" type="button" id="age-enter">Enter</button>
+        <a class="btn btn-ghost" id="age-leave" href="/">Leave</a>
+      </div>
+      <noscript>
+        <p class="age-gate-noscript">JavaScript is required to enter Zig Flames Magazine.</p>
+      </noscript>
+    </div>
+  </div>
+
+  <div id="magazine-content">
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="wordmark" href="/">
+          <img class="header-logo" src="/assets/brand/zig-flame-logo.jpg" width="800" height="360" alt="Zig Flame Studio">
+        </a>
+        <button class="nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+        <nav class="site-nav" id="site-nav" aria-label="Primary">
+          <ul>
+            <li><a href="/#music">Music</a></li>
+            <li><a href="/art.html">Art</a></li>
+            <li><a href="/studio.html">Studio</a></li>
+            <li><a href="/tools/">Tools</a></li>
+            <li><a href="/#shop">Shop</a></li>
+            <li><a href="/#about">About</a></li>
+            <li><a href="/#work">Work</a></li>
+            <li><a href="/#contact">Contact</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="magazine-hero" aria-labelledby="magazine-title">
+        <p class="eyebrow">Zig Flames Magazine · 21+</p>
+        <h1 id="magazine-title" class="exhibit-title magazine-title">The Indulgence Issue</h1>
+        <p class="magazine-kicker">Issue 01</p>
+        <p class="magazine-intro">Tap a cover to watch the issue. New issues drop here.</p>
+        <div id="issue-hero" class="issue-hero"></div>
+        <p id="cover-credit" class="cover-credit" hidden></p>
+      </section>
+
+      <section class="section magazine-section magazine-story" id="cover-story" aria-labelledby="story-title" hidden>
+        <div class="section-inner">
+          <p class="section-kicker">Cover story</p>
+          <h2 id="story-title"></h2>
+          <hr class="rule">
+          <div id="story-body" class="story-body"></div>
+        </div>
+      </section>
+
+      <section class="section magazine-section magazine-fashion" id="fashion" aria-labelledby="fashion-title" hidden>
+        <div class="section-inner">
+          <p class="section-kicker">Fashion</p>
+          <h2 id="fashion-title">The Looks</h2>
+          <hr class="rule">
+          <p class="magazine-intro fashion-intro">Three looks from the issue. Tap a card to open it. Photos and videos drop in later.</p>
+          <div id="look-grid" class="look-grid"></div>
+        </div>
+      </section>
+
+      <section class="section magazine-section" id="issues" aria-labelledby="issues-title" hidden>
+        <div class="section-inner">
+          <p class="section-kicker">The archive</p>
+          <h2 id="issues-title">More issues</h2>
+          <hr class="rule">
+          <div id="issue-grid" class="issue-grid"></div>
+        </div>
+      </section>
+
+      <section class="section magazine-section magazine-legal" id="disclaimer" aria-labelledby="disclaimer-title">
+        <div class="section-inner">
+          <p class="section-kicker">Legal</p>
+          <h2 id="disclaimer-title">Copyright</h2>
+          <hr class="rule">
+          <div class="disclaimer-block">
+            <p>© 2026 ZigFlames / Money Moves LLC. All rights reserved.</p>
+            <p>Zig Flames Magazine, including all photos, videos, cover art, layouts, text, logos and music, is owned by ZigFlames and Money Moves LLC and protected by U.S. and international copyright and trademark law. No part of it may be copied, downloaded, reposted, screenshotted for redistribution, edited, sold, or used to train AI without written permission. Zig Flames™ and the Zig Flame logo are trademarks of Money Moves LLC. Unauthorized use will be pursued, including DMCA takedowns and legal action.</p>
+            <p>Adults 21+ only. All models depicted are 21 or older. Some content is AI-assisted. Any resemblance to real persons is coincidental unless credited.</p>
+            <p>Permissions and licensing: <a href="mailto:artist@zigflames.com">artist@zigflames.com</a></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="brand-row">
+          <img class="studio-logo" src="/assets/brand/zig-flame-studio.jpg" width="900" height="1341" alt="Zig Flame Studio">
+          <img class="seal" src="/assets/brand/money-moves-seal.jpg" width="800" height="622" alt="Money Moves 100 seal, 2011">
+        </div>
+        <p>Zig Flame Studio · Money Moves Llc · Publisher MoneyMovesM1</p>
+        <p>© 2026 ZigFlames · <a href="/casting/">Casting</a> · <a href="/magazine/" aria-current="page">Magazine</a> · <a href="tel:+18443540944">844-354-0ZIG</a> · <a href="mailto:artist@zigflames.com">artist@zigflames.com</a></p>
+      </div>
+    </footer>
+  </div>
+
+  <div class="issue-modal" id="issue-modal" hidden>
+    <div class="issue-modal-backdrop" data-close="1"></div>
+    <div class="issue-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="issue-modal-close btn btn-ghost" type="button" id="modal-close" aria-label="Close">Close</button>
+      <h2 id="modal-title" class="issue-modal-title"></h2>
+      <div class="issue-modal-media">
+        <div class="media-protect">
+          <video id="modal-video" playsinline controls controlsList="nodownload noplaybackrate noremoteplayback" disablePictureInPicture preload="none" hidden></video>
+          <img id="modal-still" alt="" width="900" height="1200" draggable="false" hidden>
+          <div id="modal-placeholder" class="modal-placeholder" hidden></div>
+        </div>
+        <p class="video-soon" id="video-soon" hidden>Video coming soon</p>
+      </div>
+      <p id="modal-credit" class="modal-credit" hidden></p>
+    </div>
+  </div>
+
+  <script src="/js/main.js"></script>
+  <script src="/js/magazine.js?v=20261110a" defer></script>
+</body>
+</html>

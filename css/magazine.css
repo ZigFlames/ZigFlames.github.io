@@ -1,0 +1,537 @@
+/* ZigFlames — Zig Flames Magazine. Builds on styles.css. */
+
+.magazine-page {
+  overflow-x: hidden;
+}
+
+.magazine-page main,
+.magazine-page .site-footer {
+  overflow-x: clip;
+}
+
+/* Locked until the visitor confirms they are 21+. */
+html:not(.magazine-unlocked) .age-gate {
+  display: flex;
+}
+
+html:not(.magazine-unlocked) #magazine-content,
+html:not(.magazine-unlocked) #issue-modal {
+  display: none !important;
+}
+
+html.magazine-unlocked .age-gate {
+  display: none;
+}
+
+/* Age gate */
+.age-gate {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  align-items: center;
+  justify-content: center;
+  padding: max(1.5rem, env(safe-area-inset-top)) var(--gutter) max(1.5rem, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 40%, rgba(226, 74, 0, 0.22), transparent 62%),
+    radial-gradient(ellipse 40% 30% at 80% 10%, rgba(201, 168, 76, 0.12), transparent 50%),
+    #070708;
+}
+
+.age-gate-card {
+  width: min(100%, 28rem);
+  text-align: center;
+  padding: clamp(1.6rem, 5vw, 2.4rem) clamp(1.2rem, 4vw, 2rem);
+  border: 1px solid var(--line-strong);
+  background: rgba(8, 8, 10, 0.86);
+}
+
+.age-gate-card .eyebrow {
+  margin: 0 0 0.7rem;
+}
+
+.age-gate-card h1 {
+  margin: 0 0 1rem;
+  font-family: var(--display);
+  font-size: clamp(2.1rem, 9vw, 3.6rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.age-gate-copy {
+  margin: 0 0 1.6rem;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 3.4vw, 1.45rem);
+  line-height: 1.4;
+}
+
+.age-gate-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.age-gate-actions .btn {
+  width: 100%;
+  min-height: 3.4rem;
+  cursor: pointer;
+}
+
+.age-gate-noscript {
+  margin: 1rem 0 0;
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 420px) {
+  .age-gate-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Hero + issue cards */
+.magazine-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3.2rem var(--gutter) 2.4rem;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(181, 74, 44, 0.2), transparent 62%),
+    radial-gradient(ellipse 40% 30% at 80% 8%, rgba(201, 168, 76, 0.1), transparent 50%),
+    #070708;
+}
+
+.magazine-title {
+  font-size: clamp(2.2rem, 9vw, 5.4rem);
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.magazine-kicker {
+  margin: 0.15rem 0 0.8rem;
+  color: var(--gold-bright);
+  font-size: 0.78rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+.magazine-intro {
+  max-width: 28rem;
+  margin: 0 auto 1.6rem;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: clamp(1.1rem, 3vw, 1.35rem);
+  line-height: 1.4;
+}
+
+.issue-hero {
+  width: min(100%, 26rem);
+}
+
+.issue-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: #0a0a0c;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  font: inherit;
+}
+
+.issue-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
+.issue-card-media {
+  position: relative;
+  overflow: hidden;
+  background: #111;
+}
+
+.issue-card-media img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+}
+
+.issue-card-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 1rem;
+  min-height: 3.4rem;
+}
+
+.issue-card-meta strong {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.issue-card-meta span {
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.play-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.2rem;
+  min-height: 4.2rem;
+  padding: 0 1rem;
+  border: 1px solid rgba(255, 242, 230, 0.7);
+  border-radius: 999px;
+  background: rgba(8, 8, 10, 0.45);
+  color: #fff4e6;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.issue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1.2rem;
+}
+
+.magazine-section {
+  padding-top: clamp(3rem, 8vw, 5.5rem);
+  padding-bottom: clamp(3rem, 8vw, 5.5rem);
+}
+
+/* Subtle text watermark over photos and video */
+.media-protect {
+  position: relative;
+}
+
+.media-protect::after {
+  content: "ZIGFLAMES.COM";
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  z-index: 3;
+  color: rgba(255, 244, 230, 0.72);
+  font-family: var(--display);
+  font-size: clamp(0.7rem, 2.2vw, 0.9rem);
+  letter-spacing: 0.22em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Modal player */
+.issue-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) var(--gutter) max(1rem, env(safe-area-inset-bottom));
+}
+
+.issue-modal[hidden] {
+  display: none !important;
+}
+
+.issue-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.94);
+}
+
+.issue-modal-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28rem);
+  max-height: 100%;
+  overflow: auto;
+  padding: 1rem 1rem 1.2rem;
+  border: 1px solid var(--line-strong);
+  background: #0a0a0c;
+}
+
+.issue-modal-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  min-width: 3.2rem;
+  min-height: 3.2rem;
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+}
+
+.issue-modal-title {
+  margin: 0 3.6rem 0.85rem 0;
+  font-family: var(--display);
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.issue-modal-media {
+  background: #000;
+}
+
+.issue-modal-media video,
+.issue-modal-media img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: contain;
+  background: #000;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.issue-modal-media video {
+  aspect-ratio: auto;
+  max-height: min(70svh, 36rem);
+}
+
+.video-soon {
+  margin: 0;
+  padding: 0.9rem 1rem 1.05rem;
+  border-top: 1px solid var(--line);
+  color: var(--gold-bright);
+  font-family: var(--display);
+  font-size: 1.15rem;
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* Disclaimer */
+.magazine-legal {
+  border-top: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, #050506, #0b0709 70%, #050506);
+}
+
+.disclaimer-block {
+  max-width: 44rem;
+  color: var(--ink-soft);
+}
+
+.disclaimer-block p {
+  margin: 0 0 1rem;
+}
+
+.disclaimer-block p:last-child {
+  margin: 0;
+}
+
+#issues,
+#disclaimer {
+  scroll-margin-top: calc(var(--header-h) + 0.5rem);
+}
+
+@media (min-width: 800px) {
+  .issue-hero {
+    width: min(100%, 28rem);
+  }
+}
+
+/* Cover credit */
+.cover-credit {
+  width: min(100%, 26rem);
+  margin: 0.9rem 0 0;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.cover-credit strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.cover-credit span {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--ink-dim);
+  font-size: 0.92rem;
+}
+
+/* Cover story */
+.magazine-story {
+  padding-top: clamp(2.4rem, 6vw, 4rem);
+}
+
+.story-body {
+  max-width: 40rem;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: clamp(1.12rem, 2.4vw, 1.32rem);
+  line-height: 1.7;
+}
+
+.story-body p {
+  margin: 0 0 1.15rem;
+}
+
+.story-body p:last-child {
+  margin: 0;
+}
+
+.magazine-story h2,
+.magazine-fashion h2 {
+  font-family: var(--display);
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Fashion looks */
+.fashion-intro {
+  margin: -0.4rem 0 1.6rem;
+  text-align: left;
+  max-width: 36rem;
+}
+
+.look-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+}
+
+@media (min-width: 640px) {
+  .look-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.look-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: #0a0a0c;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  font: inherit;
+}
+
+.look-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
+.look-card-media {
+  position: relative;
+  overflow: hidden;
+  min-height: 16rem;
+  background: #14080a;
+}
+
+.look-card-media img,
+.look-placeholder {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+
+.look-placeholder {
+  min-height: 16rem;
+}
+
+.look-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem 1.15rem;
+  min-height: 6.2rem;
+}
+
+.look-card-body strong {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.look-card-body p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  line-height: 1.4;
+}
+
+.modal-placeholder {
+  width: 100%;
+  min-height: min(70svh, 28rem);
+  aspect-ratio: 3 / 4;
+}
+
+.modal-credit {
+  margin: 0.75rem 0 0;
+  color: var(--ink-dim);
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+#cover-story,
+#fashion {
+  scroll-margin-top: calc(var(--header-h) + 0.5rem);
+}
+
+@media (min-width: 800px) {
+  .cover-credit {
+    width: min(100%, 28rem);
+  }
+}
