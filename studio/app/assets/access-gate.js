@@ -18,6 +18,12 @@ window.__pmGate = (function () {
     }).join('');
   }
 
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
   async function hashKey(raw) {
     var msg = SALT + ':' + String(raw || '').trim().toUpperCase();
     var dig = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -45,7 +51,27 @@ window.__pmGate = (function () {
     return role;
   }
 
-  function paintGate(msg) {
+  function showPage() {
+    document.documentElement.classList.remove('zf-access-pending');
+  }
+
+  function goTo(dest) {
+    var here = location.pathname + location.search + location.hash;
+    if (!dest || dest === here || dest === location.href) {
+      location.reload();
+      return;
+    }
+    location.href = dest;
+  }
+
+  function paintGate(msg, opts) {
+    opts = opts || {};
+    var kicker = opts.kicker || 'Zig Flames Prompt Machine';
+    var heading = opts.title || 'Access locked';
+    var copy = opts.copy || 'Enter your access key. New here? Start the 99¢ trial — after checkout you get in automatically.';
+    var redirect = opts.redirect || '/studio/app/';
+    var note = opts.note || '<a href="/studio.html">Back to Studio</a> · Owner / paid keys only';
+    showPage();
     document.documentElement.style.background = '#08080a';
     document.body.innerHTML = [
       '<style>',
@@ -71,17 +97,17 @@ window.__pmGate = (function () {
       'a{color:#ffb24a;}',
       '</style>',
       '<div class="card">',
-      '<p class="kicker">Zig Flames Prompt Machine</p>',
-      '<h1>Access locked</h1>',
-      '<p>Enter your access key. New here? Start the 99¢ trial — after checkout you get in automatically.</p>',
+      '<p class="kicker">' + esc(kicker) + '</p>',
+      '<h1>' + esc(heading) + '</h1>',
+      '<p>' + esc(copy) + '</p>',
       '<label for="pm-key">Access key</label>',
       '<input id="pm-key" autocomplete="off" spellcheck="false" placeholder="FLAMES-…" />',
-      '<div class="err" id="pm-err">' + (msg || '') + '</div>',
+      '<div class="err" id="pm-err">' + esc(msg || '') + '</div>',
       '<div class="row">',
       '<button class="btn primary" type="button" id="pm-unlock">Unlock</button>',
       '<a class="btn ghost" href="' + TRIAL_URL + '" rel="noopener noreferrer">Try for 99¢</a>',
       '</div>',
-      '<p class="note"><a href="/studio.html">Back to Studio</a> · Owner / paid keys only</p>',
+      '<p class="note">' + note + '</p>',
       '</div>'
     ].join('');
 
@@ -100,11 +126,12 @@ window.__pmGate = (function () {
         err.textContent = 'That key doesn’t unlock the machine.';
         return;
       }
-      location.href = '/studio/app/';
+      goTo(redirect);
     }
   }
 
-  async function ensureAccess() {
+  async function ensureAccess(opts) {
+    opts = opts || {};
     window.__pmClearAccess = clearSession;
     try {
       if (!document.body) {
@@ -118,18 +145,22 @@ window.__pmGate = (function () {
           params.delete('key');
           var clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
           history.replaceState({}, '', clean);
+          showPage();
           return true;
         }
-        paintGate('Checkout key invalid. Use Try for 99¢ or enter a valid key.');
+        paintGate('Checkout key invalid. Use Try for 99¢ or enter a valid key.', opts);
         return false;
       }
       var session = readSession();
-      if (session && session.h && VALID[session.h]) return true;
-      paintGate('');
+      if (session && session.h && VALID[session.h]) {
+        showPage();
+        return true;
+      }
+      paintGate('', opts);
       return false;
     } catch (e) {
       console.error(e);
-      paintGate('Unlock failed. Refresh, or use Owner door / Try for 99¢.');
+      paintGate('Unlock failed. Refresh, or use Owner door / Try for 99¢.', opts);
       return false;
     }
   }
