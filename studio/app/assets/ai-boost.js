@@ -1,4 +1,4 @@
-/* Zig's Prompt Machine — ✨ AI Boost (v20261024d)
+/* Zig's Prompt Machine — ✨ AI Boost (v20261113a)
    window.PMAI.call(action, body, opts) -> Promise<json>  (zigflames-ai worker; endpoint override: localStorage pm_ai_endpoint / window.PM_AI_ENDPOINT)
    window.PMBoost.mount(el, kind, apiRef) / unmount(el) / uniqAI(prompt)
    kinds: studio · remix · expand · vocab · dance · looplab
@@ -522,8 +522,11 @@
     var cost = h("div", { cls: "muted" }), out = h("div", { cls: "media" }), list = [];
     var useRef = h("input", { type: "checkbox", "data-pm": "ai-use-ref-" + kind }), refThumb = h("img", { alt: "", style: "width:34px;height:34px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:6px" });
     useRef.checked = true;
-    var refRow = h("label", { "data-pm": "ai-ref-row-" + kind, style: "display:none;align-items:center;gap:6px;font-size:12px;margin:6px 0;cursor:pointer" }, [useRef, refThumb, h("span", { text: kind === "image" ? "Use my reference photo (Grok edits it)" : "Animate my reference photo (Grok Imagine Video)" })]);
-    function refSync() { var r = loadRef(); refRow.style.display = r && sel.value === "xai" ? "flex" : "none"; if (r) refThumb.src = r; }
+    var refLab;
+    var refRow = h("label", { "data-pm": "ai-ref-row-" + kind, style: "display:none;align-items:center;gap:6px;font-size:12px;margin:6px 0;cursor:pointer" }, [useRef, refThumb, refLab = h("span", { text: kind === "image" ? "Use my reference photo (Grok edits it)" : "Animate my reference photo (Grok Imagine Video)" })]);
+    // Video: Venice can animate the reference too (image → video models). Venice image models are text-to-image only.
+    function refOk() { return sel.value === "xai" || (kind === "video" && /^venice/.test(sel.value)); }
+    function refSync() { var r = loadRef(); refRow.style.display = r && refOk() ? "flex" : "none"; if (r) refThumb.src = r; refLab.textContent = kind === "image" ? "Use my reference photo (Grok edits it)" : sel.value === "xai" ? "Animate my reference photo (Grok Imagine Video)" : "Animate my reference photo (Venice image → video" + (sel.value === "venice" ? ", Wan 2.7 · ≈ $0.64)" : ", Grok 1.5 Lite · ≈ $0.13 at 480p)"); }
     window.addEventListener("pm-output-ref", function () { setTimeout(refSync, 0); });
     sel.addEventListener("change", refSync);
     function price(p) {
@@ -560,10 +563,12 @@
       busy(go, true, kind === "image" ? "Generating…" : "Starting…");
       var body = { prompt: p, provider: sel.value, aspect: ar.value, mode: mode(api) }; if (kind === "video") { body.duration = +dur.value; body.resolution = res.value; }
       // Grok + reference photo -> the worker's Grok Imagine edit / reference->video path (studio_render), never a text-only provider.
-      var ref = sel.value === "xai" && useRef.checked ? loadRef() : "";
-      var req = ref ? shrinkRef(ref).then(function (u) { return call("studio_render", { model: kind === "image" ? "grok-imagine" : "grok-imagine-video-ref", mode: kind === "image" ? "image" : "i2v", prompt: p, imageUrl: u, aspectRatio: ar.value, contentMode: mode(api) }, { timeout: 120000 }); }).then(function (j) {
+      var ref = refOk() && useRef.checked ? loadRef() : "";
+      var vmodel = sel.value === "xai" ? "grok-imagine-video-ref" : sel.value === "venice" ? "venice-wan-i2v" : "venice-grok-i2v";
+      var req = ref ? shrinkRef(ref).then(function (u) { return call("studio_render", { model: kind === "image" ? "grok-imagine" : vmodel, mode: kind === "image" ? "image" : "i2v", duration: kind === "video" ? +dur.value : undefined, prompt: p, imageUrl: u, aspectRatio: ar.value, contentMode: mode(api) }, { timeout: 120000 }); }).then(function (j) {
         if (j && j._status === 200 && j.ok === false) { j.error = j.error || "Grok refused"; j.refused = !!j.filter; j._status = 400; }
         if (j && j.kind === "video_job") { j.kind = "video"; j.engine = j.engine || "Grok Imagine Video (xAI)"; }
+        if (j && j.ok && j.grok_refused) j.notice = j.notice || "Grok refused — made with Venice instead.";
         return j;
       }) : call(kind, body, { timeout: kind === "image" ? 90000 : 40000 });
       req.then(function (j) {
@@ -576,14 +581,16 @@
           var im = h("img", { src: j.url, alt: "generated", "data-pm": "ai-image-result" }); im.addEventListener("load", function () { if (!polBusy(im, wait)) wait.remove(); }); im.addEventListener("error", function () { wait.textContent = "The image host didn't answer — click Generate again or copy the prompt."; });
           var getP = function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; };
           out.replaceChildren(notice, wait, im, eng, c, h("div", { cls: "row" }, [h("a", { href: j.url, download: "grok-studio.png", text: "Download", style: "color:#67e8f9;font-size:12px" })]), grokSendBtn(im, api, getP), teeBtn(j.url, { source: (j.fallback ? "Free preview (not Grok)" : "Grok AI Studio · " + (j.model || "image")), prompt: j.prompt || "", name: "AI Studio image" })); return; }
-        var stat = h("div", { cls: "muted", "data-pm": "ai-video-status", text: "Rendering video… (usually 30–120 s)" }); out.replaceChildren(stat, eng, c);
+        var t0 = Date.now(), vname = /^venice/.test(j.provider || "") ? "Venice" : "Grok Imagine";
+        var stat = h("div", { cls: "muted", "data-pm": "ai-video-status", text: "🎬 " + vname + " is rendering your video… (usually 30 s – 3 min). It will play right here." }); out.replaceChildren(notice, stat, eng, c);
         var tries = 0, fim; (function poll() {
-          if (++tries > 60) { stat.textContent = "Still rendering — try again later."; return; }
-          call("video_status", { provider: j.provider, job: j.job, download_url: j.download_url, mode: mode(api), prompt: j.prompt, aspect: j.aspect || ar.value }, { timeout: 60000 }).then(function (s) {
-            if (s.status === "done" && s.url) { out.replaceChildren(h("video", { src: s.url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true, "data-pm": "ai-video-result" }), eng, c, h("div", { cls: "row" }, [h("a", { href: s.url, target: "_blank", rel: "noopener", text: "Open / download video", style: "color:#67e8f9;font-size:12px" })])); }
+          if (++tries > 180) { stat.textContent = "Still rendering after 15 min — try again later (you were charged ≈ $" + Number(j.cost && j.cost.est_usd || 0).toFixed(2) + ")."; return; }
+          call("video_status", { provider: j.provider, job: j.job, download_url: j.download_url, mode: mode(api), prompt: j.prompt, aspect: j.aspect || ar.value }, { timeout: 90000 }).then(function (s) {
+            if (s.status === "done" && s.url) { var dlu = /\/media\/[A-Za-z0-9_-]+\.mp4$/.test(s.url) ? s.url + "?dl=1" : s.url;
+              out.replaceChildren(notice, h("video", { src: s.url, controls: true, autoplay: true, loop: true, muted: true, playsInline: true, "data-pm": "ai-video-result" }), eng, c, h("div", { cls: "row" }, [h("a", { href: dlu, download: "zigflames-video.mp4", target: "_blank", rel: "noopener", "data-pm": "ai-video-download", text: "⬇ Download video", style: "color:#67e8f9;font-size:13px;font-weight:600" }), h("a", { href: s.url, target: "_blank", rel: "noopener", text: "Open in new tab", style: "color:#94a3b8;font-size:12px" })]), h("div", { cls: "muted", text: /^blob:/.test(s.url) ? "Download now — this copy lives only in this tab." : "Video link is kept 24 h — download to keep it." })); }
             else if (s.status === "failed" && s.fallback_url) { out.replaceChildren(fallbackBanner({ fallback: true, moderated: s.moderated, requested: "xai", notice: s.notice || s.error }), (fim = polWatch(h("img", { src: s.fallback_url, alt: "free preview", "data-pm": "ai-image-result" }))), h("div", { cls: "badge local", "data-pm": "ai-media-engine", style: "display:inline-block;margin:6px 0", text: "Engine: " + (s.engine || "Free preview · Pollinations") }), c, grokSendBtn(fim, api, function () { return ta.value || (api.current.getPrompt && api.current.getPrompt()) || j.prompt || ""; }), teeBtn(s.fallback_url, { source: "Free preview (not Grok)", prompt: j.prompt || "", name: "Free preview" })); }
-            else if (s.status === "failed") stat.textContent = "Video failed: " + (s.error || "unknown");
-            else setTimeout(poll, 5000);
+            else if (s.status === "failed") { stat.className = "err"; stat.textContent = "Video failed: " + (s.error || "unknown"); }
+            else { var el = Math.round((Date.now() - t0) / 1000), eta = s.eta_ms ? Math.round(s.eta_ms / 1000) : 0; stat.textContent = "🎬 " + vname + " is rendering… " + el + " s" + (eta ? " · ≈ " + eta + " s left" : "") + (s.note ? " · " + s.note : "") + " · keep this tab open"; setTimeout(poll, 5000); }
           });
         })();
       });

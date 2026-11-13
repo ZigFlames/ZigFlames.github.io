@@ -8,7 +8,7 @@
 // ::weights, length) and the original comes back with a note if the check fails.
 
 import { chain, extras, price, chatFetch, isXai, modelLabel } from "./models.js"; // AI_TIER=free -> OpenRouter :free models; paid -> MODEL then free
-import { boost, BOOST_ACTIONS } from "./boost.js"; // AI Boost actions (chat, cleanup, remix, expand, vocab, trending, looplab, seeds, image, video)
+import { boost, BOOST_ACTIONS, mediaGet } from "./boost.js"; // AI Boost actions (chat, cleanup, remix, expand, vocab, trending, looplab, seeds, image, video)
 
 const DEFAULT_MODEL = "google/gemini-2.5-flash-lite"; // $0.10/M in, $0.40/M out (OpenRouter, Oct 2026)
 const PRICE = { "google/gemini-2.5-flash-lite": [0.10, 0.40], "mistralai/mistral-small-3.2-24b-instruct": [0.075, 0.20], "meta-llama/llama-3.3-70b-instruct": [0.10, 0.32] };
@@ -372,6 +372,8 @@ async function tighten(body, env, ch) {
 
 export default {
   async fetch(req, env, ctx) {
+    // finished Venice videos (GET /media/<job>.mp4): played by a <video> tag, which sends no Origin header
+    if ((req.method === "GET" || req.method === "HEAD") && /^\/media\//.test(new URL(req.url).pathname)) return mediaGet(req, env);
     const origin = req.headers.get("Origin") || "";
     const ch = cors(origin);
     if (req.method === "OPTIONS") return ch ? new Response(null, { status: 204, headers: ch }) : new Response(null, { status: 403 });

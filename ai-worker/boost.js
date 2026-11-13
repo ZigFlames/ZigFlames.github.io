@@ -457,9 +457,13 @@ const VIDEO_PROVIDERS = {
   xai: { label: "Grok Imagine Video 1.5 Lite (xAI)", key: "XAI_API_KEY", adult: false, model: "grok-imagine-video-1.5-lite", perSec: { "480p": 0.02, "720p": 0.03 }, note: "$0.02/s 480p · $0.03/s 720p (xAI direct); free still preview if xAI fails" },
   venice: { label: "Venice · Wan 2.7 Enhanced (uncensored)", key: "VENICE_API_KEY", adult: true, model: "wan-2-7-enhanced-text-to-video", perSec: { "720p": 0.128 }, note: "$0.64 per 5 s at 720p" },
   venice_grok: { label: "Venice · Grok Imagine 1.5 Lite", key: "VENICE_API_KEY", adult: true, model: "grok-imagine-1-5-lite-text-to-video", perSec: { "480p": 0.024, "720p": 0.036 }, note: "$0.12 per 5 s at 480p" },
+  // image -> video (Venice /video/quote, Nov 13 2026: lite i2v 5 s = $0.13 480p / $0.19 720p; Wan 2.7 Enhanced i2v 5 s 720p = $0.64).
+  // i2v: needs image_url; not listed in the AI Studio video picker (it switches to these when "Animate my reference photo" is on).
+  venice_grok_i2v: { label: "Venice · Grok Imagine 1.5 Lite (image → video)", key: "VENICE_API_KEY", adult: true, i2v: true, model: "grok-imagine-1-5-lite-image-to-video", perSec: { "480p": 0.026, "720p": 0.038 }, note: "$0.13 per 5 s at 480p" },
+  venice_i2v: { label: "Venice · Wan 2.7 Enhanced (image → video, uncensored)", key: "VENICE_API_KEY", adult: true, i2v: true, model: "wan-2-7-enhanced-image-to-video", perSec: { "720p": 0.128 }, note: "$0.64 per 5 s at 720p" },
 };
 function providerList(env, adult) {
-  const m = (P, kind) => Object.keys(P).map((id) => ({ id, kind, label: P[id].label, adult: P[id].adult, ready: !P[id].key || !!env[P[id].key], key: P[id].key || "", note: P[id].note, model: P[id].model, locked: P[id].adult && !adult }));
+  const m = (P, kind) => Object.keys(P).filter((id) => !P[id].i2v).map((id) => ({ id, kind, label: P[id].label, adult: P[id].adult, ready: !P[id].key || !!env[P[id].key], key: P[id].key || "", note: P[id].note, model: P[id].model, locked: P[id].adult && !adult }));
   return { image: m(IMAGE_PROVIDERS, "image"), video: m(VIDEO_PROVIDERS, "video"), caps: caps(env) };
 }
 function caps(env) {
@@ -503,6 +507,11 @@ async function mediaPrompt(env, raw, adult) {
   return { prompt: p, screen_usd: s.usage ? s.usage.est_usd : 0 };
 }
 const AR = { "9:16": [768, 1344], "3:4": [896, 1152], "1:1": [1024, 1024], "4:3": [1152, 896], "16:9": [1344, 768], "2:3": [832, 1216] };
+// Venice image API caps width/height at 1280 (docs). 9:16 and 16:9 in AR exceed that.
+function fitPx(w, h, max) {
+  const sc = Math.min(1, max / Math.max(w, h));
+  return [Math.max(8, Math.min(max, Math.round(w * sc / 8) * 8)), Math.max(8, Math.min(max, Math.round(h * sc / 8) * 8))];
+}
 
 async function genImage(b, env, adult, ip) {
   const id = String(b.provider || (env.XAI_API_KEY ? "xai" : env.FAL_KEY ? "fal_schnell" : "openrouter")), P = IMAGE_PROVIDERS[id];
@@ -525,8 +534,9 @@ async function genImage(b, env, adult, ip) {
         body: JSON.stringify({ model: P.model, prompt: g.prompt, n: 1, aspect_ratio: ar, response_format: "url" }) });
       d = await r.json().catch(() => null); url = d && d.data && d.data[0] && (d.data[0].url || (d.data[0].b64_json ? "data:image/jpeg;base64," + d.data[0].b64_json : "")) || "";
     } else if (id === "venice" || id === "venice_grok") {
+      const [vw, vh] = fitPx(w, h, 1280);
       r = await fetch("https://api.venice.ai/api/v1/image/generate", { method: "POST", headers: { Authorization: "Bearer " + env.VENICE_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: P.model, prompt: g.prompt.slice(0, 1400), negative_prompt: "child, minor, teen, underage, young-looking, cartoon, cgi, plastic skin, watermark, text", width: w, height: h, safe_mode: !adult, format: "webp", hide_watermark: true }) });
+        body: JSON.stringify({ model: P.model, prompt: g.prompt.slice(0, 1400), negative_prompt: "child, minor, teen, underage, young-looking, cartoon, cgi, plastic skin, watermark, text", width: vw, height: vh, safe_mode: !adult, format: "webp", hide_watermark: true }) });
       d = await r.json().catch(() => null); url = d && d.images && d.images[0] ? "data:image/webp;base64," + d.images[0] : "";
     } else if (id === "fal" || id === "fal_schnell") {
       r = await fetch("https://fal.run/" + P.model, { method: "POST", headers: { Authorization: "Key " + env.FAL_KEY, "Content-Type": "application/json" },
@@ -541,6 +551,10 @@ async function genImage(b, env, adult, ip) {
   if (id === "xai" && !url) {
     const why = xaiErr(r, d);
     // our own guards already passed (mediaPrompt); an xAI moderation refusal -> straight to the free preview, no paid retry
+    if (XAI_MOD_RE.test(why) && adult && env.VENICE_API_KEY && !b._noVenice) {
+      const v = await genImage(Object.assign({}, b, { provider: "venice", _noVenice: true }), env, adult, ip);
+      if (!v.err) return Object.assign(v, { grok_refused: true, xai_error: why, notice: "Grok refused this prompt — made it with Venice · Lustify v8 instead (≈ $0.01, uncensored, 18+ mode)." });
+    }
     if (XAI_MOD_RE.test(why)) return freePreview(env, ip, g.prompt, w, h, why, "image", { moderated: true, adult });
     return freePreview(env, ip, g.prompt, w, h, why, "image");
   }
@@ -578,9 +592,16 @@ async function genVideo(b, env, adult, ip) {
   if (P.adult && !adult) return { err: "This provider is only available in 18+ mode.", status: 403, locked: true };
   if (!env[P.key]) return { err: "needs key", needs_key: P.key, status: 503, provider: id };
   const g = await mediaPrompt(env, b.prompt, adult); if (g.err) return g;
+  let img = "", scr = 0;
+  if (P.i2v) {
+    img = String(b.image_url || "");
+    if (!img) return { err: P.label + " needs a reference image — upload one first.", status: 400, needs_ref: true };
+    if (!(REF_DATA_RE.test(img) && img.length <= REF_MAX) && !/^https:\/\/[^\s"']{8,2000}$/.test(img)) return { err: "Reference image must be a JPG/PNG under ~2 MB — re-upload it.", status: 400 };
+    const sc = await refScreen(env, img); if (sc.err) return { err: sc.err, status: 422, refused: sc.refused }; scr = sc.usd || 0;
+  }
   let res = P.perSec[b.resolution] ? b.resolution : Object.keys(P.perSec)[0];
   let dur = Math.max(1, Math.min(10, parseInt(b.duration || 5, 10)));
-  if (id === "venice") dur = dur > 7 ? 10 : 5;
+  if (id === "venice" || id === "venice_i2v") dur = dur > 7 ? 10 : 5; // Wan 2.7 Enhanced: 5 s / 10 s only
   const usd = Math.round(P.perSec[res] * dur * 100) / 100;
   const capErr = await capCheck(env, ip, "video", usd); if (capErr) return { err: capErr, status: 429, capped: true };
   const ar = ["9:16", "16:9", "1:1"].includes(b.aspect) ? b.aspect : "9:16";
@@ -592,7 +613,7 @@ async function genVideo(b, env, adult, ip) {
       d = await r.json().catch(() => null); job = d && d.request_id || "";
     } else {
       r = await fetch("https://api.venice.ai/api/v1/video/queue", { method: "POST", headers: { Authorization: "Bearer " + env.VENICE_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: P.model, prompt: g.prompt.slice(0, 2400), duration: dur + "s", resolution: res, aspect_ratio: ar }) });
+        body: JSON.stringify(Object.assign({ model: P.model, prompt: g.prompt.slice(0, 2400), duration: dur + "s", resolution: res }, P.i2v ? { image_url: img } : { aspect_ratio: ar })) });
       d = await r.json().catch(() => null); job = d && d.queue_id || ""; dl = d && d.download_url || "";
     }
   } catch (e) { if (id === "xai") return freePreview(env, ip, g.prompt, ...(AR[ar] || AR["9:16"]), "xAI unreachable", "video"); return { err: "provider unreachable", status: 502, provider: id }; }
@@ -603,13 +624,15 @@ async function genVideo(b, env, adult, ip) {
   }
   if (r && r.status === 403 && d && /TOP_UP|balance/i.test(JSON.stringify(d))) return { err: "fal.ai account has no credit — top up at fal.ai/dashboard/billing.", needs_credit: true, status: 402, provider: id };
   if (r && (r.status === 401 || r.status === 403)) return { err: "provider rejected the key (" + P.key + ")", needs_key: P.key, status: 503, provider: id };
-  if (r && r.status === 422) return { err: "Provider refused the prompt (content policy).", status: 422, provider: id };
+  if (r && r.status === 422) return { err: "Provider refused the prompt (content policy).", status: 422, provider: id, refused: "policy" };
+  if (r && r.status === 402) return { err: "Venice balance is empty — top up at venice.ai (API → billing).", needs_credit: true, status: 402, provider: id };
+  if (r && r.status === 400 && id !== "xai") return { err: "Venice rejected the request: " + String((d && (d.error || "")) + (d && d.details ? " " + JSON.stringify(d.details) : "")).slice(0, 220), status: 400, provider: id };
   if (!job) return { err: "provider did not start the job" + (r ? " (" + r.status + ")" : ""), status: 502, provider: id, detail: String(JSON.stringify(d || "")).slice(0, 200) };
   const tot = await capAdd(env, ip, "video", usd);
-  return { job, download_url: dl, provider: id, model: P.model, engine: P.label + " · " + P.model + " · " + res + " · " + dur + " s", aspect: ar, prompt: g.prompt, duration: dur, resolution: res, cost: { est_usd: usd, note: P.note, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
+  return { job, download_url: dl, provider: id, model: P.model, engine: P.label + " · " + P.model + (P.i2v ? " · from your image" : "") + " · " + res + " · " + dur + " s", aspect: ar, prompt: g.prompt, duration: dur, resolution: res, cost: { est_usd: Math.round((usd + scr) * 1e4) / 1e4, note: P.note, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
 }
 
-async function videoStatus(b, env, adult, ch) {
+async function videoStatus(b, env, adult, ch, req) {
   const id = String(b.provider || "xai"), P = VIDEO_PROVIDERS[id];
   if (!P) return J({ error: "unknown provider" }, 400, ch);
   if (!env[P.key]) return J({ error: "needs key", needs_key: P.key }, 503, ch);
@@ -630,15 +653,67 @@ async function videoStatus(b, env, adult, ch) {
       }
       return J({ status: "pending" }, 200, ch);
     }
-    const r = await fetch("https://api.venice.ai/api/v1/video/retrieve", { method: "POST", headers: { Authorization: "Bearer " + env.VENICE_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ model: P.model, queue_id: job }) });
-    const ct = r.headers.get("Content-Type") || "";
-    if (ct.includes("video/mp4")) return new Response(r.body, { status: 200, headers: Object.assign({ "Content-Type": "video/mp4", "Cache-Control": "no-store" }, ch) });
-    const d = await r.json().catch(() => null) || {};
-    if (r.status === 422) return J({ status: "failed", error: "provider refused (content policy)" }, 200, ch);
-    if (!r.ok) return J({ status: "failed", error: "provider " + r.status }, 200, ch);
-    if (d.status === "COMPLETED") return J({ status: "done", url: String(b.download_url || "") }, 200, ch);
-    return J({ status: "pending", eta_ms: Math.max(0, (d.average_execution_time || 0) - (d.execution_duration || 0)) }, 200, ch);
+    return await veniceStatus(b, env, P, job, ch, req);
   } catch (e) { return J({ status: "pending", error: "unreachable" }, 200, ch); }
+}
+
+// ---- Venice video delivery ----
+// Venice hands back a short-lived, single-purpose private-share link (download_url) that ignores Range requests (always 200, full body)
+// and is meant to be fetched once from one network. iPhone/iPad Safari will not play a <video> from a server without byte ranges, so
+// pointing the player at that link showed nothing. Now: the worker downloads the finished MP4 once, keeps it in KV for 24 h and serves
+// it from GET /media/<job>.mp4 with proper Range (206) support. Files over KV's 25 MiB limit stream straight back (page plays a blob).
+const VID_KV_MAX = 24.5 * 1024 * 1024, VID_TTL = 60 * 60 * 24;
+function mediaUrl(req, job) { let o = "https://zigflames-ai.zigflames.workers.dev"; try { o = new URL(req.url).origin; } catch (e) {} return o + "/media/" + job + ".mp4"; }
+async function veniceStatus(b, env, P, job, ch, req) {
+  const done = await kvGet(env, "vidok:" + job);
+  if (done && done.size) return J({ status: "done", url: mediaUrl(req, job), size: done.size, engine: P.label + " · " + P.model }, 200, ch);
+  const r = await fetch("https://api.venice.ai/api/v1/video/retrieve", { method: "POST", headers: { Authorization: "Bearer " + env.VENICE_API_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ model: P.model, queue_id: job }) });
+  const ct = r.headers.get("Content-Type") || "";
+  let buf = null, dl = "";
+  if (r.ok && ct.includes("video/")) buf = await r.arrayBuffer();
+  else {
+    const d = await r.json().catch(() => null) || {};
+    if (r.status === 422) return J({ status: "failed", error: "Venice refused this video (content policy). Soften the prompt and try again." }, 200, ch);
+    if (r.status === 404) return J({ status: "failed", error: "Venice says this video expired or was deleted — generate it again." }, 200, ch);
+    if (r.status === 402) return J({ status: "failed", error: "Venice balance is empty — top up at venice.ai." }, 200, ch);
+    if (r.status === 429 || r.status >= 500) return J({ status: "pending", note: "Venice busy (" + r.status + ")" }, 200, ch);
+    if (!r.ok) return J({ status: "failed", error: "Venice " + r.status + (d.error ? ": " + String(d.error).slice(0, 160) : "") }, 200, ch);
+    if (/FAIL|ERROR|CANCEL/i.test(String(d.status || ""))) return J({ status: "failed", error: "Venice job " + String(d.status).toLowerCase() + (d.error ? ": " + String(d.error).slice(0, 160) : "") }, 200, ch);
+    if (d.status !== "COMPLETED") return J({ status: "pending", venice_status: d.status || "", eta_ms: Math.max(0, (d.average_execution_time || 0) - (d.execution_duration || 0)), elapsed_ms: d.execution_duration || 0 }, 200, ch);
+    dl = String(b.download_url || "");
+    if (!/^https:\/\/[a-z0-9.-]*venice\.ai\//i.test(dl)) return J({ status: "failed", error: "Venice finished but the page lost the download link — generate again." }, 200, ch);
+    const v = await fetch(dl);
+    if (!v.ok) return J(v.status === 429 || v.status >= 500 ? { status: "pending", note: "download busy (" + v.status + ")" } : { status: "failed", error: "Venice download link answered " + v.status + " (links last 24 h) — generate again." }, 200, ch);
+    buf = await v.arrayBuffer();
+  }
+  if (!buf || buf.byteLength < 1000) return J({ status: "failed", error: "Venice returned an empty video file." }, 200, ch);
+  if (env.SPEND && buf.byteLength <= VID_KV_MAX) {
+    try {
+      await env.SPEND.put("vid:" + job, buf, { expirationTtl: VID_TTL });
+      await kvPut(env, "vidok:" + job, { size: buf.byteLength, at: Date.now() }); // kvPut uses a 48 h TTL; the file itself expires at 24 h
+      if (dl) { try { await fetch(dl, { method: "DELETE" }); } catch (e) {} } // we hold the copy now; shrink the life of Venice's pre-signed link
+      return J({ status: "done", url: mediaUrl(req, job), size: buf.byteLength, engine: P.label + " · " + P.model }, 200, ch);
+    } catch (e) { console.log(JSON.stringify({ action: "video_store", ok: false, why: String(e && e.message || e).slice(0, 120) })); }
+  }
+  return new Response(buf, { status: 200, headers: Object.assign({ "Content-Type": "video/mp4", "Cache-Control": "no-store" }, ch) });
+}
+// GET /media/<job>.mp4 (no Origin header from a <video> tag, so this route sits before the worker's origin check). Unguessable
+// Venice queue ids, 24 h life, Range support for iOS Safari, ?dl=1 adds a download filename.
+export async function mediaGet(req, env) {
+  const u = new URL(req.url), m = /^\/media\/([A-Za-z0-9_-]{8,80})\.mp4$/.exec(u.pathname);
+  if (!m || !env.SPEND) return new Response("not found", { status: 404 });
+  const buf = await env.SPEND.get("vid:" + m[1], { type: "arrayBuffer" });
+  if (!buf) return new Response("This video expired (videos are kept 24 h) — generate it again.", { status: 404, headers: { "Content-Type": "text/plain" } });
+  const n = buf.byteLength, h = { "Content-Type": "video/mp4", "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=86400", "Access-Control-Allow-Origin": "*", "X-Robots-Tag": "noindex" };
+  if (u.searchParams.get("dl") === "1") h["Content-Disposition"] = 'attachment; filename="zigflames-' + m[1].slice(0, 8) + '.mp4"';
+  const rg = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get("Range") || "");
+  if (rg && (rg[1] || rg[2])) {
+    let a = rg[1] ? parseInt(rg[1], 10) : n - parseInt(rg[2], 10), z = rg[1] && rg[2] ? parseInt(rg[2], 10) : n - 1;
+    a = Math.max(0, a); z = Math.min(n - 1, z);
+    if (a > z || a >= n) return new Response(null, { status: 416, headers: Object.assign({ "Content-Range": "bytes */" + n }, h) });
+    return new Response(req.method === "HEAD" ? null : buf.slice(a, z + 1), { status: 206, headers: Object.assign({ "Content-Range": "bytes " + a + "-" + z + "/" + n, "Content-Length": String(z - a + 1) }, h) });
+  }
+  return new Response(req.method === "HEAD" ? null : buf, { status: 200, headers: Object.assign({ "Content-Length": String(n) }, h) });
 }
 
 // ---- Studio Render (the 22-model "AI Studio" panel) ----
@@ -701,7 +776,12 @@ async function grokStudio(b, env, ip, key) {
       d = await r.json().catch(() => null);
     } catch (e) { return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, "xAI unreachable", "image"), key); }
     const url = d && d.data && d.data[0] && (d.data[0].url || (d.data[0].b64_json ? "data:image/jpeg;base64," + d.data[0].b64_json : "")) || "";
-    if (!url) { const why = xaiErr(r, d), mod = XAI_MOD_RE.test(why); console.log(JSON.stringify({ action: "studio_grok", ok: false, why })); return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, why, "image", mod ? { moderated: true, adult } : undefined), key); }
+    if (!url) {
+      const why = xaiErr(r, d), mod = XAI_MOD_RE.test(why); console.log(JSON.stringify({ action: "studio_grok", ok: false, why }));
+      // 18+ mode: Grok's own filter refused (our guards passed) -> paid Venice Lustify v8 ($0.01, labelled) instead of only the free preview
+      if (mod && adult && env.VENICE_API_KEY) { const v = await veniceStudio(Object.assign({}, b, { imageUrl: "" }), env, ip, "venice-lustify"); if (v.ok) return Object.assign(v, { requested: key, grok_refused: true, xai_error: why, notice: "Grok refused this prompt — made it with Venice · Lustify v8 instead (≈ $0.01, uncensored, 18+ mode)." + (ref ? " Venice is text-to-image, so your reference photo wasn't used." : "") }); }
+      return studioFromPreview(await freePreview(env, ip, g.prompt, w, h, why, "image", mod ? { moderated: true, adult } : undefined), key);
+    }
     const tot = await capAdd(env, ip, "image", usd);
     return { ok: true, kind: "image", url, imageUrl: url, model: "Grok Imagine (xAI)", provider: "xai", engine: "Grok Imagine (xAI) · " + P.model + (ref ? " · edit from your reference" : " · text to image"), prompt: g.prompt,
       cost: { est_usd: Math.round((usd + (g.screen_usd || 0)) * 1e4) / 1e4, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
@@ -718,8 +798,33 @@ async function grokStudio(b, env, ip, key) {
   return { ok: true, kind: "video_job", job, provider: "xai", model: "Grok Imagine Video (xAI)", engine: V.label + " · " + V.model + (ref ? " · from your reference · " : " · text to video · ") + res + " · " + dur + " s", prompt: g.prompt, aspect: b.aspectRatio,
     adult, cost: { est_usd: usd, today_usd: tot.usd, cap_usd: caps(env).day_usd } };
 }
+// Venice in the 22-model panel (Image / Text → Video / Image → Video tabs). Same 18+ lock and guards as the AI Studio pickers:
+// only with contentMode 18+ (NSFW / XXX mode + age gate), prompt gate (adults 21+, no minors, no real / named people), reference
+// screen for image → video, daily $ cap. Video comes back as a job the page polls (video_status -> /media/<job>.mp4).
+const VENICE_STUDIO = { "venice-lustify": ["image", "venice"], "venice-grok-image": ["image", "venice_grok"], "venice-grok-t2v": ["video", "venice_grok"], "venice-wan-t2v": ["video", "venice"], "venice-grok-i2v": ["i2v", "venice_grok_i2v"], "venice-wan-i2v": ["i2v", "venice_i2v"] };
+const VEN_AR = { "4:5": "3:4", "2:3": "2:3", "3:2": "4:3", "21:9": "16:9" };
+async function veniceStudio(b, env, ip, key) {
+  const V = VENICE_STUDIO[key]; if (!V) return { ok: false, code: "error", error: "unknown Venice model " + key };
+  if (b.contentMode !== "18+") return { ok: false, code: "locked", error: "🔒 Venice models unlock only in NSFW / XXX mode (18+). Switch mode at the top, or pick another model." };
+  if (!env.VENICE_API_KEY) return { ok: false, code: "needs_key", error: "Venice needs the worker secret VENICE_API_KEY." };
+  const [kind, prov] = V, aspect = VEN_AR[b.aspectRatio] || b.aspectRatio;
+  const fail = (o) => ({ ok: false, code: o.capped ? "capped" : o.refused || o.needs_credit && "needs_credit" || o.needs_ref && "needs_ref" || "error", error: o.err, filter: !!o.refused });
+  if (kind === "image") {
+    const o = await genImage({ provider: prov, prompt: b.prompt, aspect, nongeneric: b.nongeneric, ng_last: b.ng_last }, env, true, ip);
+    if (o.err) return fail(o);
+    return { ok: true, kind: "image", url: o.url, imageUrl: o.url, model: o.engine, provider: prov, engine: o.engine, prompt: o.prompt, cost: o.cost,
+      notice: b.imageUrl ? "Venice " + IMAGE_PROVIDERS[prov].model + " is text-to-image — your reference photo wasn't used." : "" };
+  }
+  const P = VIDEO_PROVIDERS[prov];
+  if (kind === "i2v" && !b.imageUrl) return { ok: false, code: "needs_ref", error: P.label + " needs a reference image — upload one first." };
+  const o = await genVideo({ provider: prov, prompt: b.prompt, duration: b.duration || 5, resolution: Object.keys(P.perSec)[0], aspect, image_url: kind === "i2v" ? b.imageUrl : "" }, env, true, ip);
+  if (o.err) return fail(o);
+  return { ok: true, kind: "video_job", job: o.job, download_url: o.download_url, provider: prov, model: P.label, engine: o.engine, prompt: o.prompt, aspect: o.aspect, adult: true, cost: o.cost,
+    notice: kind === "video" && b.imageUrl ? "Text → Video ignores the reference photo — use the Image → Video tab to animate it." : "" };
+}
 async function studioRender(b, env, ip) {
   const mode = String(b.mode || "image"), key = String(b.model || "flux-schnell");
+  if (/^venice-/.test(key)) return veniceStudio(b, env, ip, key);
   if (/^grok-imagine/.test(key)) return grokStudio(b, env, ip, key);
   if (mode !== "image") return { ok: false, code: "needs_credit", error: (mode === "upscale" ? "Upscaling" : "Video") + " models (" + key + ") need a funded fal.ai key (FAL_KEY). No free provider for this mode yet — use Image mode for a free preview.", status: 200 };
   if (/^lora-trainer|^civitai/.test(key)) return { ok: false, code: "needs_credit", error: "LoRA training/loading needs a funded fal.ai key (FAL_KEY).", status: 200 };
@@ -811,7 +916,7 @@ export async function boost(body, env, ch, req) {
   const a = body.action, adult = body.mode === "18+";
   const ip = (req && req.headers.get("CF-Connecting-IP")) || "anon";
   if (a === "providers") return J(providerList(env, adult), 200, ch);
-  if (a === "video_status") return videoStatus(body, env, adult, ch);
+  if (a === "video_status") return videoStatus(body, env, adult, ch, req);
   if (a === "img_fetch") return imgFetch(body, ch);
   let out;
   if (a === "studio_render") { const o = await studioRender(body, env, ip); delete o.status; return J(o, 200, ch); }
